@@ -9,7 +9,7 @@
  */
 
 import { analyzeFullBuffer } from 'realtime-bpm-analyzer';
-// @ts-expect-error music-tempo does not provide typescript types
+// @ts-ignore music-tempo does not provide typescript types
 import MusicTempo from 'music-tempo';
 
 export interface BpmAnalysisResult {
