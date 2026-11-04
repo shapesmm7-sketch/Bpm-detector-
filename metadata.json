@@ -1,0 +1,6 @@
+{
+  "name": "PulseBPM - Audio BPM & Tempo Detector",
+  "description": "Professional real-time BPM detector, audio waveform beat-grid visualizer, tap tempo, musical key detection, and AI DJ insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

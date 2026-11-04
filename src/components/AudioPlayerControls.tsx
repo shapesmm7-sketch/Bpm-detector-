@@ -1,0 +1,349 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  Copy,
+  Check,
+  Repeat,
+  Sliders,
+  Plus,
+  Minus,
+  Music,
+} from 'lucide-react';
+
+interface AudioPlayerControlsProps {
+  isPlaying: boolean;
+  onPlayPause: () => void;
+  onCue: () => void;
+  onRestart: () => void;
+  volume: number;
+  onVolumeChange: (vol: number) => void;
+  pitchPercent: number; // e.g. 0.0 = original, +2.5 = +2.5%
+  onPitchChange: (percent: number) => void;
+  onPitchBend: (direction: number) => void;
+  loopBarCount: number; // 0 = off, 1, 2, 4, 8
+  onSetLoopBarCount: (bars: number) => void;
+  bpm: number;
+  liveBpm: number;
+  onCopyInfo: () => void;
+  copied: boolean;
+  onHalfBpm?: () => void;
+  onDoubleBpm?: () => void;
+}
+
+export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
+  isPlaying,
+  onPlayPause,
+  onCue,
+  onRestart,
+  volume,
+  onVolumeChange,
+  pitchPercent,
+  onPitchChange,
+  onPitchBend,
+  loopBarCount,
+  onSetLoopBarCount,
+  bpm,
+  liveBpm,
+  onCopyInfo,
+  copied,
+}) => {
+  const [bpmInputVal, setBpmInputVal] = useState<string>(liveBpm ? liveBpm.toFixed(2) : '');
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const lastPropBpmRef = React.useRef<number>(liveBpm);
+
+  // Sync input value only when liveBpm prop changes from external controls
+  useEffect(() => {
+    if (liveBpm !== lastPropBpmRef.current) {
+      lastPropBpmRef.current = liveBpm;
+      if (!isFocused && liveBpm > 0) {
+        setBpmInputVal(liveBpm.toFixed(2));
+      }
+    }
+  }, [liveBpm, isFocused]);
+
+  // Convert target BPM to required pitch percentage
+  const applyTargetBpm = (targetBpm: number) => {
+    const base = bpm > 0 ? bpm : 120;
+    if (isNaN(targetBpm) || targetBpm <= 0) return;
+    const rawPitchPercent = ((targetBpm / base) - 1) * 100;
+    const clamped = Math.max(-50, Math.min(50, rawPitchPercent));
+    onPitchChange(Number(clamped.toFixed(2)));
+    setBpmInputVal(targetBpm.toFixed(2));
+  };
+
+  // Step target BPM up (+1) or down (-1)
+  const handleStepBpm = (delta: number) => {
+    const current = parseFloat(bpmInputVal) || (liveBpm > 0 ? liveBpm : (bpm > 0 ? bpm : 120));
+    const nextBpm = Math.max(30, Math.min(300, Number((current + delta).toFixed(2))));
+    applyTargetBpm(nextBpm);
+  };
+
+  // Handle direct text editing
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setBpmInputVal(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+      applyTargetBpm(parsed);
+    }
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
+    const parsed = parseFloat(bpmInputVal);
+    if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+      applyTargetBpm(parsed);
+    } else if (liveBpm > 0) {
+      setBpmInputVal(liveBpm.toFixed(2));
+    }
+  };
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+      {/* Top DJ Deck Transport Controls: CUE, PLAY/PAUSE, SYNC */}
+      <div className="flex items-center justify-center gap-3.5 pb-2 border-b border-slate-800/80">
+        {/* CUE Button */}
+        <button
+          onClick={onCue}
+          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-2 border-amber-500/50 hover:border-amber-400 flex flex-col items-center justify-center font-extrabold text-xs shadow-[0_0_20px_rgba(245,158,11,0.25)] active:scale-95 transition-all cursor-pointer select-none shrink-0"
+          title="Set / Return to Cue Point"
+        >
+          <span className="tracking-wider text-xs sm:text-sm">CUE</span>
+          <span className="text-[8px] sm:text-[9px] text-amber-300 font-mono">POINT</span>
+        </button>
+
+        {/* PLAY / PAUSE Button */}
+        <button
+          onClick={onPlayPause}
+          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex flex-col items-center justify-center font-extrabold transition-all active:scale-95 cursor-pointer select-none border-2 shadow-2xl shrink-0 ${
+            isPlaying
+              ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-[0_0_30px_rgba(16,185,129,0.6)] scale-102'
+              : 'bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-400 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
+          }`}
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? (
+            <>
+              <Pause className="w-8 h-8 sm:w-10 sm:h-10 fill-current" />
+              <span className="text-[10px] sm:text-xs tracking-wider font-mono mt-0.5">PAUSE</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />
+              <span className="text-[10px] sm:text-xs tracking-wider font-mono mt-0.5">PLAY</span>
+            </>
+          )}
+        </button>
+
+        {/* SYNC / RESET Pitch */}
+        <button
+          onClick={() => {
+            onPitchChange(0);
+          }}
+          className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-slate-950 hover:bg-slate-800 text-cyan-400 border-2 border-cyan-500/40 hover:border-cyan-400 flex flex-col items-center justify-center font-bold text-xs transition-all cursor-pointer shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.15)] active:scale-95"
+          title="Reset Tempo to 0.0%"
+        >
+          <span className="tracking-wider text-xs sm:text-sm">SYNC</span>
+          <span className="text-[9px] sm:text-[10px] text-cyan-300 font-mono">0.0%</span>
+        </button>
+      </div>
+
+      {/* Main DJ Deck Controls: Tempo Pitch Fader + Loop Roll */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
+        {/* Tempo Pitch Fader */}
+        <div className="xl:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400 font-medium flex items-center gap-1">
+              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Tempo Pitch Fader</span>
+            </span>
+            <div className="flex items-center gap-1.5 font-mono text-xs font-bold">
+              <span className={pitchPercent === 0 ? 'text-slate-400' : pitchPercent > 0 ? 'text-emerald-400' : 'text-amber-400'}>
+                {pitchPercent > 0 ? `+${pitchPercent.toFixed(1)}%` : `${pitchPercent.toFixed(1)}%`}
+              </span>
+            </div>
+          </div>
+
+          {/* Direct BPM Controls: (-) Button, Editable Target Input, (+) Button */}
+          <div className="flex items-center justify-between gap-2 bg-slate-900/90 p-2 rounded-xl border border-slate-800 shadow-inner">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase font-mono pl-1 shrink-0">
+              Set Tempo:
+            </span>
+
+            <div className="flex items-center gap-1.5 flex-1 max-w-[200px]">
+              {/* - Button */}
+              <button
+                type="button"
+                onClick={() => handleStepBpm(-1)}
+                className="w-8 h-8 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-200 font-mono font-black text-base flex items-center justify-center border border-slate-800 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
+                title="Decrease Tempo (-1 BPM)"
+              >
+                <Minus className="w-4 h-4 text-slate-300" />
+              </button>
+
+              {/* Clean Editable Target BPM Input */}
+              <div className="flex-1 flex items-center bg-slate-950 px-3 py-1 rounded-lg border border-emerald-500/40 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400 shadow-inner">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="30"
+                  max="300"
+                  value={bpmInputVal}
+                  onFocus={() => setIsFocused(true)}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-full bg-transparent text-emerald-400 font-mono font-black text-center text-sm py-0.5 border-none focus:outline-none"
+                  placeholder="120.00"
+                  title="Click to type exact target BPM"
+                />
+              </div>
+
+              {/* + Button */}
+              <button
+                type="button"
+                onClick={() => handleStepBpm(1)}
+                className="w-8 h-8 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-mono font-black text-base flex items-center justify-center border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
+                title="Increase Tempo (+1 BPM)"
+              >
+                <Plus className="w-4 h-4 text-emerald-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Tempo Fader Slider */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onPitchBend(-0.2)}
+                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded border border-slate-800 cursor-pointer"
+                title="Pitch Bend -"
+              >
+                -
+              </button>
+              <input
+                type="range"
+                min="-50"
+                max="50"
+                step="0.1"
+                value={pitchPercent}
+                onChange={(e) => onPitchChange(parseFloat(e.target.value))}
+                className="flex-1 accent-cyan-400 cursor-pointer"
+              />
+              <button
+                onClick={() => onPitchBend(0.2)}
+                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded border border-slate-800 cursor-pointer"
+                title="Pitch Bend +"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+              <span>-50%</span>
+              <button
+                onClick={() => onPitchChange(0)}
+                className="text-slate-400 hover:text-white underline cursor-pointer"
+              >
+                CENTER (0.0%)
+              </button>
+              <span>+50%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Quick Loop Pads */}
+        <div className="xl:col-span-4 flex flex-col justify-center space-y-2">
+          {/* Loop Roll Controls */}
+          <div className="flex flex-col gap-2 bg-slate-950 p-3.5 rounded-xl border border-slate-800 h-full justify-center">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
+              <Repeat className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Loop Roll</span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 pt-1">
+              {[0, 1, 2, 4, 8].map((bars) => (
+                <button
+                  key={bars}
+                  onClick={() => onSetLoopBarCount(bars)}
+                  className={`py-2 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    loopBarCount === bars
+                      ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-slate-800/80'
+                  }`}
+                >
+                  {bars === 0 ? 'OFF' : `${bars}B`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Utility Strip: Volume + Restart + Copy Details */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onRestart}
+            className="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Jump to Start (0:00)"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Top of Track</span>
+          </button>
+
+          {/* Volume */}
+          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">
+            <button
+              onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
+              className="text-slate-400 hover:text-white cursor-pointer"
+            >
+              {volume === 0 ? (
+                <VolumeX className="w-3.5 h-3.5 text-red-400" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-slate-300" />
+              )}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={volume}
+              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+              className="w-20 accent-emerald-500 cursor-pointer"
+            />
+            <span className="font-mono text-slate-400 text-[11px] w-7 text-right">
+              {Math.round(volume * 100)}%
+            </span>
+          </div>
+        </div>
+
+        {/* Copy Results */}
+        <button
+          onClick={onCopyInfo}
+          className="px-3.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+        >
+          {copied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-emerald-400 font-bold">BPM Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy Song BPM ({liveBpm.toFixed(2)})</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
