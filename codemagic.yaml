@@ -20,8 +20,7 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          npm install --legacy-peer-deps
-          npm install -f lightningcss-darwin-arm64 @tailwindcss/vite || true
+          npm install --include=optional --legacy-peer-deps
       - name: Build web assets and sync to native Android
         script: |
           npm run build
