@@ -14423,60 +14423,68 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$P = [
+const __iconNode$W = [
   ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
   ["path", { d: "M19 12H5", key: "x3x0zl" }]
 ];
-const ArrowLeft = createLucideIcon("arrow-left", __iconNode$P);
+const ArrowLeft = createLucideIcon("arrow-left", __iconNode$W);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$O = [
+const __iconNode$V = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
 ];
-const ArrowRight = createLucideIcon("arrow-right", __iconNode$O);
+const ArrowRight = createLucideIcon("arrow-right", __iconNode$V);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$N = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("check", __iconNode$N);
+const __iconNode$U = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$U);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$M = [
+const __iconNode$T = [["path", { d: "m15 18-6-6 6-6", key: "1wnfg3" }]];
+const ChevronLeft = createLucideIcon("chevron-left", __iconNode$T);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$S = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
   ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
 ];
-const CircleAlert = createLucideIcon("circle-alert", __iconNode$M);
+const CircleAlert = createLucideIcon("circle-alert", __iconNode$S);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$L = [
+const __iconNode$R = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const CircleCheck = createLucideIcon("circle-check", __iconNode$L);
+const CircleCheck = createLucideIcon("circle-check", __iconNode$R);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$K = [
+const __iconNode$Q = [
   [
     "path",
     {
@@ -14486,59 +14494,59 @@ const __iconNode$K = [
   ],
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
 ];
-const CirclePlay = createLucideIcon("circle-play", __iconNode$K);
+const CirclePlay = createLucideIcon("circle-play", __iconNode$Q);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$J = [
+const __iconNode$P = [
   ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
 ];
-const Clock = createLucideIcon("clock", __iconNode$J);
+const Clock = createLucideIcon("clock", __iconNode$P);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$I = [
+const __iconNode$O = [
   ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
   ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Copy = createLucideIcon("copy", __iconNode$I);
+const Copy = createLucideIcon("copy", __iconNode$O);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$H = [
+const __iconNode$N = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["circle", { cx: "12", cy: "12", r: "2", key: "1c9p78" }]
 ];
-const Disc = createLucideIcon("disc", __iconNode$H);
+const Disc = createLucideIcon("disc", __iconNode$N);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$G = [
+const __iconNode$M = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Download = createLucideIcon("download", __iconNode$G);
+const Download = createLucideIcon("download", __iconNode$M);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$F = [
+const __iconNode$L = [
   ["path", { d: "m15 15 6 6", key: "1s409w" }],
   ["path", { d: "m15 9 6-6", key: "ko1vev" }],
   ["path", { d: "M21 16v5h-5", key: "1ck2sf" }],
@@ -14548,26 +14556,26 @@ const __iconNode$F = [
   ["path", { d: "M3 8V3h5", key: "1ln10m" }],
   ["path", { d: "M9 9 3 3", key: "v551iv" }]
 ];
-const Expand = createLucideIcon("expand", __iconNode$F);
+const Expand = createLucideIcon("expand", __iconNode$L);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$E = [
+const __iconNode$K = [
   ["path", { d: "M15 3h6v6", key: "1q9fwt" }],
   ["path", { d: "M10 14 21 3", key: "gplh6r" }],
   ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6", key: "a6xqqp" }]
 ];
-const ExternalLink = createLucideIcon("external-link", __iconNode$E);
+const ExternalLink = createLucideIcon("external-link", __iconNode$K);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$D = [
+const __iconNode$J = [
   ["path", { d: "M17.5 22h.5a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3", key: "rslqgf" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
   [
@@ -14578,14 +14586,31 @@ const __iconNode$D = [
     }
   ]
 ];
-const FileAudio = createLucideIcon("file-audio", __iconNode$D);
+const FileAudio = createLucideIcon("file-audio", __iconNode$J);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$C = [
+const __iconNode$I = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", key: "afitv7" }],
+  ["path", { d: "M7 3v18", key: "bbkbws" }],
+  ["path", { d: "M3 7.5h4", key: "zfgn84" }],
+  ["path", { d: "M3 12h18", key: "1i2n21" }],
+  ["path", { d: "M3 16.5h4", key: "1230mu" }],
+  ["path", { d: "M17 3v18", key: "in4fa5" }],
+  ["path", { d: "M17 7.5h4", key: "myr1c1" }],
+  ["path", { d: "M17 16.5h4", key: "go4c1d" }]
+];
+const Film = createLucideIcon("film", __iconNode$I);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$H = [
   [
     "path",
     {
@@ -14594,14 +14619,14 @@ const __iconNode$C = [
     }
   ]
 ];
-const FolderOpen = createLucideIcon("folder-open", __iconNode$C);
+const FolderOpen = createLucideIcon("folder-open", __iconNode$H);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$B = [
+const __iconNode$G = [
   ["path", { d: "M12 10v6", key: "1bos4e" }],
   ["path", { d: "M9 13h6", key: "1uhe8q" }],
   [
@@ -14612,14 +14637,14 @@ const __iconNode$B = [
     }
   ]
 ];
-const FolderPlus = createLucideIcon("folder-plus", __iconNode$B);
+const FolderPlus = createLucideIcon("folder-plus", __iconNode$G);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$A = [
+const __iconNode$F = [
   ["line", { x1: "22", x2: "2", y1: "12", y2: "12", key: "1y58io" }],
   [
     "path",
@@ -14631,26 +14656,26 @@ const __iconNode$A = [
   ["line", { x1: "6", x2: "6.01", y1: "16", y2: "16", key: "sgf278" }],
   ["line", { x1: "10", x2: "10.01", y1: "16", y2: "16", key: "1l4acy" }]
 ];
-const HardDrive = createLucideIcon("hard-drive", __iconNode$A);
+const HardDrive = createLucideIcon("hard-drive", __iconNode$F);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$z = [
+const __iconNode$E = [
   ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
   ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
   ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
 ];
-const History = createLucideIcon("history", __iconNode$z);
+const History = createLucideIcon("history", __iconNode$E);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$y = [
+const __iconNode$D = [
   ["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", key: "5wwlr5" }],
   [
     "path",
@@ -14660,19 +14685,77 @@ const __iconNode$y = [
     }
   ]
 ];
-const House = createLucideIcon("house", __iconNode$y);
+const House = createLucideIcon("house", __iconNode$D);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$x = [
+const __iconNode$C = [
+  ["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2", key: "1m3agn" }],
+  ["circle", { cx: "9", cy: "9", r: "2", key: "af1f0g" }],
+  ["path", { d: "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21", key: "1xmnt7" }]
+];
+const Image$1 = createLucideIcon("image", __iconNode$C);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$B = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M12 16v-4", key: "1dtifu" }],
   ["path", { d: "M12 8h.01", key: "e9boi3" }]
 ];
-const Info = createLucideIcon("info", __iconNode$x);
+const Info = createLucideIcon("info", __iconNode$B);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$A = [
+  ["path", { d: "M8 3H5a2 2 0 0 0-2 2v3", key: "1dcmit" }],
+  ["path", { d: "M21 8V5a2 2 0 0 0-2-2h-3", key: "1e4gt3" }],
+  ["path", { d: "M3 16v3a2 2 0 0 0 2 2h3", key: "wsl5sc" }],
+  ["path", { d: "M16 21h3a2 2 0 0 0 2-2v-3", key: "18trek" }]
+];
+const Maximize = createLucideIcon("maximize", __iconNode$A);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$z = [
+  ["path", { d: "M4 5h16", key: "1tepv9" }],
+  ["path", { d: "M4 12h16", key: "1lakjw" }],
+  ["path", { d: "M4 19h16", key: "1djgab" }]
+];
+const Menu = createLucideIcon("menu", __iconNode$z);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$y = [
+  ["path", { d: "M8 3v3a2 2 0 0 1-2 2H3", key: "hohbtr" }],
+  ["path", { d: "M21 8h-3a2 2 0 0 1-2-2V3", key: "5jw1f3" }],
+  ["path", { d: "M3 16h3a2 2 0 0 1 2 2v3", key: "198tvr" }],
+  ["path", { d: "M16 21v-3a2 2 0 0 1 2-2h3", key: "ph8mxp" }]
+];
+const Minimize = createLucideIcon("minimize", __iconNode$y);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$x = [["path", { d: "M5 12h14", key: "1ays0h" }]];
+const Minus = createLucideIcon("minus", __iconNode$x);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14680,12 +14763,11 @@ const Info = createLucideIcon("info", __iconNode$x);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$w = [
-  ["path", { d: "M8 3H5a2 2 0 0 0-2 2v3", key: "1dcmit" }],
-  ["path", { d: "M21 8V5a2 2 0 0 0-2-2h-3", key: "1e4gt3" }],
-  ["path", { d: "M3 16v3a2 2 0 0 0 2 2h3", key: "wsl5sc" }],
-  ["path", { d: "M16 21h3a2 2 0 0 0 2-2v-3", key: "18trek" }]
+  ["rect", { width: "20", height: "14", x: "2", y: "3", rx: "2", key: "48i651" }],
+  ["line", { x1: "8", x2: "16", y1: "21", y2: "21", key: "1svkeh" }],
+  ["line", { x1: "12", x2: "12", y1: "17", y2: "21", key: "vw1qmm" }]
 ];
-const Maximize = createLucideIcon("maximize", __iconNode$w);
+const Monitor = createLucideIcon("monitor", __iconNode$w);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14693,51 +14775,6 @@ const Maximize = createLucideIcon("maximize", __iconNode$w);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$v = [
-  ["path", { d: "M4 5h16", key: "1tepv9" }],
-  ["path", { d: "M4 12h16", key: "1lakjw" }],
-  ["path", { d: "M4 19h16", key: "1djgab" }]
-];
-const Menu = createLucideIcon("menu", __iconNode$v);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$u = [
-  ["path", { d: "M8 3v3a2 2 0 0 1-2 2H3", key: "hohbtr" }],
-  ["path", { d: "M21 8h-3a2 2 0 0 1-2-2V3", key: "5jw1f3" }],
-  ["path", { d: "M3 16h3a2 2 0 0 1 2 2v3", key: "198tvr" }],
-  ["path", { d: "M16 21v-3a2 2 0 0 1 2-2h3", key: "ph8mxp" }]
-];
-const Minimize = createLucideIcon("minimize", __iconNode$u);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$t = [["path", { d: "M5 12h14", key: "1ays0h" }]];
-const Minus = createLucideIcon("minus", __iconNode$t);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$s = [
-  ["rect", { width: "20", height: "14", x: "2", y: "3", rx: "2", key: "48i651" }],
-  ["line", { x1: "8", x2: "16", y1: "21", y2: "21", key: "1svkeh" }],
-  ["line", { x1: "12", x2: "12", y1: "17", y2: "21", key: "vw1qmm" }]
-];
-const Monitor = createLucideIcon("monitor", __iconNode$s);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$r = [
   [
     "path",
     {
@@ -14746,26 +14783,26 @@ const __iconNode$r = [
     }
   ]
 ];
-const Moon = createLucideIcon("moon", __iconNode$r);
+const Moon = createLucideIcon("moon", __iconNode$v);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$q = [
+const __iconNode$u = [
   ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
   ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
   ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
 ];
-const Music = createLucideIcon("music", __iconNode$q);
+const Music = createLucideIcon("music", __iconNode$u);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$p = [
+const __iconNode$t = [
   [
     "path",
     {
@@ -14778,25 +14815,25 @@ const __iconNode$p = [
   ["circle", { cx: "6.5", cy: "12.5", r: ".5", fill: "currentColor", key: "qy21gx" }],
   ["circle", { cx: "8.5", cy: "7.5", r: ".5", fill: "currentColor", key: "fotxhn" }]
 ];
-const Palette = createLucideIcon("palette", __iconNode$p);
+const Palette = createLucideIcon("palette", __iconNode$t);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$o = [
+const __iconNode$s = [
   ["rect", { x: "14", y: "3", width: "5", height: "18", rx: "1", key: "kaeet6" }],
   ["rect", { x: "5", y: "3", width: "5", height: "18", rx: "1", key: "1wsw3u" }]
 ];
-const Pause = createLucideIcon("pause", __iconNode$o);
+const Pause = createLucideIcon("pause", __iconNode$s);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$n = [
+const __iconNode$r = [
   [
     "path",
     {
@@ -14805,7 +14842,56 @@ const __iconNode$n = [
     }
   ]
 ];
-const Play = createLucideIcon("play", __iconNode$n);
+const Play = createLucideIcon("play", __iconNode$r);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$q = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+const Plus = createLucideIcon("plus", __iconNode$q);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$p = [
+  ["path", { d: "m15 14 5-5-5-5", key: "12vg1m" }],
+  ["path", { d: "M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13", key: "6uklza" }]
+];
+const Redo2 = createLucideIcon("redo-2", __iconNode$p);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$o = [
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+];
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$o);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$n = [
+  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
+  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
+  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
+  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }],
+  ["path", { d: "M11 10h1v4", key: "70cz1p" }]
+];
+const Repeat1 = createLucideIcon("repeat-1", __iconNode$n);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14813,10 +14899,12 @@ const Play = createLucideIcon("play", __iconNode$n);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$m = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
+  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
+  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
+  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
+  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$m);
+const Repeat = createLucideIcon("repeat", __iconNode$m);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14824,12 +14912,10 @@ const Plus = createLucideIcon("plus", __iconNode$m);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$l = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
 ];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$l);
+const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$l);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14837,13 +14923,10 @@ const RefreshCw = createLucideIcon("refresh-cw", __iconNode$l);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$k = [
-  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
-  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
-  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
-  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }],
-  ["path", { d: "M11 10h1v4", key: "70cz1p" }]
+  ["path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", key: "1p45f6" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }]
 ];
-const Repeat1 = createLucideIcon("repeat-1", __iconNode$k);
+const RotateCw = createLucideIcon("rotate-cw", __iconNode$k);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14851,12 +14934,13 @@ const Repeat1 = createLucideIcon("repeat-1", __iconNode$k);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$j = [
-  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
-  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
-  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
-  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }]
+  ["circle", { cx: "6", cy: "6", r: "3", key: "1lh9wr" }],
+  ["path", { d: "M8.12 8.12 12 12", key: "1alkpv" }],
+  ["path", { d: "M20 4 8.12 15.88", key: "xgtan2" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["path", { d: "M14.8 14.8 20 20", key: "ptml3r" }]
 ];
-const Repeat = createLucideIcon("repeat", __iconNode$j);
+const Scissors = createLucideIcon("scissors", __iconNode$j);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14864,10 +14948,10 @@ const Repeat = createLucideIcon("repeat", __iconNode$j);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$i = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
 ];
-const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$i);
+const Search = createLucideIcon("search", __iconNode$i);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14875,28 +14959,6 @@ const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$i);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$h = [
-  ["path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", key: "1p45f6" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }]
-];
-const RotateCw = createLucideIcon("rotate-cw", __iconNode$h);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$g = [
-  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
-  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
-];
-const Search = createLucideIcon("search", __iconNode$g);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$f = [
   [
     "path",
     {
@@ -14906,14 +14968,14 @@ const __iconNode$f = [
   ],
   ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
 ];
-const Settings = createLucideIcon("settings", __iconNode$f);
+const Settings = createLucideIcon("settings", __iconNode$h);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$e = [
+const __iconNode$g = [
   [
     "path",
     {
@@ -14924,7 +14986,34 @@ const __iconNode$e = [
   ["path", { d: "M12 8v4", key: "1got3b" }],
   ["path", { d: "M12 16h.01", key: "1drbdi" }]
 ];
-const ShieldAlert = createLucideIcon("shield-alert", __iconNode$e);
+const ShieldAlert = createLucideIcon("shield-alert", __iconNode$g);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$f = [
+  ["path", { d: "m15 15 6 6m-6-6v4.8m0-4.8h4.8", key: "17vawe" }],
+  ["path", { d: "M9 19.8V15m0 0H4.2M9 15l-6 6", key: "chjx8e" }],
+  ["path", { d: "M15 4.2V9m0 0h4.8M15 9l6-6", key: "lav6yq" }],
+  ["path", { d: "M9 4.2V9m0 0H4.2M9 9 3 3", key: "1pxi2q" }]
+];
+const Shrink = createLucideIcon("shrink", __iconNode$f);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$e = [
+  ["path", { d: "m18 14 4 4-4 4", key: "10pe0f" }],
+  ["path", { d: "m18 2 4 4-4 4", key: "pucp1d" }],
+  ["path", { d: "M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22", key: "1ailkh" }],
+  ["path", { d: "M2 6h1.972a4 4 0 0 1 3.6 2.2", key: "km57vx" }],
+  ["path", { d: "M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45", key: "os18l9" }]
+];
+const Shuffle = createLucideIcon("shuffle", __iconNode$e);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14932,33 +15021,6 @@ const ShieldAlert = createLucideIcon("shield-alert", __iconNode$e);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$d = [
-  ["path", { d: "m15 15 6 6m-6-6v4.8m0-4.8h4.8", key: "17vawe" }],
-  ["path", { d: "M9 19.8V15m0 0H4.2M9 15l-6 6", key: "chjx8e" }],
-  ["path", { d: "M15 4.2V9m0 0h4.8M15 9l6-6", key: "lav6yq" }],
-  ["path", { d: "M9 4.2V9m0 0H4.2M9 9 3 3", key: "1pxi2q" }]
-];
-const Shrink = createLucideIcon("shrink", __iconNode$d);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$c = [
-  ["path", { d: "m18 14 4 4-4 4", key: "10pe0f" }],
-  ["path", { d: "m18 2 4 4-4 4", key: "pucp1d" }],
-  ["path", { d: "M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22", key: "1ailkh" }],
-  ["path", { d: "M2 6h1.972a4 4 0 0 1 3.6 2.2", key: "km57vx" }],
-  ["path", { d: "M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45", key: "os18l9" }]
-];
-const Shuffle = createLucideIcon("shuffle", __iconNode$c);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$b = [
   [
     "path",
     {
@@ -14968,14 +15030,14 @@ const __iconNode$b = [
   ],
   ["path", { d: "M3 20V4", key: "1ptbpl" }]
 ];
-const SkipBack = createLucideIcon("skip-back", __iconNode$b);
+const SkipBack = createLucideIcon("skip-back", __iconNode$d);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$a = [
+const __iconNode$c = [
   ["path", { d: "M21 4v16", key: "7j8fe9" }],
   [
     "path",
@@ -14985,14 +15047,14 @@ const __iconNode$a = [
     }
   ]
 ];
-const SkipForward = createLucideIcon("skip-forward", __iconNode$a);
+const SkipForward = createLucideIcon("skip-forward", __iconNode$c);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$9 = [
+const __iconNode$b = [
   ["path", { d: "M10 8h4", key: "1sr2af" }],
   ["path", { d: "M12 21v-9", key: "17s77i" }],
   ["path", { d: "M12 8V3", key: "13r4qs" }],
@@ -15003,14 +15065,26 @@ const __iconNode$9 = [
   ["path", { d: "M5 10V3", key: "cb8scm" }],
   ["path", { d: "M5 21v-7", key: "1w1uti" }]
 ];
-const SlidersVertical = createLucideIcon("sliders-vertical", __iconNode$9);
+const SlidersVertical = createLucideIcon("sliders-vertical", __iconNode$b);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$8 = [
+const __iconNode$a = [
+  ["path", { d: "M8 19H5c-1 0-2-1-2-2V7c0-1 1-2 2-2h3", key: "lubmu8" }],
+  ["path", { d: "M16 5h3c1 0 2 1 2 2v10c0 1-1 2-2 2h-3", key: "1ag34g" }],
+  ["line", { x1: "12", x2: "12", y1: "4", y2: "20", key: "1tx1rr" }]
+];
+const SquareSplitHorizontal = createLucideIcon("square-split-horizontal", __iconNode$a);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$9 = [
   ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
   ["path", { d: "M12 20v2", key: "1lh1kg" }],
@@ -15021,7 +15095,21 @@ const __iconNode$8 = [
   ["path", { d: "m6.34 17.66-1.41 1.41", key: "1m8zz5" }],
   ["path", { d: "m19.07 4.93-1.41 1.41", key: "1shlcs" }]
 ];
-const Sun = createLucideIcon("sun", __iconNode$8);
+const Sun = createLucideIcon("sun", __iconNode$9);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$8 = [
+  ["path", { d: "M10 11v6", key: "nco0om" }],
+  ["path", { d: "M14 11v6", key: "outv1u" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
+  ["path", { d: "M3 6h18", key: "d0wm0j" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+];
+const Trash2 = createLucideIcon("trash-2", __iconNode$8);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -15029,13 +15117,10 @@ const Sun = createLucideIcon("sun", __iconNode$8);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$7 = [
-  ["path", { d: "M10 11v6", key: "nco0om" }],
-  ["path", { d: "M14 11v6", key: "outv1u" }],
-  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
-  ["path", { d: "M3 6h18", key: "d0wm0j" }],
-  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+  ["path", { d: "M9 14 4 9l5-5", key: "102s5s" }],
+  ["path", { d: "M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11", key: "f3b9sd" }]
 ];
-const Trash2 = createLucideIcon("trash-2", __iconNode$7);
+const Undo2 = createLucideIcon("undo-2", __iconNode$7);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -16775,6 +16860,46 @@ async function saveExportedAudioBlob(blob, fileName, onProgress) {
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1e4);
   onProgress == null ? void 0 : onProgress(100);
+  return { displayPath: fileName };
+}
+async function saveExportedVideoBlob(blob, fileName, title, durationMs, resolution) {
+  if (isNativeAndroid()) {
+    const { exportId } = await AudioLibrary.beginAudioExport();
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const chunkBytes = 384 * 1024;
+      const total = bytes.length;
+      for (let offset = 0; offset < total; offset += chunkBytes) {
+        const slice = bytes.subarray(offset, Math.min(offset + chunkBytes, total));
+        const base64Chunk = uint8ToBase64(slice);
+        await AudioLibrary.appendAudioExportChunk({ exportId, base64Chunk });
+      }
+      const result = await AudioLibrary.finishVideoExport({
+        exportId,
+        fileName,
+        mimeType: blob.type || "video/mp4",
+        title,
+        durationMs: Math.round(durationMs),
+        resolution
+      });
+      return { displayPath: result.displayPath, video: result.video };
+    } catch (err) {
+      try {
+        await AudioLibrary.cancelAudioExport({ exportId });
+      } catch {
+      }
+      throw err;
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1e4);
   return { displayPath: fileName };
 }
 const MenuPanel = ({
@@ -27867,6 +27992,1242 @@ const StandaloneAudioPlayer = ({
     ] })
   ] });
 };
+function readU32(bytes, pos) {
+  return (bytes[pos] << 24 | bytes[pos + 1] << 16 | bytes[pos + 2] << 8 | bytes[pos + 3]) >>> 0;
+}
+function readI32(bytes, pos) {
+  return bytes[pos] << 24 | bytes[pos + 1] << 16 | bytes[pos + 2] << 8 | bytes[pos + 3];
+}
+function readU64(bytes, pos) {
+  const hi = readU32(bytes, pos);
+  const lo = readU32(bytes, pos + 4);
+  return hi * 4294967296 + lo;
+}
+function readType(bytes, pos) {
+  return String.fromCharCode(
+    bytes[pos],
+    bytes[pos + 1],
+    bytes[pos + 2],
+    bytes[pos + 3]
+  );
+}
+function writeU32(bytes, pos, val) {
+  bytes[pos] = val >>> 24 & 255;
+  bytes[pos + 1] = val >>> 16 & 255;
+  bytes[pos + 2] = val >>> 8 & 255;
+  bytes[pos + 3] = val & 255;
+}
+function writeU64(bytes, pos, val) {
+  const hi = Math.floor(val / 4294967296);
+  const lo = val >>> 0;
+  writeU32(bytes, pos, hi);
+  writeU32(bytes, pos + 4, lo);
+}
+function makeBox(type, payload) {
+  const total = 8 + payload.length;
+  const out = new Uint8Array(total);
+  writeU32(out, 0, total);
+  out[4] = type.charCodeAt(0);
+  out[5] = type.charCodeAt(1);
+  out[6] = type.charCodeAt(2);
+  out[7] = type.charCodeAt(3);
+  out.set(payload, 8);
+  return out;
+}
+function makeFullBox(type, version, flags, payload) {
+  const body = new Uint8Array(4 + payload.length);
+  body[0] = version & 255;
+  body[1] = flags >>> 16 & 255;
+  body[2] = flags >>> 8 & 255;
+  body[3] = flags & 255;
+  body.set(payload, 4);
+  return makeBox(type, body);
+}
+function concatUint8Arrays(chunks) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return out;
+}
+function parseChildBoxes(bytes, start, end) {
+  const boxes = [];
+  let pos = start;
+  while (pos + 8 <= end) {
+    const size32 = readU32(bytes, pos);
+    const type = readType(bytes, pos + 4);
+    let headerSize = 8;
+    let boxSize = size32;
+    if (size32 === 1) {
+      if (pos + 16 > end) break;
+      boxSize = readU64(bytes, pos + 8);
+      headerSize = 16;
+    } else if (size32 === 0) {
+      boxSize = end - pos;
+    }
+    if (boxSize < headerSize || pos + boxSize > end) break;
+    boxes.push({
+      type,
+      start: pos,
+      headerSize,
+      end: pos + boxSize
+    });
+    pos += boxSize;
+  }
+  return boxes;
+}
+async function scanTopLevelBoxes(blob) {
+  let pos = 0;
+  const total = blob.size;
+  let ftypBytes = null;
+  let moovBytes = null;
+  let hasMoof = false;
+  while (pos + 8 <= total) {
+    const headerBuf = new Uint8Array(
+      await blob.slice(pos, Math.min(pos + 16, total)).arrayBuffer()
+    );
+    if (headerBuf.length < 8) break;
+    const size32 = readU32(headerBuf, 0);
+    const type = readType(headerBuf, 4);
+    let headerSize = 8;
+    let boxSize = size32;
+    if (size32 === 1) {
+      if (headerBuf.length < 16) break;
+      boxSize = readU64(headerBuf, 8);
+      headerSize = 16;
+    } else if (size32 === 0) {
+      boxSize = total - pos;
+    }
+    if (boxSize < headerSize || pos + boxSize > total) break;
+    if (type === "ftyp" && !ftypBytes) {
+      ftypBytes = new Uint8Array(
+        await blob.slice(pos, pos + boxSize).arrayBuffer()
+      );
+    } else if (type === "moov" && !moovBytes) {
+      moovBytes = new Uint8Array(
+        await blob.slice(pos, pos + boxSize).arrayBuffer()
+      );
+    } else if (type === "moof") {
+      hasMoof = true;
+    }
+    pos += boxSize;
+  }
+  return { ftypBytes, moovBytes, hasMoof };
+}
+function parseTrackBox(trakBytes) {
+  const trakChildren = parseChildBoxes(trakBytes, 8, trakBytes.length);
+  const tkhdBox = trakChildren.find((b) => b.type === "tkhd");
+  const mdiaBox = trakChildren.find((b) => b.type === "mdia");
+  if (!tkhdBox || !mdiaBox) return null;
+  const tkhdBytes = trakBytes.slice(tkhdBox.start, tkhdBox.end);
+  const tkhdVersion = tkhdBytes[8];
+  const trackId = tkhdVersion === 1 ? readU32(tkhdBytes, 8 + 4 + 16) : readU32(tkhdBytes, 8 + 4 + 8);
+  const mdiaChildren = parseChildBoxes(
+    trakBytes,
+    mdiaBox.start + mdiaBox.headerSize,
+    mdiaBox.end
+  );
+  const mdhdBox = mdiaChildren.find((b) => b.type === "mdhd");
+  const hdlrBox = mdiaChildren.find((b) => b.type === "hdlr");
+  const minfBox = mdiaChildren.find((b) => b.type === "minf");
+  if (!mdhdBox || !hdlrBox || !minfBox) return null;
+  const mdhdBytes = trakBytes.slice(mdhdBox.start, mdhdBox.end);
+  const mdhdVersion = mdhdBytes[8];
+  const timescale = mdhdVersion === 1 ? readU32(mdhdBytes, 8 + 4 + 16) : readU32(mdhdBytes, 8 + 4 + 8);
+  if (!timescale || timescale <= 0) return null;
+  const handlerType = readType(trakBytes, hdlrBox.start + hdlrBox.headerSize + 8);
+  const mdiaNonMinfBoxes = mdiaChildren.filter((b) => b.type !== "mdhd" && b.type !== "minf").map((b) => trakBytes.slice(b.start, b.end));
+  const minfChildren = parseChildBoxes(
+    trakBytes,
+    minfBox.start + minfBox.headerSize,
+    minfBox.end
+  );
+  const stblBox = minfChildren.find((b) => b.type === "stbl");
+  if (!stblBox) return null;
+  const minfNonStblBoxes = minfChildren.filter((b) => b.type !== "stbl").map((b) => trakBytes.slice(b.start, b.end));
+  const stblChildren = parseChildBoxes(
+    trakBytes,
+    stblBox.start + stblBox.headerSize,
+    stblBox.end
+  );
+  const stsdMeta = stblChildren.find((b) => b.type === "stsd");
+  const sttsMeta = stblChildren.find((b) => b.type === "stts");
+  const stscMeta = stblChildren.find((b) => b.type === "stsc");
+  const stszMeta = stblChildren.find((b) => b.type === "stsz");
+  const stcoMeta = stblChildren.find((b) => b.type === "stco");
+  const co64Meta = stblChildren.find((b) => b.type === "co64");
+  const stssMeta = stblChildren.find((b) => b.type === "stss");
+  const cttsMeta = stblChildren.find((b) => b.type === "ctts");
+  if (!stsdMeta || !sttsMeta || !stscMeta || !stszMeta || !stcoMeta && !co64Meta) {
+    return null;
+  }
+  const stsdBox = trakBytes.slice(stsdMeta.start, stsdMeta.end);
+  const stszOff = stszMeta.start + stszMeta.headerSize;
+  const fixedSampleSize = readU32(trakBytes, stszOff + 4);
+  const sampleCount = readU32(trakBytes, stszOff + 8);
+  const sizes = new Uint32Array(sampleCount);
+  if (fixedSampleSize !== 0) {
+    sizes.fill(fixedSampleSize);
+  } else {
+    for (let i = 0; i < sampleCount; i++) {
+      sizes[i] = readU32(trakBytes, stszOff + 12 + i * 4);
+    }
+  }
+  let chunkOffsets = [];
+  if (co64Meta) {
+    const off = co64Meta.start + co64Meta.headerSize;
+    const count = readU32(trakBytes, off + 4);
+    chunkOffsets = new Array(count);
+    for (let i = 0; i < count; i++) {
+      chunkOffsets[i] = readU64(trakBytes, off + 8 + i * 8);
+    }
+  } else if (stcoMeta) {
+    const off = stcoMeta.start + stcoMeta.headerSize;
+    const count = readU32(trakBytes, off + 4);
+    chunkOffsets = new Array(count);
+    for (let i = 0; i < count; i++) {
+      chunkOffsets[i] = readU32(trakBytes, off + 8 + i * 4);
+    }
+  }
+  const stscOff = stscMeta.start + stscMeta.headerSize;
+  const stscCount = readU32(trakBytes, stscOff + 4);
+  const stscEntries = [];
+  for (let i = 0; i < stscCount; i++) {
+    stscEntries.push({
+      firstChunk: readU32(trakBytes, stscOff + 8 + i * 12),
+      samplesPerChunk: readU32(trakBytes, stscOff + 8 + i * 12 + 4)
+    });
+  }
+  const sampleOffsets = new Float64Array(sampleCount);
+  let sampleIdx = 0;
+  for (let chunkIdx = 0; chunkIdx < chunkOffsets.length && sampleIdx < sampleCount; chunkIdx++) {
+    const chunkNum = chunkIdx + 1;
+    let samplesInChunk = 1;
+    for (let e = 0; e < stscEntries.length; e++) {
+      if (stscEntries[e].firstChunk <= chunkNum) {
+        samplesInChunk = stscEntries[e].samplesPerChunk;
+      } else {
+        break;
+      }
+    }
+    let curOffset = chunkOffsets[chunkIdx];
+    for (let s = 0; s < samplesInChunk && sampleIdx < sampleCount; s++) {
+      sampleOffsets[sampleIdx] = curOffset;
+      curOffset += sizes[sampleIdx];
+      sampleIdx++;
+    }
+  }
+  const sttsOff = sttsMeta.start + sttsMeta.headerSize;
+  const sttsCount = readU32(trakBytes, sttsOff + 4);
+  const durations = new Uint32Array(sampleCount);
+  let dIdx = 0;
+  for (let i = 0; i < sttsCount && dIdx < sampleCount; i++) {
+    const runCount = readU32(trakBytes, sttsOff + 8 + i * 8);
+    const delta = readU32(trakBytes, sttsOff + 8 + i * 8 + 4);
+    for (let r = 0; r < runCount && dIdx < sampleCount; r++) {
+      durations[dIdx++] = delta;
+    }
+  }
+  const ctsOffsets = new Int32Array(sampleCount);
+  let hasCtts = false;
+  let cttsVersion = 0;
+  if (cttsMeta) {
+    hasCtts = true;
+    const cttsOff = cttsMeta.start + cttsMeta.headerSize;
+    cttsVersion = trakBytes[cttsOff];
+    const cttsCount = readU32(trakBytes, cttsOff + 4);
+    let cIdx = 0;
+    for (let i = 0; i < cttsCount && cIdx < sampleCount; i++) {
+      const runCount = readU32(trakBytes, cttsOff + 8 + i * 8);
+      const val = cttsVersion === 0 ? readU32(trakBytes, cttsOff + 8 + i * 8 + 4) : readI32(trakBytes, cttsOff + 8 + i * 8 + 4);
+      for (let r = 0; r < runCount && cIdx < sampleCount; r++) {
+        ctsOffsets[cIdx++] = val;
+      }
+    }
+  }
+  const hasStss = Boolean(stssMeta);
+  const syncSet = /* @__PURE__ */ new Set();
+  if (stssMeta) {
+    const stssOff = stssMeta.start + stssMeta.headerSize;
+    const stssCount = readU32(trakBytes, stssOff + 4);
+    for (let i = 0; i < stssCount; i++) {
+      syncSet.add(readU32(trakBytes, stssOff + 8 + i * 4) - 1);
+    }
+  }
+  const samples = new Array(sampleCount);
+  let dts = 0;
+  for (let i = 0; i < sampleCount; i++) {
+    const dur = durations[i];
+    const ctsOffset = ctsOffsets[i];
+    samples[i] = {
+      offset: sampleOffsets[i],
+      size: sizes[i],
+      dts,
+      pts: dts + ctsOffset,
+      duration: dur,
+      ctsOffset,
+      isSync: hasStss ? syncSet.has(i) : true
+    };
+    dts += dur;
+  }
+  return {
+    rawTrakBytes: trakBytes,
+    handlerType,
+    trackId,
+    tkhdBytes,
+    mdhdBytes,
+    mdiaNonMinfBoxes,
+    minfNonStblBoxes,
+    stsdBox,
+    timescale,
+    samples,
+    hasCtts,
+    cttsVersion,
+    hasStss
+  };
+}
+function updateMvhdDuration(mvhdBytes, newDurationInMovieScale) {
+  const copy = new Uint8Array(mvhdBytes);
+  const version = copy[8];
+  let movieTimescale = 1e3;
+  if (version === 1) {
+    movieTimescale = readU32(copy, 8 + 4 + 16);
+    writeU64(copy, 8 + 4 + 20, Math.round(newDurationInMovieScale));
+  } else {
+    movieTimescale = readU32(copy, 8 + 4 + 8);
+    writeU32(copy, 8 + 4 + 12, Math.round(newDurationInMovieScale));
+  }
+  return { updated: copy, movieTimescale: movieTimescale || 1e3 };
+}
+function updateTkhdDuration(tkhdBytes, newDurationInMovieScale) {
+  const copy = new Uint8Array(tkhdBytes);
+  const version = copy[8];
+  if (version === 1) {
+    writeU64(copy, 8 + 4 + 24, Math.round(newDurationInMovieScale));
+  } else {
+    writeU32(copy, 8 + 4 + 16, Math.round(newDurationInMovieScale));
+  }
+  return copy;
+}
+function updateMdhdDuration(mdhdBytes, newDurationInTrackScale) {
+  const copy = new Uint8Array(mdhdBytes);
+  const version = copy[8];
+  if (version === 1) {
+    writeU64(copy, 8 + 4 + 20, Math.round(newDurationInTrackScale));
+  } else {
+    writeU32(copy, 8 + 4 + 12, Math.round(newDurationInTrackScale));
+  }
+  return copy;
+}
+function buildSttsBox(samples) {
+  const runs = [];
+  for (const s of samples) {
+    const delta = Math.max(0, Math.round(s.duration));
+    const last = runs[runs.length - 1];
+    if (last && last.delta === delta) {
+      last.count++;
+    } else {
+      runs.push({ count: 1, delta });
+    }
+  }
+  const payload = new Uint8Array(4 + runs.length * 8);
+  writeU32(payload, 0, runs.length);
+  for (let i = 0; i < runs.length; i++) {
+    writeU32(payload, 4 + i * 8, runs[i].count);
+    writeU32(payload, 4 + i * 8 + 4, runs[i].delta);
+  }
+  return makeFullBox("stts", 0, 0, payload);
+}
+function buildCttsBox(samples, version) {
+  const runs = [];
+  for (const s of samples) {
+    const off = Math.round(s.ctsOffset);
+    const last = runs[runs.length - 1];
+    if (last && last.offset === off) {
+      last.count++;
+    } else {
+      runs.push({ count: 1, offset: off });
+    }
+  }
+  const payload = new Uint8Array(4 + runs.length * 8);
+  writeU32(payload, 0, runs.length);
+  for (let i = 0; i < runs.length; i++) {
+    writeU32(payload, 4 + i * 8, runs[i].count);
+    writeU32(payload, 4 + i * 8 + 4, runs[i].offset >>> 0);
+  }
+  return makeFullBox("ctts", version, 0, payload);
+}
+function buildStssBox(samples) {
+  const syncIndices = [];
+  for (let i = 0; i < samples.length; i++) {
+    if (samples[i].isSync) {
+      syncIndices.push(i + 1);
+    }
+  }
+  const payload = new Uint8Array(4 + syncIndices.length * 4);
+  writeU32(payload, 0, syncIndices.length);
+  for (let i = 0; i < syncIndices.length; i++) {
+    writeU32(payload, 4 + i * 4, syncIndices[i]);
+  }
+  return makeFullBox("stss", 0, 0, payload);
+}
+function buildStszBox(samples) {
+  const payload = new Uint8Array(8 + samples.length * 4);
+  writeU32(payload, 0, 0);
+  writeU32(payload, 4, samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    writeU32(payload, 8 + i * 4, samples[i].size);
+  }
+  return makeFullBox("stsz", 0, 0, payload);
+}
+function buildStscSingleChunkBox(sampleCount) {
+  const payload = new Uint8Array(4 + 12);
+  writeU32(payload, 0, 1);
+  writeU32(payload, 4, 1);
+  writeU32(payload, 8, sampleCount);
+  writeU32(payload, 12, 1);
+  return makeFullBox("stsc", 0, 0, payload);
+}
+function buildChunkOffsetBox(offset, use64Bit) {
+  if (use64Bit) {
+    const payload2 = new Uint8Array(4 + 8);
+    writeU32(payload2, 0, 1);
+    writeU64(payload2, 4, offset);
+    return makeFullBox("co64", 0, 0, payload2);
+  }
+  const payload = new Uint8Array(4 + 4);
+  writeU32(payload, 0, 1);
+  writeU32(payload, 4, offset);
+  return makeFullBox("stco", 0, 0, payload);
+}
+async function parseMp4Source(sourceUrlOrBlob) {
+  const sourceBlob = typeof sourceUrlOrBlob === "string" ? await (await fetch(sourceUrlOrBlob)).blob() : sourceUrlOrBlob;
+  const { ftypBytes, moovBytes, hasMoof } = await scanTopLevelBoxes(sourceBlob);
+  if (hasMoof) {
+    throw new Error(
+      "Fragmented MP4 streams are not supported for browser-side lossless cutting."
+    );
+  }
+  if (!moovBytes) {
+    throw new Error(
+      "Lossless browser video cutting supports MP4, MOV, and M4V files."
+    );
+  }
+  const moovChildren = parseChildBoxes(moovBytes, 8, moovBytes.length);
+  const mvhdMeta = moovChildren.find((b) => b.type === "mvhd");
+  if (!mvhdMeta) {
+    throw new Error("Invalid MP4 header (missing mvhd).");
+  }
+  const mvhdBytes = moovBytes.slice(mvhdMeta.start, mvhdMeta.end);
+  const mvhdVer = mvhdBytes[8];
+  const movieTimescale = mvhdVer === 1 ? readU32(mvhdBytes, 8 + 4 + 16) : readU32(mvhdBytes, 8 + 4 + 8);
+  const tracks = [];
+  for (const child of moovChildren) {
+    if (child.type === "trak") {
+      const parsed = parseTrackBox(moovBytes.slice(child.start, child.end));
+      if (parsed && (parsed.handlerType === "vide" || parsed.handlerType === "soun")) {
+        tracks.push(parsed);
+      }
+    }
+  }
+  if (tracks.length === 0) {
+    throw new Error("No audio or video tracks found in MP4 file.");
+  }
+  let maxTrackSec = 0;
+  for (const t of tracks) {
+    const totalUnits = t.samples.reduce((acc, s) => acc + s.duration, 0);
+    const sec = totalUnits / t.timescale;
+    if (sec > maxTrackSec) maxTrackSec = sec;
+  }
+  const defaultFtyp = ftypBytes || makeBox(
+    "ftyp",
+    new Uint8Array([
+      105,
+      115,
+      111,
+      109,
+      // isom
+      0,
+      0,
+      2,
+      0,
+      105,
+      115,
+      111,
+      109,
+      // isom
+      109,
+      112,
+      52,
+      49
+      // mp41
+    ])
+  );
+  return {
+    sourceBlob,
+    ftypBytes: defaultFtyp,
+    mvhdBytes,
+    movieTimescale: movieTimescale || 1e3,
+    tracks,
+    durationSec: maxTrackSec
+  };
+}
+function selectSegmentFromContext(ctx, requestedStartSec, requestedEndSec) {
+  const videoTrack = ctx.tracks.find((t) => t.handlerType === "vide");
+  let actualStartSec = Math.max(0, requestedStartSec);
+  let actualEndSec = Math.max(actualStartSec + 0.05, requestedEndSec);
+  const selectedPerTrack = /* @__PURE__ */ new Map();
+  if (videoTrack && videoTrack.samples.length > 0) {
+    const targetStartUnits = actualStartSec * videoTrack.timescale;
+    const targetEndUnits = actualEndSec * videoTrack.timescale;
+    let startIdx = 0;
+    for (let i = 0; i < videoTrack.samples.length; i++) {
+      const s = videoTrack.samples[i];
+      if (s.pts <= targetStartUnits && s.isSync) {
+        startIdx = i;
+      } else if (s.pts > targetStartUnits) {
+        break;
+      }
+    }
+    let endIdx = videoTrack.samples.length - 1;
+    for (let i = startIdx; i < videoTrack.samples.length; i++) {
+      if (videoTrack.samples[i].pts >= targetEndUnits) {
+        endIdx = Math.max(startIdx, i - 1);
+        break;
+      }
+    }
+    const vSamples = videoTrack.samples.slice(startIdx, endIdx + 1);
+    if (vSamples.length === 0) {
+      throw new Error("Selected range contains no video frames.");
+    }
+    actualStartSec = Math.max(0, vSamples[0].pts / videoTrack.timescale);
+    const lastV = vSamples[vSamples.length - 1];
+    actualEndSec = (lastV.pts + lastV.duration) / videoTrack.timescale;
+    selectedPerTrack.set(videoTrack, vSamples);
+  }
+  for (const track of ctx.tracks) {
+    if (track === videoTrack) continue;
+    const startUnits = actualStartSec * track.timescale;
+    const endUnits = actualEndSec * track.timescale;
+    const aSamples = track.samples.filter(
+      (s) => s.pts >= startUnits - s.duration * 0.5 && s.pts < endUnits
+    );
+    if (aSamples.length > 0) {
+      selectedPerTrack.set(track, aSamples);
+    }
+  }
+  const activeTracks = ctx.tracks.filter(
+    (t) => {
+      var _a2;
+      return (((_a2 = selectedPerTrack.get(t)) == null ? void 0 : _a2.length) || 0) > 0;
+    }
+  );
+  if (activeTracks.length === 0) {
+    throw new Error("Selected segment is empty.");
+  }
+  let clipDurationSec = 0;
+  for (const t of activeTracks) {
+    const samples = selectedPerTrack.get(t);
+    const dur = samples.reduce((acc, s) => acc + s.duration, 0) / t.timescale;
+    if (dur > clipDurationSec) clipDurationSec = dur;
+  }
+  const totalMdatPayloadBytes = activeTracks.reduce((sum, t) => {
+    const list = selectedPerTrack.get(t);
+    return sum + list.reduce((a, s) => a + s.size, 0);
+  }, 0);
+  const mdatHeaderSize = totalMdatPayloadBytes + 8 > 4294967295 ? 16 : 8;
+  const preliminaryEstimate = ctx.ftypBytes.length + 1024 * 64 + totalMdatPayloadBytes;
+  const use64BitOffsets = preliminaryEstimate > 4294967295;
+  const buildMoovWithOffsets = (trackOffsets) => {
+    const movieDurUnits = Math.round(clipDurationSec * ctx.movieTimescale);
+    const { updated: updatedMvhd } = updateMvhdDuration(
+      ctx.mvhdBytes,
+      movieDurUnits
+    );
+    const trakBoxes = activeTracks.map((track, idx) => {
+      const samples = selectedPerTrack.get(track);
+      const trackDurUnits = samples.reduce((acc, s) => acc + s.duration, 0);
+      const stblParts = [
+        track.stsdBox,
+        buildSttsBox(samples)
+      ];
+      if (track.hasCtts) {
+        stblParts.push(buildCttsBox(samples, track.cttsVersion));
+      }
+      if (track.hasStss && track.handlerType === "vide") {
+        stblParts.push(buildStssBox(samples));
+      }
+      stblParts.push(
+        buildStscSingleChunkBox(samples.length),
+        buildStszBox(samples),
+        buildChunkOffsetBox(trackOffsets[idx], use64BitOffsets)
+      );
+      const stblBox = makeBox("stbl", concatUint8Arrays(stblParts));
+      const minfBox = makeBox(
+        "minf",
+        concatUint8Arrays([...track.minfNonStblBoxes, stblBox])
+      );
+      const mdhdUpdated = updateMdhdDuration(track.mdhdBytes, trackDurUnits);
+      const mdiaBox = makeBox(
+        "mdia",
+        concatUint8Arrays([mdhdUpdated, ...track.mdiaNonMinfBoxes, minfBox])
+      );
+      const tkhdUpdated = updateTkhdDuration(track.tkhdBytes, movieDurUnits);
+      return makeBox("trak", concatUint8Arrays([tkhdUpdated, mdiaBox]));
+    });
+    return makeBox("moov", concatUint8Arrays([updatedMvhd, ...trakBoxes]));
+  };
+  const dummyMoov = buildMoovWithOffsets(activeTracks.map(() => 0));
+  const mdatStartOffset = ctx.ftypBytes.length + dummyMoov.length;
+  const firstTrackDataOffset = mdatStartOffset + mdatHeaderSize;
+  let runningOffset = firstTrackDataOffset;
+  const realTrackOffsets = activeTracks.map((track) => {
+    const startOff = runningOffset;
+    const list = selectedPerTrack.get(track);
+    for (const s of list) {
+      runningOffset += s.size;
+    }
+    return startOff;
+  });
+  const finalMoov = buildMoovWithOffsets(realTrackOffsets);
+  const mdatHeader = new Uint8Array(mdatHeaderSize);
+  if (mdatHeaderSize === 16) {
+    writeU32(mdatHeader, 0, 1);
+    mdatHeader[4] = "m".charCodeAt(0);
+    mdatHeader[5] = "d".charCodeAt(0);
+    mdatHeader[6] = "a".charCodeAt(0);
+    mdatHeader[7] = "t".charCodeAt(0);
+    writeU64(mdatHeader, 8, totalMdatPayloadBytes + 16);
+  } else {
+    writeU32(mdatHeader, 0, totalMdatPayloadBytes + 8);
+    mdatHeader[4] = "m".charCodeAt(0);
+    mdatHeader[5] = "d".charCodeAt(0);
+    mdatHeader[6] = "a".charCodeAt(0);
+    mdatHeader[7] = "t".charCodeAt(0);
+  }
+  const blobParts = [
+    new Uint8Array(ctx.ftypBytes),
+    new Uint8Array(finalMoov),
+    new Uint8Array(mdatHeader)
+  ];
+  for (const track of activeTracks) {
+    const list = selectedPerTrack.get(track);
+    let rangeStart = -1;
+    let rangeEnd = -1;
+    for (const s of list) {
+      if (rangeStart < 0) {
+        rangeStart = s.offset;
+        rangeEnd = s.offset + s.size;
+      } else if (s.offset === rangeEnd) {
+        rangeEnd += s.size;
+      } else {
+        blobParts.push(ctx.sourceBlob.slice(rangeStart, rangeEnd));
+        rangeStart = s.offset;
+        rangeEnd = s.offset + s.size;
+      }
+    }
+    if (rangeStart >= 0 && rangeEnd > rangeStart) {
+      blobParts.push(ctx.sourceBlob.slice(rangeStart, rangeEnd));
+    }
+  }
+  return {
+    blob: new Blob(blobParts, { type: "video/mp4" }),
+    durationMs: Math.round(clipDurationSec * 1e3),
+    actualStartSec,
+    actualEndSec
+  };
+}
+function sanitizeBaseName$1(name) {
+  const clean = name.replace(/\.[^/.]+$/, "").replace(/[\\/:*?"<>|]/g, "_").trim();
+  return clean || "BeatPulse_Video";
+}
+async function trimVideoBlobLossless(sourceUrlOrBlob, startSec, endSec, baseTitle) {
+  const ctx = await parseMp4Source(sourceUrlOrBlob);
+  const res = selectSegmentFromContext(ctx, startSec, endSec);
+  const safeBase = sanitizeBaseName$1(baseTitle);
+  return {
+    blob: res.blob,
+    fileName: `${safeBase}_trimmed.mp4`,
+    durationMs: res.durationMs,
+    actualStartSec: res.actualStartSec,
+    actualEndSec: res.actualEndSec,
+    partLabel: "Trimmed"
+  };
+}
+async function splitVideoBlobLossless(sourceUrlOrBlob, splitSec, keepPart, baseTitle) {
+  const ctx = await parseMp4Source(sourceUrlOrBlob);
+  const videoTrack = ctx.tracks.find((t) => t.handlerType === "vide");
+  let cutSec = splitSec;
+  if (videoTrack && videoTrack.samples.length > 0) {
+    const targetUnits = splitSec * videoTrack.timescale;
+    let cutSample = videoTrack.samples[0];
+    for (let i = 0; i < videoTrack.samples.length; i++) {
+      const s = videoTrack.samples[i];
+      if (s.pts <= targetUnits && s.isSync) {
+        cutSample = s;
+      } else if (s.pts > targetUnits) {
+        break;
+      }
+    }
+    const candidateSec = cutSample.pts / videoTrack.timescale;
+    if (candidateSec > 0.1 && candidateSec < ctx.durationSec - 0.1) {
+      cutSec = candidateSec;
+    }
+  }
+  const safeBase = sanitizeBaseName$1(baseTitle);
+  const clips = [];
+  {
+    const p12 = selectSegmentFromContext(ctx, 0, cutSec);
+    clips.push({
+      blob: p12.blob,
+      fileName: `${safeBase}_part1.mp4`,
+      durationMs: p12.durationMs,
+      actualStartSec: p12.actualStartSec,
+      actualEndSec: p12.actualEndSec,
+      partLabel: "Part 1"
+    });
+  }
+  {
+    const p22 = selectSegmentFromContext(ctx, cutSec, ctx.durationSec + 1);
+    clips.push({
+      blob: p22.blob,
+      fileName: `${safeBase}_part2.mp4`,
+      durationMs: p22.durationMs,
+      actualStartSec: p22.actualStartSec,
+      actualEndSec: p22.actualEndSec,
+      partLabel: "Part 2"
+    });
+  }
+  return clips;
+}
+async function exportVideoSegmentsBlobLossless(sourceUrlOrBlob, segments, baseTitle) {
+  const validSegments = segments.filter((s) => s.endSec - s.startSec > 0.05);
+  if (validSegments.length === 0) {
+    throw new Error("Keep at least one video part before saving.");
+  }
+  if (validSegments.length === 1) {
+    return await trimVideoBlobLossless(
+      sourceUrlOrBlob,
+      validSegments[0].startSec,
+      validSegments[0].endSec,
+      baseTitle
+    );
+  }
+  const ctx = await parseMp4Source(sourceUrlOrBlob);
+  const videoTrack = ctx.tracks.find((t) => t.handlerType === "vide");
+  const combinedPerTrack = /* @__PURE__ */ new Map();
+  for (const t of ctx.tracks) {
+    combinedPerTrack.set(t, []);
+  }
+  let firstStartSec = validSegments[0].startSec;
+  let lastEndSec = validSegments[validSegments.length - 1].endSec;
+  for (let segIdx = 0; segIdx < validSegments.length; segIdx++) {
+    const seg = validSegments[segIdx];
+    let segStartSec = Math.max(0, seg.startSec);
+    let segEndSec = Math.max(segStartSec + 0.05, seg.endSec);
+    if (videoTrack && videoTrack.samples.length > 0) {
+      const targetStartUnits = segStartSec * videoTrack.timescale;
+      const targetEndUnits = segEndSec * videoTrack.timescale;
+      let startIdx = 0;
+      for (let i = 0; i < videoTrack.samples.length; i++) {
+        const s = videoTrack.samples[i];
+        if (s.pts <= targetStartUnits && s.isSync) {
+          startIdx = i;
+        } else if (s.pts > targetStartUnits) {
+          break;
+        }
+      }
+      let endIdx = videoTrack.samples.length - 1;
+      for (let i = startIdx; i < videoTrack.samples.length; i++) {
+        if (videoTrack.samples[i].pts >= targetEndUnits) {
+          endIdx = Math.max(startIdx, i - 1);
+          break;
+        }
+      }
+      const vSamples = videoTrack.samples.slice(startIdx, endIdx + 1);
+      if (vSamples.length > 0) {
+        segStartSec = Math.max(0, vSamples[0].pts / videoTrack.timescale);
+        const lastV = vSamples[vSamples.length - 1];
+        segEndSec = (lastV.pts + lastV.duration) / videoTrack.timescale;
+        if (segIdx === 0) firstStartSec = segStartSec;
+        lastEndSec = segEndSec;
+        combinedPerTrack.get(videoTrack).push(...vSamples);
+      }
+    }
+    for (const track of ctx.tracks) {
+      if (track === videoTrack) continue;
+      const startUnits = segStartSec * track.timescale;
+      const endUnits = segEndSec * track.timescale;
+      const aSamples = track.samples.filter(
+        (s) => s.pts >= startUnits - s.duration * 0.5 && s.pts < endUnits
+      );
+      if (aSamples.length > 0) {
+        combinedPerTrack.get(track).push(...aSamples);
+      }
+    }
+  }
+  const activeTracks = ctx.tracks.filter(
+    (t) => {
+      var _a2;
+      return (((_a2 = combinedPerTrack.get(t)) == null ? void 0 : _a2.length) || 0) > 0;
+    }
+  );
+  if (activeTracks.length === 0) {
+    throw new Error("Selected segments contain no audio or video frames.");
+  }
+  let clipDurationSec = 0;
+  for (const t of activeTracks) {
+    const samples = combinedPerTrack.get(t);
+    const dur = samples.reduce((acc, s) => acc + s.duration, 0) / t.timescale;
+    if (dur > clipDurationSec) clipDurationSec = dur;
+  }
+  const totalMdatPayloadBytes = activeTracks.reduce((sum, t) => {
+    const list = combinedPerTrack.get(t);
+    return sum + list.reduce((a, s) => a + s.size, 0);
+  }, 0);
+  const mdatHeaderSize = totalMdatPayloadBytes + 8 > 4294967295 ? 16 : 8;
+  const preliminaryEstimate = ctx.ftypBytes.length + 1024 * 64 + totalMdatPayloadBytes;
+  const use64BitOffsets = preliminaryEstimate > 4294967295;
+  const buildMoovWithOffsets = (trackOffsets) => {
+    const movieDurUnits = Math.round(clipDurationSec * ctx.movieTimescale);
+    const { updated: updatedMvhd } = updateMvhdDuration(
+      ctx.mvhdBytes,
+      movieDurUnits
+    );
+    const trakBoxes = activeTracks.map((track, idx) => {
+      const samples = combinedPerTrack.get(track);
+      const trackDurUnits = samples.reduce((acc, s) => acc + s.duration, 0);
+      const stblParts = [
+        track.stsdBox,
+        buildSttsBox(samples)
+      ];
+      if (track.hasCtts) {
+        stblParts.push(buildCttsBox(samples, track.cttsVersion));
+      }
+      if (track.hasStss && track.handlerType === "vide") {
+        stblParts.push(buildStssBox(samples));
+      }
+      stblParts.push(
+        buildStscSingleChunkBox(samples.length),
+        buildStszBox(samples),
+        buildChunkOffsetBox(trackOffsets[idx], use64BitOffsets)
+      );
+      const stblBox = makeBox("stbl", concatUint8Arrays(stblParts));
+      const minfBox = makeBox(
+        "minf",
+        concatUint8Arrays([...track.minfNonStblBoxes, stblBox])
+      );
+      const mdhdUpdated = updateMdhdDuration(track.mdhdBytes, trackDurUnits);
+      const mdiaBox = makeBox(
+        "mdia",
+        concatUint8Arrays([mdhdUpdated, ...track.mdiaNonMinfBoxes, minfBox])
+      );
+      const tkhdUpdated = updateTkhdDuration(track.tkhdBytes, movieDurUnits);
+      return makeBox("trak", concatUint8Arrays([tkhdUpdated, mdiaBox]));
+    });
+    return makeBox("moov", concatUint8Arrays([updatedMvhd, ...trakBoxes]));
+  };
+  const dummyMoov = buildMoovWithOffsets(activeTracks.map(() => 0));
+  const mdatStartOffset = ctx.ftypBytes.length + dummyMoov.length;
+  const firstTrackDataOffset = mdatStartOffset + mdatHeaderSize;
+  let runningOffset = firstTrackDataOffset;
+  const realTrackOffsets = activeTracks.map((track) => {
+    const startOff = runningOffset;
+    const list = combinedPerTrack.get(track);
+    for (const s of list) {
+      runningOffset += s.size;
+    }
+    return startOff;
+  });
+  const finalMoov = buildMoovWithOffsets(realTrackOffsets);
+  const mdatHeader = new Uint8Array(mdatHeaderSize);
+  if (mdatHeaderSize === 16) {
+    writeU32(mdatHeader, 0, 1);
+    mdatHeader[4] = "m".charCodeAt(0);
+    mdatHeader[5] = "d".charCodeAt(0);
+    mdatHeader[6] = "a".charCodeAt(0);
+    mdatHeader[7] = "t".charCodeAt(0);
+    writeU64(mdatHeader, 8, totalMdatPayloadBytes + 16);
+  } else {
+    writeU32(mdatHeader, 0, totalMdatPayloadBytes + 8);
+    mdatHeader[4] = "m".charCodeAt(0);
+    mdatHeader[5] = "d".charCodeAt(0);
+    mdatHeader[6] = "a".charCodeAt(0);
+    mdatHeader[7] = "t".charCodeAt(0);
+  }
+  const blobParts = [
+    new Uint8Array(ctx.ftypBytes),
+    new Uint8Array(finalMoov),
+    new Uint8Array(mdatHeader)
+  ];
+  for (const track of activeTracks) {
+    const list = combinedPerTrack.get(track);
+    let rangeStart = -1;
+    let rangeEnd = -1;
+    for (const s of list) {
+      if (rangeStart < 0) {
+        rangeStart = s.offset;
+        rangeEnd = s.offset + s.size;
+      } else if (s.offset === rangeEnd) {
+        rangeEnd += s.size;
+      } else {
+        blobParts.push(ctx.sourceBlob.slice(rangeStart, rangeEnd));
+        rangeStart = s.offset;
+        rangeEnd = s.offset + s.size;
+      }
+    }
+    if (rangeStart >= 0 && rangeEnd > rangeStart) {
+      blobParts.push(ctx.sourceBlob.slice(rangeStart, rangeEnd));
+    }
+  }
+  const safeBase = sanitizeBaseName$1(baseTitle);
+  return {
+    blob: new Blob(blobParts, { type: "video/mp4" }),
+    fileName: `${safeBase}_edited.mp4`,
+    durationMs: Math.round(clipDurationSec * 1e3),
+    actualStartSec: firstStartSec,
+    actualEndSec: lastEndSec,
+    partLabel: "Edited"
+  };
+}
+function triggerWebVideoDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1e4);
+}
+function sanitizeBaseName(name) {
+  const clean = name.replace(/\.[^/.]+$/, "").replace(/[\\/:*?"<>|]/g, "_").trim();
+  return clean || "BeatPulse_Video";
+}
+function pickSupportedRecorderFormat() {
+  const candidates = [
+    { recorderMime: "video/mp4;codecs=avc1.42E01E,mp4a.40.2", baseMime: "video/mp4", extension: "mp4" },
+    { recorderMime: "video/mp4;codecs=avc1,mp4a.40.2", baseMime: "video/mp4", extension: "mp4" },
+    { recorderMime: "video/mp4", baseMime: "video/mp4", extension: "mp4" },
+    { recorderMime: "video/webm;codecs=vp9,opus", baseMime: "video/webm", extension: "webm" },
+    { recorderMime: "video/webm;codecs=vp8,opus", baseMime: "video/webm", extension: "webm" },
+    { recorderMime: "video/webm", baseMime: "video/webm", extension: "webm" }
+  ];
+  if (typeof MediaRecorder !== "undefined" && typeof MediaRecorder.isTypeSupported === "function") {
+    for (const c of candidates) {
+      if (MediaRecorder.isTypeSupported(c.recorderMime)) {
+        return c;
+      }
+    }
+  }
+  return { recorderMime: "", baseMime: "video/webm", extension: "webm" };
+}
+function makeEvenDimension(val, fallback) {
+  const safe = Number.isFinite(val) && val > 0 ? Math.round(val) : fallback;
+  const clamped = Math.max(2, safe);
+  return clamped % 2 === 0 ? clamped : clamped - 1;
+}
+function loadHtmlImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to load image clip for export."));
+    img.src = url;
+  });
+}
+function loadVideoMetadata(url) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.playsInline = true;
+    video.preload = "auto";
+    video.crossOrigin = "anonymous";
+    const timer = window.setTimeout(() => {
+      video.removeAttribute("src");
+      video.load();
+      reject(new Error("Timed out loading video clip for export."));
+    }, 1e4);
+    video.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      resolve({
+        video,
+        width: video.videoWidth || 1280,
+        height: video.videoHeight || 720
+      });
+    };
+    video.onerror = () => {
+      window.clearTimeout(timer);
+      video.removeAttribute("src");
+      video.load();
+      reject(new Error("Could not decode one of the selected video clips."));
+    };
+    video.src = url;
+  });
+}
+function drawContainedFrame(ctx, source, srcWidth, srcHeight, canvasWidth, canvasHeight) {
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  if (srcWidth <= 0 || srcHeight <= 0) return;
+  const scale = Math.min(canvasWidth / srcWidth, canvasHeight / srcHeight);
+  const drawW = srcWidth * scale;
+  const drawH = srcHeight * scale;
+  const dx = (canvasWidth - drawW) / 2;
+  const dy = (canvasHeight - drawH) / 2;
+  ctx.drawImage(source, dx, dy, drawW, drawH);
+}
+async function composeSplitTimelineBlob(clips, options) {
+  var _a2, _b;
+  const activeClips = clips.filter((c) => c.sourceEnd - c.sourceStart > 0.05);
+  if (activeClips.length === 0) {
+    throw new Error("Keep at least one clip before saving.");
+  }
+  if (typeof MediaRecorder === "undefined") {
+    throw new Error("Video composition is not supported on this device.");
+  }
+  const totalDurationSec = activeClips.reduce(
+    (sum, c) => sum + Math.max(0.1, c.sourceEnd - c.sourceStart),
+    0
+  );
+  let baseW = 720;
+  let baseH = 1280;
+  const firstVideoClip = activeClips.find((c) => c.mediaType === "video");
+  if (firstVideoClip) {
+    const meta = await loadVideoMetadata(firstVideoClip.sourceUrl);
+    baseW = meta.width;
+    baseH = meta.height;
+    meta.video.removeAttribute("src");
+    meta.video.load();
+  } else {
+    const firstImg = await loadHtmlImage(activeClips[0].sourceUrl);
+    baseW = firstImg.naturalWidth || 720;
+    baseH = firstImg.naturalHeight || 1280;
+  }
+  const maxSide = 1280;
+  const downScale = Math.min(1, maxSide / Math.max(baseW, baseH));
+  const canvasWidth = makeEvenDimension(baseW * downScale, 720);
+  const canvasHeight = makeEvenDimension(baseH * downScale, 1280);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not initialize video canvas.");
+  }
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioCtx = new AudioCtx();
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume();
+  }
+  const audioDest = audioCtx.createMediaStreamDestination();
+  let customAudioBuffer = null;
+  if (options.customAudioUrl) {
+    const resp = await fetch(options.customAudioUrl);
+    if (!resp.ok) {
+      await audioCtx.close();
+      throw new Error("Could not read the added audio track.");
+    }
+    const arrayBuf = await resp.arrayBuffer();
+    customAudioBuffer = await audioCtx.decodeAudioData(arrayBuf);
+  }
+  const canvasStream = canvas.captureStream(30);
+  const combinedTracks = [...canvasStream.getVideoTracks()];
+  const hasAnyAudio = !options.videoMuted || Boolean(customAudioBuffer);
+  if (hasAnyAudio) {
+    combinedTracks.push(...audioDest.stream.getAudioTracks());
+  }
+  const combinedStream = new MediaStream(combinedTracks);
+  const format = pickSupportedRecorderFormat();
+  const recorderOptions = {
+    videoBitsPerSecond: 45e5,
+    ...hasAnyAudio ? { audioBitsPerSecond: 192e3 } : {},
+    ...format.recorderMime ? { mimeType: format.recorderMime } : {}
+  };
+  const recorder = new MediaRecorder(combinedStream, recorderOptions);
+  const recordedChunks = [];
+  recorder.ondataavailable = (ev) => {
+    if (ev.data && ev.data.size > 0) {
+      recordedChunks.push(ev.data);
+    }
+  };
+  const stopPromise = new Promise((resolve, reject) => {
+    recorder.onstop = () => {
+      const resolvedMime = (recorder.mimeType || format.baseMime).split(";")[0].trim() || format.baseMime;
+      resolve(new Blob(recordedChunks, { type: resolvedMime }));
+    };
+    recorder.onerror = () => {
+      reject(new Error("MediaRecorder failed while saving video."));
+    };
+  });
+  const preloadedImages = /* @__PURE__ */ new Map();
+  for (const c of activeClips) {
+    if (c.mediaType === "image" && !preloadedImages.has(c.sourceUrl)) {
+      preloadedImages.set(c.sourceUrl, await loadHtmlImage(c.sourceUrl));
+    }
+  }
+  recorder.start(250);
+  (_a2 = options.onProgress) == null ? void 0 : _a2.call(options, 2);
+  let completedTimelineSec = 0;
+  const startCustomAudioSlice = (offsetSec) => {
+    if (!customAudioBuffer || customAudioBuffer.duration <= 0) return null;
+    const src = audioCtx.createBufferSource();
+    src.buffer = customAudioBuffer;
+    src.loop = true;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 1;
+    src.connect(gain);
+    gain.connect(audioDest);
+    const wrappedOffset = (offsetSec % customAudioBuffer.duration + customAudioBuffer.duration) % customAudioBuffer.duration;
+    src.start(0, wrappedOffset);
+    return src;
+  };
+  try {
+    for (let idx = 0; idx < activeClips.length; idx++) {
+      const clip = activeClips[idx];
+      const clipDurationSec = Math.max(0.1, clip.sourceEnd - clip.sourceStart);
+      if (clip.mediaType === "image") {
+        const img = preloadedImages.get(clip.sourceUrl) || await loadHtmlImage(clip.sourceUrl);
+        const customAudioNode = startCustomAudioSlice(completedTimelineSec);
+        await new Promise((resolve) => {
+          const startMs = performance.now();
+          const targetMs = clipDurationSec * 1e3;
+          const step = () => {
+            var _a3;
+            const elapsedMs = performance.now() - startMs;
+            drawContainedFrame(
+              ctx,
+              img,
+              img.naturalWidth || canvasWidth,
+              img.naturalHeight || canvasHeight,
+              canvasWidth,
+              canvasHeight
+            );
+            const curTotalSec = completedTimelineSec + Math.min(clipDurationSec, elapsedMs / 1e3);
+            (_a3 = options.onProgress) == null ? void 0 : _a3.call(options, Math.min(98, Math.round(curTotalSec / totalDurationSec * 96) + 2));
+            if (elapsedMs >= targetMs) {
+              resolve();
+              return;
+            }
+            window.requestAnimationFrame(step);
+          };
+          window.requestAnimationFrame(step);
+        });
+        if (customAudioNode) {
+          try {
+            customAudioNode.stop();
+            customAudioNode.disconnect();
+          } catch {
+          }
+        }
+        completedTimelineSec += clipDurationSec;
+      } else {
+        const { video: tempVideo, width: vw, height: vh } = await loadVideoMetadata(clip.sourceUrl);
+        tempVideo.muted = options.videoMuted;
+        tempVideo.volume = 1;
+        let mediaSrcNode = null;
+        if (!options.videoMuted) {
+          try {
+            mediaSrcNode = audioCtx.createMediaElementSource(tempVideo);
+            mediaSrcNode.connect(audioDest);
+          } catch {
+          }
+        }
+        await new Promise((resolve) => {
+          if (clip.sourceStart <= 0.02) {
+            resolve();
+            return;
+          }
+          const seekTimeout = window.setTimeout(resolve, 1500);
+          tempVideo.onseeked = () => {
+            window.clearTimeout(seekTimeout);
+            resolve();
+          };
+          tempVideo.currentTime = clip.sourceStart;
+        });
+        drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight);
+        const customAudioNode = startCustomAudioSlice(completedTimelineSec);
+        try {
+          await tempVideo.play();
+        } catch {
+          tempVideo.muted = true;
+          await tempVideo.play();
+        }
+        await new Promise((resolve) => {
+          const startedAt = performance.now();
+          const maxSafetyMs = clipDurationSec * 1e3 + 3e3;
+          let finished = false;
+          const finishClip = () => {
+            if (finished) return;
+            finished = true;
+            tempVideo.pause();
+            resolve();
+          };
+          const drawStep = () => {
+            var _a3;
+            if (finished) return;
+            drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight);
+            const clipElapsed = Math.max(0, tempVideo.currentTime - clip.sourceStart);
+            const curTotalSec = completedTimelineSec + Math.min(clipDurationSec, clipElapsed);
+            (_a3 = options.onProgress) == null ? void 0 : _a3.call(options, Math.min(98, Math.round(curTotalSec / totalDurationSec * 96) + 2));
+            if (tempVideo.currentTime >= clip.sourceEnd - 0.03 || tempVideo.ended || performance.now() - startedAt >= maxSafetyMs) {
+              finishClip();
+              return;
+            }
+            window.requestAnimationFrame(drawStep);
+          };
+          window.requestAnimationFrame(drawStep);
+        });
+        if (customAudioNode) {
+          try {
+            customAudioNode.stop();
+            customAudioNode.disconnect();
+          } catch {
+          }
+        }
+        if (mediaSrcNode) {
+          try {
+            mediaSrcNode.disconnect();
+          } catch {
+          }
+        }
+        tempVideo.removeAttribute("src");
+        tempVideo.load();
+        completedTimelineSec += clipDurationSec;
+      }
+    }
+    await new Promise((r) => window.setTimeout(r, 120));
+    if (recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    const finalBlob = await stopPromise;
+    (_b = options.onProgress) == null ? void 0 : _b.call(options, 100);
+    const resolvedMime = (finalBlob.type || format.baseMime).split(";")[0].trim() || format.baseMime;
+    const ext = resolvedMime.includes("webm") ? "webm" : "mp4";
+    const safeBase = sanitizeBaseName(options.baseTitle);
+    return {
+      blob: finalBlob,
+      fileName: `${safeBase}_edited.${ext}`,
+      mimeType: resolvedMime,
+      durationMs: Math.round(totalDurationSec * 1e3),
+      resolution: `${canvasWidth}x${canvasHeight}`
+    };
+  } finally {
+    for (const track of combinedStream.getTracks()) {
+      track.stop();
+    }
+    if (audioCtx.state !== "closed") {
+      try {
+        await audioCtx.close();
+      } catch {
+      }
+    }
+  }
+}
 function formatTime(sec) {
   if (!isFinite(sec) || sec < 0) return "0:00";
   const hrs = Math.floor(sec / 3600);
@@ -27876,6 +29237,21 @@ function formatTime(sec) {
     return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   }
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+function formatTimePadded(sec) {
+  if (!isFinite(sec) || sec < 0) return "00:00";
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor(sec % 3600 / 60);
+  const secs = Math.floor(sec % 60);
+  if (hrs > 0) {
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+}
+function formatPreciseTime(sec) {
+  if (!isFinite(sec) || sec < 0) return "0:00.0";
+  const tenths = Math.floor(sec % 1 * 10);
+  return `${formatTime(Math.floor(sec))}.${tenths}`;
 }
 function formatSize(bytes) {
   if (!bytes || bytes <= 0) return "";
@@ -28076,6 +29452,111 @@ const VideoThumbnailCard = ({
     }
   );
 };
+const imageThumbnailCache = /* @__PURE__ */ new Map();
+const ImageThumbnailCard = ({ image, onSelect }) => {
+  const cardRef = reactExports.useRef(null);
+  const [thumbUrl, setThumbUrl] = reactExports.useState(
+    () => image.thumbnailUrl || image.webUrl || imageThumbnailCache.get(image.id) || ""
+  );
+  const [hasFailed, setHasFailed] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    const cached = image.thumbnailUrl || image.webUrl || imageThumbnailCache.get(image.id);
+    if (cached) {
+      setThumbUrl(cached);
+      return;
+    }
+    const node = cardRef.current;
+    if (!node || !isNativeAndroid()) return;
+    let cancelled = false;
+    const loadThumb = async () => {
+      const url = await withThumbnailSlot(async () => {
+        if (cancelled) return "";
+        try {
+          const res = await AudioLibrary.getImageThumbnail({
+            id: image.id,
+            uri: image.uri
+          });
+          return res.filePath ? resolvePlayableAudioUrl(res) : res.localUrl || "";
+        } catch {
+          return "";
+        }
+      });
+      if (!cancelled && url) {
+        imageThumbnailCache.set(image.id, url);
+        setThumbUrl(url);
+      }
+    };
+    if (typeof IntersectionObserver === "undefined") {
+      void loadThumb();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          void loadThumb();
+        }
+      },
+      { rootMargin: "220px" }
+    );
+    observer.observe(node);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [image.id, image.uri, image.webUrl, image.thumbnailUrl]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      ref: cardRef,
+      type: "button",
+      onClick: () => onSelect(image),
+      className: "group text-left flex flex-col gap-1 min-w-0 cursor-pointer rounded-xl p-1 hover:bg-white/10 transition-colors",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative w-full aspect-square rounded-xl overflow-hidden bg-slate-900 border border-white/15 group-hover:border-emerald-400/60", children: thumbUrl && !hasFailed ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: thumbUrl,
+            alt: image.title || image.displayName,
+            referrerPolicy: "no-referrer",
+            onError: () => setHasFailed(true),
+            className: "w-full h-full object-cover"
+          }
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-full flex items-center justify-center bg-slate-900", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Image$1, { className: "w-6 h-6 text-slate-600" }) }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-medium text-slate-200 truncate px-0.5", children: image.title || image.displayName })
+      ]
+    }
+  );
+};
+function readVideoDurationFromUrl(srcUrl) {
+  return new Promise((resolve) => {
+    const el = document.createElement("video");
+    el.preload = "metadata";
+    el.muted = true;
+    el.playsInline = true;
+    const timer = window.setTimeout(() => {
+      el.removeAttribute("src");
+      el.load();
+      resolve(5);
+    }, 5e3);
+    el.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 5;
+      el.removeAttribute("src");
+      el.load();
+      resolve(dur);
+    };
+    el.onerror = () => {
+      window.clearTimeout(timer);
+      el.removeAttribute("src");
+      el.load();
+      resolve(5);
+    };
+    el.src = srcUrl;
+  });
+}
 const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
 const StandaloneVideoPlayer = ({
   isActiveTab,
@@ -28106,6 +29587,105 @@ const StandaloneVideoPlayer = ({
   const [fitMode, setFitMode] = reactExports.useState("contain");
   const [showControls, setShowControls] = reactExports.useState(true);
   const [isOsFullscreen, setIsOsFullscreen] = reactExports.useState(false);
+  const splitAudioRef = reactExports.useRef(null);
+  const splitAudioUploadInputRef = reactExports.useRef(null);
+  const splitAddVideoInputRef = reactExports.useRef(null);
+  const splitAddImageInputRef = reactExports.useRef(null);
+  const mainVideoUrlRef = reactExports.useRef("");
+  const activeSplitVideoUrlRef = reactExports.useRef("");
+  const pendingSplitSeekRef = reactExports.useRef(null);
+  const splitLastRafMsRef = reactExports.useRef(0);
+  const [editMode, setEditMode] = reactExports.useState("none");
+  const [trimStart, setTrimStart] = reactExports.useState(0);
+  const [trimEnd, setTrimEnd] = reactExports.useState(0);
+  const [splitSegments, setSplitSegments] = reactExports.useState([]);
+  const [selectedSplitSegId, setSelectedSplitSegId] = reactExports.useState(null);
+  const [splitUndoStack, setSplitUndoStack] = reactExports.useState([]);
+  const [splitRedoStack, setSplitRedoStack] = reactExports.useState([]);
+  const [splitFramesBySource, setSplitFramesBySource] = reactExports.useState({});
+  const [extractingSources, setExtractingSources] = reactExports.useState({});
+  const splitTimelineRef = reactExports.useRef(null);
+  const isSyncingTimelineScrollRef = reactExports.useRef(false);
+  const isUserScrubbingTimelineRef = reactExports.useRef(false);
+  const [splitCustomAudio, setSplitCustomAudio] = reactExports.useState(null);
+  const [showAddMediaMenu, setShowAddMediaMenu] = reactExports.useState(false);
+  const [activeSplitPicker, setActiveSplitPicker] = reactExports.useState("none");
+  const [deviceSongs, setDeviceSongs] = reactExports.useState([]);
+  const [isLoadingAudioPicker, setIsLoadingAudioPicker] = reactExports.useState(false);
+  const [audioPermissionDenied, setAudioPermissionDenied] = reactExports.useState(false);
+  const [audioPickerSearch, setAudioPickerSearch] = reactExports.useState("");
+  const [videoPickerSearch, setVideoPickerSearch] = reactExports.useState("");
+  const [deviceImages, setDeviceImages] = reactExports.useState([]);
+  const [isLoadingImagePicker, setIsLoadingImagePicker] = reactExports.useState(false);
+  const [imagePermissionDenied, setImagePermissionDenied] = reactExports.useState(false);
+  const [imagePickerSearch, setImagePickerSearch] = reactExports.useState("");
+  const [isPreparingSplitMedia, setIsPreparingSplitMedia] = reactExports.useState(false);
+  const [exportProgressPct, setExportProgressPct] = reactExports.useState(null);
+  const [isPreviewingTrim, setIsPreviewingTrim] = reactExports.useState(false);
+  const [isMaskingTrimSeek, setIsMaskingTrimSeek] = reactExports.useState(false);
+  const [isProcessingEdit, setIsProcessingEdit] = reactExports.useState(false);
+  const [editStatusMessage, setEditStatusMessage] = reactExports.useState(null);
+  const [editErrorMessage, setEditErrorMessage] = reactExports.useState(null);
+  const [lastSavedClip, setLastSavedClip] = reactExports.useState(null);
+  const { mappedSplitSegments, totalSplitDuration } = reactExports.useMemo(() => {
+    let cursor = 0;
+    const mapped = splitSegments.map((seg) => {
+      const len = Math.max(0.1, seg.sourceEnd - seg.sourceStart);
+      const item = {
+        ...seg,
+        globalStart: cursor,
+        globalEnd: cursor + len
+      };
+      cursor += len;
+      return item;
+    });
+    return { mappedSplitSegments: mapped, totalSplitDuration: cursor };
+  }, [splitSegments]);
+  const activeSplitDuration = editMode === "split" ? totalSplitDuration : duration;
+  const activeSplitSegAtPlayhead = reactExports.useMemo(() => {
+    if (editMode !== "split" || mappedSplitSegments.length === 0) return null;
+    return mappedSplitSegments.find((s) => currentTime >= s.globalStart - 0.01 && currentTime < s.globalEnd) || mappedSplitSegments[mappedSplitSegments.length - 1];
+  }, [editMode, mappedSplitSegments, currentTime]);
+  const canExportSplitLossless = reactExports.useMemo(() => {
+    if (!currentVideo || editMode !== "split") return true;
+    const kept = splitSegments.filter((s) => !s.removed && s.sourceEnd - s.sourceStart > 0.1);
+    if (kept.length === 0 || splitCustomAudio || isMuted) return false;
+    return kept.every(
+      (s) => s.mediaType === "video" && (s.sourceUri === currentVideo.uri || s.sourceUrl === mainVideoUrlRef.current)
+    );
+  }, [currentVideo, editMode, splitSegments, splitCustomAudio, isMuted]);
+  const trimBoundsRef = reactExports.useRef({
+    editMode,
+    trimStart,
+    trimEnd,
+    isPreviewingTrim,
+    mappedSplitSegments,
+    totalSplitDuration,
+    currentTime,
+    playbackSpeed,
+    isMuted,
+    splitCustomAudio
+  });
+  trimBoundsRef.current = {
+    editMode,
+    trimStart,
+    trimEnd,
+    isPreviewingTrim,
+    mappedSplitSegments,
+    totalSplitDuration,
+    currentTime,
+    playbackSpeed,
+    isMuted,
+    splitCustomAudio
+  };
+  const splitPxPerSec = reactExports.useMemo(() => {
+    const dur = editMode === "split" ? totalSplitDuration : duration;
+    if (dur <= 0) return 44;
+    if (dur <= 45) return 48;
+    if (dur <= 150) return 30;
+    if (dur <= 480) return 18;
+    return Math.max(8, Math.min(16, 4800 / dur));
+  }, [editMode, totalSplitDuration, duration]);
   const clearHideTimer = () => {
     if (hideControlsTimerRef.current !== null) {
       window.clearTimeout(hideControlsTimerRef.current);
@@ -28117,6 +29697,67 @@ const StandaloneVideoPlayer = ({
     hideControlsTimerRef.current = window.setTimeout(() => {
       setShowControls(false);
     }, 3500);
+  };
+  const syncCustomAudioToTime = (globalSec, shouldPlay) => {
+    const audioEl = splitAudioRef.current;
+    if (!audioEl || !trimBoundsRef.current.splitCustomAudio) return;
+    const dur = isFinite(audioEl.duration) && audioEl.duration > 0 ? audioEl.duration : 0;
+    if (dur > 0) {
+      const targetOffset = (globalSec % dur + dur) % dur;
+      if (Math.abs(audioEl.currentTime - targetOffset) > 0.18) {
+        audioEl.currentTime = targetOffset;
+      }
+    }
+    audioEl.playbackRate = trimBoundsRef.current.playbackSpeed;
+    audioEl.muted = false;
+    if (shouldPlay && audioEl.paused) {
+      void audioEl.play().catch(() => {
+      });
+    } else if (!shouldPlay && !audioEl.paused) {
+      audioEl.pause();
+    }
+  };
+  const seekSplitTimelineTo = (globalTimeSec, autoPlay) => {
+    const { mappedSplitSegments: mapped, totalSplitDuration: totalDur, isMuted: mutedNow, playbackSpeed: spd } = trimBoundsRef.current;
+    if (mapped.length === 0) return;
+    const clamped = Math.max(0, Math.min(totalDur, globalTimeSec));
+    setCurrentTime(clamped);
+    trimBoundsRef.current.currentTime = clamped;
+    const seg = mapped.find((s) => clamped >= s.globalStart - 5e-3 && clamped < s.globalEnd) || mapped[mapped.length - 1];
+    const videoEl = videoRef.current;
+    if (seg.mediaType === "image") {
+      if (videoEl && !videoEl.paused) {
+        videoEl.pause();
+      }
+    } else if (videoEl) {
+      const localSec = Math.max(
+        seg.sourceStart,
+        Math.min(seg.sourceEnd, seg.sourceStart + (clamped - seg.globalStart))
+      );
+      if (activeSplitVideoUrlRef.current !== seg.sourceUrl) {
+        pendingSplitSeekRef.current = {
+          sourceUrl: seg.sourceUrl,
+          sourceTime: localSec,
+          autoPlay: Boolean(autoPlay)
+        };
+        activeSplitVideoUrlRef.current = seg.sourceUrl;
+        videoEl.src = seg.sourceUrl;
+        videoEl.muted = mutedNow;
+        videoEl.playbackRate = spd;
+        videoEl.load();
+      } else {
+        if (Math.abs(videoEl.currentTime - localSec) > 0.04) {
+          videoEl.currentTime = localSec;
+        }
+        videoEl.muted = mutedNow;
+        videoEl.playbackRate = spd;
+        if (autoPlay && videoEl.paused) {
+          void videoEl.play().catch(() => {
+          });
+        }
+      }
+    }
+    syncCustomAudioToTime(clamped, Boolean(autoPlay));
   };
   reactExports.useEffect(() => {
     const onFsChange = () => {
@@ -28131,6 +29772,9 @@ const StandaloneVideoPlayer = ({
         videoRef.current.removeAttribute("src");
         videoRef.current.load();
       }
+      if (splitAudioRef.current) {
+        splitAudioRef.current.pause();
+      }
       for (const url of webObjectUrlsRef.current) {
         URL.revokeObjectURL(url);
       }
@@ -28139,6 +29783,11 @@ const StandaloneVideoPlayer = ({
   }, []);
   reactExports.useEffect(() => {
     if (!isPlayerOpen) return;
+    if (editMode !== "none") {
+      clearHideTimer();
+      setShowControls(true);
+      return;
+    }
     if (isPlaying && showControls) {
       scheduleHideControls();
     } else if (!isPlaying) {
@@ -28146,7 +29795,255 @@ const StandaloneVideoPlayer = ({
       setShowControls(true);
     }
     return () => clearHideTimer();
-  }, [isPlayerOpen, isPlaying, showControls]);
+  }, [isPlayerOpen, isPlaying, showControls, editMode]);
+  reactExports.useEffect(() => {
+    if (!isPlayerOpen || editMode === "none") return;
+    if (editMode === "split" && !isPlaying && splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
+      isSyncingTimelineScrollRef.current = true;
+      splitTimelineRef.current.scrollLeft = currentTime * splitPxPerSec;
+      const resetId = window.requestAnimationFrame(() => {
+        isSyncingTimelineScrollRef.current = false;
+      });
+      return () => window.cancelAnimationFrame(resetId);
+    }
+    if (!isPlaying) return;
+    let rafId = 0;
+    splitLastRafMsRef.current = performance.now();
+    const tick = (nowMs) => {
+      const dtSec = Math.min(0.1, Math.max(0, (nowMs - splitLastRafMsRef.current) / 1e3));
+      splitLastRafMsRef.current = nowMs;
+      const el = videoRef.current;
+      const {
+        editMode: mode,
+        trimStart: start,
+        trimEnd: end,
+        mappedSplitSegments: segs,
+        currentTime: curGlobal,
+        playbackSpeed: spd,
+        isMuted: mutedNow
+      } = trimBoundsRef.current;
+      if (mode === "trim" && end > start) {
+        if (!el || el.paused) return;
+        if (el.currentTime < start - 0.08) {
+          el.currentTime = start;
+          setCurrentTime(start);
+        } else if (el.currentTime >= end - 0.02) {
+          el.pause();
+          el.currentTime = end;
+          setCurrentTime(end);
+          setIsPlaying(false);
+          return;
+        } else {
+          setCurrentTime(el.currentTime);
+        }
+      } else if (mode === "split" && segs.length > 0) {
+        const kept = segs.filter((s) => !s.removed);
+        if (kept.length === 0) {
+          if (el && !el.paused) el.pause();
+          if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+          setIsPlaying(false);
+          return;
+        }
+        const currentSeg = kept.find((s) => curGlobal >= s.globalStart - 0.03 && curGlobal < s.globalEnd - 0.02) || null;
+        if (!currentSeg) {
+          const nextKept = kept.find((s) => s.globalStart >= curGlobal - 0.03);
+          if (nextKept) {
+            seekSplitTimelineTo(nextKept.globalStart, true);
+            rafId = window.requestAnimationFrame(tick);
+            return;
+          } else {
+            const lastEnd = kept[kept.length - 1].globalEnd;
+            if (el && !el.paused) el.pause();
+            if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+            setCurrentTime(lastEnd);
+            trimBoundsRef.current.currentTime = lastEnd;
+            setIsPlaying(false);
+            if (splitTimelineRef.current) {
+              isSyncingTimelineScrollRef.current = true;
+              splitTimelineRef.current.scrollLeft = lastEnd * splitPxPerSec;
+              window.requestAnimationFrame(() => {
+                isSyncingTimelineScrollRef.current = false;
+              });
+            }
+            return;
+          }
+        }
+        if (currentSeg.mediaType === "image") {
+          if (el && !el.paused) el.pause();
+          const nextGlobal = curGlobal + dtSec * spd;
+          if (nextGlobal >= currentSeg.globalEnd - 0.02) {
+            const nextKept = kept.find((s) => s.globalStart >= currentSeg.globalEnd - 0.01);
+            if (nextKept) {
+              seekSplitTimelineTo(nextKept.globalStart, true);
+            } else {
+              if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+              setCurrentTime(currentSeg.globalEnd);
+              trimBoundsRef.current.currentTime = currentSeg.globalEnd;
+              setIsPlaying(false);
+              return;
+            }
+          } else {
+            setCurrentTime(nextGlobal);
+            trimBoundsRef.current.currentTime = nextGlobal;
+            syncCustomAudioToTime(nextGlobal, true);
+            if (splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
+              isSyncingTimelineScrollRef.current = true;
+              splitTimelineRef.current.scrollLeft = nextGlobal * splitPxPerSec;
+              window.requestAnimationFrame(() => {
+                isSyncingTimelineScrollRef.current = false;
+              });
+            }
+          }
+        } else if (el) {
+          if (activeSplitVideoUrlRef.current !== currentSeg.sourceUrl) {
+            seekSplitTimelineTo(curGlobal, true);
+            rafId = window.requestAnimationFrame(tick);
+            return;
+          }
+          el.muted = mutedNow;
+          el.playbackRate = spd;
+          if (el.paused && !pendingSplitSeekRef.current && el.readyState >= 2) {
+            void el.play().catch(() => {
+            });
+          }
+          if (!pendingSplitSeekRef.current && el.readyState >= 2) {
+            const mappedNow = Math.max(
+              currentSeg.globalStart,
+              Math.min(
+                currentSeg.globalEnd,
+                currentSeg.globalStart + (el.currentTime - currentSeg.sourceStart)
+              )
+            );
+            if (el.currentTime >= currentSeg.sourceEnd - 0.025 || el.ended) {
+              const nextKept = kept.find((s) => s.globalStart >= currentSeg.globalEnd - 0.02);
+              if (nextKept) {
+                const isSeamlessSameSource = nextKept.mediaType === "video" && nextKept.sourceUrl === currentSeg.sourceUrl && Math.abs(nextKept.sourceStart - currentSeg.sourceEnd) < 0.05 && Math.abs(nextKept.globalStart - currentSeg.globalEnd) < 0.05;
+                if (isSeamlessSameSource) {
+                  setCurrentTime(nextKept.globalStart);
+                  trimBoundsRef.current.currentTime = nextKept.globalStart;
+                } else {
+                  seekSplitTimelineTo(nextKept.globalStart, true);
+                }
+              } else {
+                el.pause();
+                if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+                setCurrentTime(currentSeg.globalEnd);
+                trimBoundsRef.current.currentTime = currentSeg.globalEnd;
+                setIsPlaying(false);
+                return;
+              }
+            } else {
+              setCurrentTime(mappedNow);
+              trimBoundsRef.current.currentTime = mappedNow;
+              syncCustomAudioToTime(mappedNow, true);
+              if (splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
+                isSyncingTimelineScrollRef.current = true;
+                splitTimelineRef.current.scrollLeft = mappedNow * splitPxPerSec;
+                window.requestAnimationFrame(() => {
+                  isSyncingTimelineScrollRef.current = false;
+                });
+              }
+            }
+          }
+        }
+      }
+      rafId = window.requestAnimationFrame(tick);
+    };
+    rafId = window.requestAnimationFrame(tick);
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
+  }, [isPlayerOpen, isPlaying, editMode, currentTime, splitPxPerSec]);
+  const splitVideoSourcesKey = reactExports.useMemo(() => {
+    const urls = Array.from(
+      new Set(
+        splitSegments.filter((s) => s.mediaType === "video" && s.sourceUrl).map((s) => s.sourceUrl)
+      )
+    );
+    return urls.join("|");
+  }, [splitSegments]);
+  reactExports.useEffect(() => {
+    if (!isPlayerOpen || editMode !== "split" || !splitVideoSourcesKey) {
+      return;
+    }
+    const sourceUrls = splitVideoSourcesKey.split("|").filter(Boolean);
+    const missing = sourceUrls.filter((u) => !splitFramesBySource[u] && !extractingSources[u]);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    const extractSource = async (src) => {
+      setExtractingSources((prev) => ({ ...prev, [src]: true }));
+      const tempVideo = document.createElement("video");
+      tempVideo.muted = true;
+      tempVideo.playsInline = true;
+      tempVideo.preload = "auto";
+      try {
+        await new Promise((resolve, reject) => {
+          const timeout = window.setTimeout(() => reject(new Error("Frame timeout")), 4500);
+          tempVideo.onloadeddata = () => {
+            window.clearTimeout(timeout);
+            resolve();
+          };
+          tempVideo.onerror = () => {
+            window.clearTimeout(timeout);
+            reject(new Error("Frame load failed"));
+          };
+          tempVideo.src = src;
+        });
+        if (cancelled) return;
+        const srcDur = isFinite(tempVideo.duration) && tempVideo.duration > 0 ? tempVideo.duration : 10;
+        const frameCount = Math.max(6, Math.min(18, Math.ceil(srcDur / 2)));
+        const vw = tempVideo.videoWidth || 320;
+        const vh = tempVideo.videoHeight || 180;
+        const targetH = 96;
+        const targetW = Math.max(48, Math.round(vw / Math.max(1, vh) * targetH));
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const results = [];
+        for (let i = 0; i < frameCount; i++) {
+          if (cancelled) break;
+          const t = frameCount === 1 ? 0 : Math.min(Math.max(0, srcDur - 0.08), i / (frameCount - 1) * srcDur);
+          await new Promise((resolve) => {
+            const seekTimer = window.setTimeout(resolve, 650);
+            tempVideo.onseeked = () => {
+              window.clearTimeout(seekTimer);
+              resolve();
+            };
+            tempVideo.currentTime = t;
+          });
+          if (cancelled) break;
+          try {
+            ctx.drawImage(tempVideo, 0, 0, targetW, targetH);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+            results.push({ time: t, url: dataUrl });
+            if (results.length === 1 || results.length % 3 === 0 || i === frameCount - 1) {
+              setSplitFramesBySource((prev) => ({ ...prev, [src]: [...results] }));
+            }
+          } catch {
+            break;
+          }
+        }
+      } catch {
+      } finally {
+        tempVideo.removeAttribute("src");
+        tempVideo.load();
+        if (!cancelled) {
+          setExtractingSources((prev) => ({ ...prev, [src]: false }));
+        }
+      }
+    };
+    void (async () => {
+      for (const src of missing) {
+        if (cancelled) break;
+        await extractSource(src);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPlayerOpen, editMode, splitVideoSourcesKey]);
   reactExports.useEffect(() => {
     if (pauseSignal > 0 && videoRef.current && !videoRef.current.paused) {
       videoRef.current.pause();
@@ -28196,21 +30093,55 @@ const StandaloneVideoPlayer = ({
     if (videoRef.current) {
       videoRef.current.pause();
     }
+    if (splitAudioRef.current) {
+      splitAudioRef.current.pause();
+    }
     setIsPlaying(false);
+    setIsPreviewingTrim(false);
+    setEditMode("none");
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("none");
+    setSplitCustomAudio(null);
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+    setLastSavedClip(null);
     setIsPlayerOpen(false);
   };
   reactExports.useEffect(() => {
     if (!isPlayerOpen) return;
     const onKeyDown = (e) => {
       if (e.key === "Escape" && !document.fullscreenElement) {
-        void closePlayer();
+        if (activeSplitPicker !== "none") {
+          setActiveSplitPicker("none");
+        } else if (showAddMediaMenu) {
+          setShowAddMediaMenu(false);
+        } else if (isPreviewingTrim) {
+          setIsPreviewingTrim(false);
+          if (videoRef.current && !videoRef.current.paused) {
+            videoRef.current.pause();
+            setIsPlaying(false);
+          }
+        } else if (editMode !== "none") {
+          exitSplitToPlayer();
+          setIsPreviewingTrim(false);
+        } else {
+          void closePlayer();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isPlayerOpen]);
+  }, [isPlayerOpen, editMode, isPreviewingTrim, activeSplitPicker, showAddMediaMenu]);
   const playVideoItem = async (item) => {
     setErrorMessage(null);
+    setEditMode("none");
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("none");
+    setSplitCustomAudio(null);
+    setIsPreviewingTrim(false);
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+    setLastSavedClip(null);
     setCurrentVideo(item);
     setIsPlayerOpen(true);
     setIsLoadingVideo(true);
@@ -28231,6 +30162,8 @@ const StandaloneVideoPlayer = ({
       if (!playableUrl) {
         throw new Error("Video source unavailable");
       }
+      mainVideoUrlRef.current = playableUrl;
+      activeSplitVideoUrlRef.current = playableUrl;
       const videoEl = videoRef.current;
       if (!videoEl) return;
       videoEl.src = playableUrl;
@@ -28262,13 +30195,48 @@ const StandaloneVideoPlayer = ({
     const videoEl = videoRef.current;
     if (!videoEl || !currentVideo) return;
     setShowControls(true);
+    if (editMode === "split") {
+      if (isPlaying) {
+        videoEl.pause();
+        if (splitAudioRef.current && !splitAudioRef.current.paused) {
+          splitAudioRef.current.pause();
+        }
+        setIsPlaying(false);
+      } else {
+        onPlaybackStarted();
+        const kept = mappedSplitSegments.filter((s) => !s.removed);
+        if (kept.length === 0) return;
+        let targetTime = currentTime;
+        const inKept = kept.find(
+          (s) => currentTime >= s.globalStart - 0.03 && currentTime < s.globalEnd - 0.04
+        );
+        if (!inKept) {
+          const nextKept = kept.find((s) => s.globalStart >= currentTime) || kept[0];
+          targetTime = nextKept.globalStart;
+        }
+        setIsPlaying(true);
+        seekSplitTimelineTo(targetTime, true);
+      }
+      return;
+    }
     if (videoEl.paused) {
       onPlaybackStarted();
       try {
+        if (editMode === "trim" && trimEnd > trimStart) {
+          const cur = videoEl.currentTime;
+          if (cur < trimStart - 0.05 || cur >= trimEnd - 0.05) {
+            if (Math.abs(cur - trimStart) > 0.02) {
+              setIsMaskingTrimSeek(true);
+            }
+            videoEl.currentTime = trimStart;
+            setCurrentTime(trimStart);
+          }
+        }
         await videoEl.play();
         setIsPlaying(true);
       } catch (err) {
         console.error("Video resume failed:", err);
+        setIsMaskingTrimSeek(false);
       }
     } else {
       videoEl.pause();
@@ -28280,7 +30248,9 @@ const StandaloneVideoPlayer = ({
     if (!videoEl) return;
     setShowControls(true);
     const maxDur = isFinite(videoEl.duration) ? videoEl.duration : duration;
-    const next = Math.max(0, Math.min(maxDur || 0, videoEl.currentTime + deltaSec));
+    const minBound = editMode === "trim" ? trimStart : 0;
+    const maxBound = editMode === "trim" && trimEnd > trimStart ? trimEnd : maxDur || 0;
+    const next = Math.max(minBound, Math.min(maxBound, videoEl.currentTime + deltaSec));
     videoEl.currentTime = next;
     setCurrentTime(next);
   };
@@ -28323,6 +30293,780 @@ const StandaloneVideoPlayer = ({
       console.warn("Fullscreen toggle failed:", err);
     }
   };
+  const getLiveDuration = () => {
+    var _a2;
+    const elDur = (_a2 = videoRef.current) == null ? void 0 : _a2.duration;
+    if (elDur && isFinite(elDur) && elDur > 0) return elDur;
+    return duration;
+  };
+  const openTrimEditor = () => {
+    var _a2;
+    const total = getLiveDuration();
+    if (!currentVideo || total <= 0.4) {
+      setEditErrorMessage("Wait for video duration to load before trimming.");
+      return;
+    }
+    setShowControls(true);
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+    setLastSavedClip(null);
+    setIsPreviewingTrim(false);
+    setIsMaskingTrimSeek(false);
+    if (editMode === "trim") {
+      setEditMode("none");
+      return;
+    }
+    const pos = ((_a2 = videoRef.current) == null ? void 0 : _a2.currentTime) ?? currentTime;
+    const defaultStart = pos > 0.3 && pos < total - 1 ? Number(pos.toFixed(1)) : 0;
+    const defaultEnd = total;
+    setTrimStart(defaultStart);
+    setTrimEnd(defaultEnd);
+    setEditMode("trim");
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+  const exitSplitToPlayer = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    if (splitAudioRef.current && !splitAudioRef.current.paused) {
+      splitAudioRef.current.pause();
+    }
+    setIsPlaying(false);
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("none");
+    setEditMode("none");
+    if (videoRef.current && mainVideoUrlRef.current && activeSplitVideoUrlRef.current !== mainVideoUrlRef.current) {
+      activeSplitVideoUrlRef.current = mainVideoUrlRef.current;
+      videoRef.current.src = mainVideoUrlRef.current;
+      videoRef.current.load();
+      setCurrentTime(0);
+    }
+  };
+  const openSplitEditor = () => {
+    var _a2;
+    const total = getLiveDuration();
+    if (!currentVideo || total <= 0.6) {
+      setEditErrorMessage("Video is too short to split.");
+      return;
+    }
+    setShowControls(true);
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+    setLastSavedClip(null);
+    setIsPreviewingTrim(false);
+    setIsMaskingTrimSeek(false);
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("none");
+    setSplitCustomAudio(null);
+    setExportProgressPct(null);
+    if (editMode === "split") {
+      exitSplitToPlayer();
+      return;
+    }
+    const playableUrl = mainVideoUrlRef.current || currentVideo.webUrl || ((_a2 = videoRef.current) == null ? void 0 : _a2.currentSrc) || "";
+    mainVideoUrlRef.current = playableUrl;
+    activeSplitVideoUrlRef.current = playableUrl;
+    const initialSeg = {
+      id: `seg-0-${Date.now()}`,
+      mediaType: "video",
+      title: currentVideo.title || currentVideo.displayName,
+      sourceUrl: playableUrl,
+      sourceUri: currentVideo.uri,
+      sourceDisplayName: currentVideo.displayName || "video.mp4",
+      thumbnailUrl: currentVideo.thumbnailUrl || videoThumbnailCache.get(currentVideo.id),
+      sourceStart: 0,
+      sourceEnd: total,
+      removed: false
+    };
+    setSplitSegments([initialSeg]);
+    setSelectedSplitSegId(initialSeg.id);
+    setSplitUndoStack([]);
+    setSplitRedoStack([]);
+    setEditMode("split");
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+    window.requestAnimationFrame(() => {
+      if (splitTimelineRef.current && videoRef.current) {
+        isSyncingTimelineScrollRef.current = true;
+        splitTimelineRef.current.scrollLeft = videoRef.current.currentTime * splitPxPerSec;
+        window.requestAnimationFrame(() => {
+          isSyncingTimelineScrollRef.current = false;
+        });
+      }
+    });
+  };
+  const commitSplitSegments = (next, nextSelectedId) => {
+    setSplitUndoStack((prev) => [...prev.slice(-19), splitSegments]);
+    setSplitRedoStack([]);
+    setSplitSegments(next);
+    if (nextSelectedId !== void 0) {
+      setSelectedSplitSegId(nextSelectedId);
+    }
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+  };
+  const handleUndoSplit = () => {
+    var _a2;
+    if (splitUndoStack.length === 0) return;
+    const previous = splitUndoStack[splitUndoStack.length - 1];
+    setSplitUndoStack((prev) => prev.slice(0, -1));
+    setSplitRedoStack((prev) => [...prev, splitSegments]);
+    setSplitSegments(previous);
+    if (!previous.some((s) => s.id === selectedSplitSegId)) {
+      setSelectedSplitSegId(((_a2 = previous[0]) == null ? void 0 : _a2.id) || null);
+    }
+    setEditErrorMessage(null);
+  };
+  const handleRedoSplit = () => {
+    var _a2;
+    if (splitRedoStack.length === 0) return;
+    const nextState = splitRedoStack[splitRedoStack.length - 1];
+    setSplitRedoStack((prev) => prev.slice(0, -1));
+    setSplitUndoStack((prev) => [...prev, splitSegments]);
+    setSplitSegments(nextState);
+    if (!nextState.some((s) => s.id === selectedSplitSegId)) {
+      setSelectedSplitSegId(((_a2 = nextState[0]) == null ? void 0 : _a2.id) || null);
+    }
+    setEditErrorMessage(null);
+  };
+  const handleSplitAtPlayhead = () => {
+    const targetIdx = mappedSplitSegments.findIndex(
+      (s) => currentTime > s.globalStart + 0.25 && currentTime < s.globalEnd - 0.25
+    );
+    if (targetIdx < 0) {
+      setEditErrorMessage("Move playhead away from clip edges before splitting.");
+      return;
+    }
+    const mapped = mappedSplitSegments[targetIdx];
+    const target = splitSegments[targetIdx];
+    const offsetInSeg = currentTime - mapped.globalStart;
+    const snappedSourceCut = Number((target.sourceStart + offsetInSeg).toFixed(2));
+    const leftSeg = {
+      ...target,
+      id: `seg-L-${Date.now()}`,
+      sourceEnd: snappedSourceCut
+    };
+    const rightSeg = {
+      ...target,
+      id: `seg-R-${Date.now()}`,
+      sourceStart: snappedSourceCut
+    };
+    const next = [
+      ...splitSegments.slice(0, targetIdx),
+      leftSeg,
+      rightSeg,
+      ...splitSegments.slice(targetIdx + 1)
+    ];
+    commitSplitSegments(next, rightSeg.id);
+  };
+  const handleToggleRemoveSelectedSegment = () => {
+    var _a2;
+    const targetId = selectedSplitSegId || ((_a2 = mappedSplitSegments.find((s) => currentTime >= s.globalStart && currentTime <= s.globalEnd)) == null ? void 0 : _a2.id) || null;
+    if (!targetId) return;
+    const target = mappedSplitSegments.find((s) => s.id === targetId);
+    if (!target) return;
+    const keptCount = mappedSplitSegments.filter((s) => !s.removed).length;
+    if (!target.removed && keptCount <= 1) {
+      setEditErrorMessage("Keep at least one clip on the timeline.");
+      return;
+    }
+    const next = splitSegments.map(
+      (s) => s.id === targetId ? { ...s, removed: !s.removed } : s
+    );
+    commitSplitSegments(next, targetId);
+    if (!target.removed && currentTime >= target.globalStart && currentTime <= target.globalEnd) {
+      let cursor = 0;
+      let jumpTo = null;
+      for (const s of next) {
+        const len = s.sourceEnd - s.sourceStart;
+        if (!s.removed && cursor >= target.globalEnd - 0.05) {
+          jumpTo = cursor;
+          break;
+        }
+        cursor += len;
+      }
+      if (jumpTo === null) {
+        cursor = 0;
+        for (const s of next) {
+          if (!s.removed) {
+            jumpTo = cursor;
+            break;
+          }
+          cursor += s.sourceEnd - s.sourceStart;
+        }
+      }
+      if (jumpTo !== null) {
+        seekSplitTimelineTo(jumpTo, false);
+        if (splitTimelineRef.current) {
+          isSyncingTimelineScrollRef.current = true;
+          splitTimelineRef.current.scrollLeft = jumpTo * splitPxPerSec;
+          window.requestAnimationFrame(() => {
+            isSyncingTimelineScrollRef.current = false;
+          });
+        }
+      }
+    }
+  };
+  const handleKeepOnlySelectedSegment = () => {
+    var _a2;
+    const targetId = selectedSplitSegId || ((_a2 = mappedSplitSegments.find((s) => currentTime >= s.globalStart && currentTime <= s.globalEnd)) == null ? void 0 : _a2.id) || null;
+    if (!targetId || splitSegments.length <= 1) return;
+    const target = mappedSplitSegments.find((s) => s.id === targetId);
+    if (!target) return;
+    const next = splitSegments.map((s) => ({
+      ...s,
+      removed: s.id !== targetId
+    }));
+    commitSplitSegments(next, targetId);
+    seekSplitTimelineTo(target.globalStart, false);
+  };
+  const openAudioPickerModal = async () => {
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("audio");
+    if (!isNativeAndroid() || deviceSongs.length > 0) return;
+    setIsLoadingAudioPicker(true);
+    try {
+      const res = await AudioLibrary.getAllAudioFiles();
+      if (res.granted) {
+        setAudioPermissionDenied(false);
+        setDeviceSongs(res.songs || []);
+      } else {
+        setAudioPermissionDenied(true);
+      }
+    } catch (err) {
+      console.error("Failed to load phone songs:", err);
+    } finally {
+      setIsLoadingAudioPicker(false);
+    }
+  };
+  const loadDeviceImages = async () => {
+    if (!isNativeAndroid()) return;
+    setIsLoadingImagePicker(true);
+    try {
+      const res = await AudioLibrary.getAllImageFiles();
+      if (res.granted) {
+        setImagePermissionDenied(false);
+        setDeviceImages(res.images || []);
+      } else {
+        setImagePermissionDenied(true);
+      }
+    } catch (err) {
+      console.error("Failed to load phone images:", err);
+    } finally {
+      setIsLoadingImagePicker(false);
+    }
+  };
+  const openAddVideoPickerModal = () => {
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("video");
+    if (isNativeAndroid() && videos.length === 0) {
+      void loadDeviceVideos();
+    }
+  };
+  const openAddImagePickerModal = () => {
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker("image");
+    if (isNativeAndroid() && deviceImages.length === 0) {
+      void loadDeviceImages();
+    }
+  };
+  const handleSelectReplacementAudio = async (song) => {
+    setIsPreparingSplitMedia(true);
+    try {
+      let playableUrl = song.webUrl || "";
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: song.uri,
+          displayName: song.displayName || song.title,
+          mediaKind: "audio",
+          keepAlive: true
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) throw new Error("Audio source unavailable");
+      setSplitCustomAudio({
+        id: song.id,
+        title: song.title || song.displayName,
+        displayName: song.displayName,
+        url: playableUrl
+      });
+      setActiveSplitPicker("none");
+      setEditStatusMessage(null);
+      setEditErrorMessage(null);
+    } catch (err) {
+      console.error("Failed to load replacement audio:", err);
+      setEditErrorMessage("Could not load selected audio file.");
+    } finally {
+      setIsPreparingSplitMedia(false);
+    }
+  };
+  const handleUploadReplacementAudioFiles = (files) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    webObjectUrlsRef.current.push(url);
+    const title = file.name.replace(/\.[^/.]+$/, "");
+    const uploadedTrack = {
+      id: `upload-audio-${Date.now()}`,
+      title,
+      displayName: file.name,
+      artist: "Uploaded Audio",
+      album: "",
+      durationMs: 0,
+      size: file.size,
+      mimeType: file.type || "audio/*",
+      uri: url,
+      webUrl: url
+    };
+    setDeviceSongs((prev) => [uploadedTrack, ...prev]);
+    setSplitCustomAudio({
+      id: uploadedTrack.id,
+      title,
+      displayName: file.name,
+      url
+    });
+    setActiveSplitPicker("none");
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+  };
+  const appendVideoToTimeline = async (vid) => {
+    setIsPreparingSplitMedia(true);
+    try {
+      let playableUrl = vid.webUrl || "";
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: vid.uri,
+          displayName: vid.displayName || vid.title,
+          mediaKind: "video",
+          keepAlive: true
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) throw new Error("Video source unavailable");
+      const clipDur = vid.durationMs > 200 ? vid.durationMs / 1e3 : await readVideoDurationFromUrl(playableUrl);
+      const newSeg = {
+        id: `seg-vid-${Date.now()}`,
+        mediaType: "video",
+        title: vid.title || vid.displayName,
+        sourceUrl: playableUrl,
+        sourceUri: vid.uri,
+        sourceDisplayName: vid.displayName || "video.mp4",
+        thumbnailUrl: vid.thumbnailUrl || videoThumbnailCache.get(vid.id),
+        sourceStart: 0,
+        sourceEnd: Math.max(0.5, Number(clipDur.toFixed(2))),
+        removed: false
+      };
+      const prevTotal = totalSplitDuration;
+      const next = [...splitSegments, newSeg];
+      commitSplitSegments(next, newSeg.id);
+      setActiveSplitPicker("none");
+      window.requestAnimationFrame(() => {
+        setCurrentTime(prevTotal);
+        if (splitTimelineRef.current) {
+          isSyncingTimelineScrollRef.current = true;
+          splitTimelineRef.current.scrollLeft = prevTotal * splitPxPerSec;
+          window.requestAnimationFrame(() => {
+            isSyncingTimelineScrollRef.current = false;
+          });
+        }
+      });
+    } catch (err) {
+      console.error("Failed to add video clip:", err);
+      setEditErrorMessage("Could not add selected video to timeline.");
+    } finally {
+      setIsPreparingSplitMedia(false);
+    }
+  };
+  const handleUploadExtraVideoFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    webObjectUrlsRef.current.push(url);
+    const title = file.name.replace(/\.[^/.]+$/, "");
+    const dur = await readVideoDurationFromUrl(url);
+    const newVideoItem = {
+      id: `upload-vid-${Date.now()}`,
+      title,
+      displayName: file.name,
+      durationMs: Math.round(dur * 1e3),
+      size: file.size,
+      mimeType: file.type || "video/mp4",
+      resolution: "",
+      uri: url,
+      webUrl: url
+    };
+    setVideos((prev) => [newVideoItem, ...prev]);
+    await appendVideoToTimeline(newVideoItem);
+  };
+  const appendImageToTimeline = async (img) => {
+    setIsPreparingSplitMedia(true);
+    try {
+      let playableUrl = img.webUrl || "";
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: img.uri,
+          displayName: img.displayName || img.title,
+          mediaKind: "image",
+          keepAlive: true
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) throw new Error("Image source unavailable");
+      const newSeg = {
+        id: `seg-img-${Date.now()}`,
+        mediaType: "image",
+        title: img.title || img.displayName,
+        sourceUrl: playableUrl,
+        sourceUri: img.uri,
+        sourceDisplayName: img.displayName || "image.jpg",
+        thumbnailUrl: img.thumbnailUrl || imageThumbnailCache.get(img.id) || playableUrl,
+        sourceStart: 0,
+        sourceEnd: 3,
+        removed: false
+      };
+      const prevTotal = totalSplitDuration;
+      const next = [...splitSegments, newSeg];
+      commitSplitSegments(next, newSeg.id);
+      setActiveSplitPicker("none");
+      window.requestAnimationFrame(() => {
+        setCurrentTime(prevTotal);
+        if (splitTimelineRef.current) {
+          isSyncingTimelineScrollRef.current = true;
+          splitTimelineRef.current.scrollLeft = prevTotal * splitPxPerSec;
+          window.requestAnimationFrame(() => {
+            isSyncingTimelineScrollRef.current = false;
+          });
+        }
+      });
+    } catch (err) {
+      console.error("Failed to add image clip:", err);
+      setEditErrorMessage("Could not add selected image to timeline.");
+    } finally {
+      setIsPreparingSplitMedia(false);
+    }
+  };
+  const handleUploadExtraImageFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    webObjectUrlsRef.current.push(url);
+    const title = file.name.replace(/\.[^/.]+$/, "");
+    const newImgItem = {
+      id: `upload-img-${Date.now()}`,
+      title,
+      displayName: file.name,
+      width: 0,
+      height: 0,
+      size: file.size,
+      mimeType: file.type || "image/*",
+      uri: url,
+      webUrl: url,
+      thumbnailUrl: url
+    };
+    setDeviceImages((prev) => [newImgItem, ...prev]);
+    await appendImageToTimeline(newImgItem);
+  };
+  const filteredDeviceSongs = reactExports.useMemo(() => {
+    const q = audioPickerSearch.trim().toLowerCase();
+    if (!q) return deviceSongs;
+    return deviceSongs.filter(
+      (s) => s.title.toLowerCase().includes(q) || s.displayName.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+    );
+  }, [deviceSongs, audioPickerSearch]);
+  const filteredPickerVideos = reactExports.useMemo(() => {
+    const q = videoPickerSearch.trim().toLowerCase();
+    if (!q) return videos;
+    return videos.filter(
+      (v) => v.title.toLowerCase().includes(q) || v.displayName.toLowerCase().includes(q)
+    );
+  }, [videos, videoPickerSearch]);
+  const filteredDeviceImages = reactExports.useMemo(() => {
+    const q = imagePickerSearch.trim().toLowerCase();
+    if (!q) return deviceImages;
+    return deviceImages.filter(
+      (img) => img.title.toLowerCase().includes(q) || img.displayName.toLowerCase().includes(q)
+    );
+  }, [deviceImages, imagePickerSearch]);
+  const seekVideoTo = (sec) => {
+    const total = getLiveDuration();
+    const clamped = Math.max(0, Math.min(total || 0, sec));
+    setCurrentTime(clamped);
+    if (videoRef.current) {
+      videoRef.current.currentTime = clamped;
+    }
+  };
+  const handlePreviewTrim = async () => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    setIsPreviewingTrim(true);
+    setEditStatusMessage(null);
+    setEditErrorMessage(null);
+    try {
+      if (Math.abs(videoEl.currentTime - trimStart) > 0.02) {
+        setIsMaskingTrimSeek(true);
+        videoEl.currentTime = trimStart;
+      }
+      setCurrentTime(trimStart);
+      onPlaybackStarted();
+      await videoEl.play();
+      setIsPlaying(true);
+      setIsMaskingTrimSeek(false);
+    } catch (err) {
+      console.warn("Preview trim playback error:", err);
+      setIsMaskingTrimSeek(false);
+    }
+  };
+  const handleExecuteLosslessTrim = async () => {
+    var _a2;
+    if (!currentVideo || isProcessingEdit) return;
+    const total = getLiveDuration();
+    const startSec = Math.max(0, Math.min(trimStart, total - 0.2));
+    const endSec = Math.max(startSec + 0.2, Math.min(trimEnd, total));
+    if (endSec - startSec < 0.2) {
+      setEditErrorMessage("Selected segment must be at least 0.2 seconds long.");
+      return;
+    }
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+    setIsPreviewingTrim(false);
+    setIsProcessingEdit(true);
+    setEditErrorMessage(null);
+    setEditStatusMessage(null);
+    try {
+      if (isNativeAndroid()) {
+        const res = await AudioLibrary.trimVideoLossless({
+          uri: currentVideo.uri,
+          displayName: currentVideo.displayName,
+          title: currentVideo.title,
+          startMs: Math.round(startSec * 1e3),
+          endMs: Math.round(endSec * 1e3)
+        });
+        if (res == null ? void 0 : res.video) {
+          setVideos((prev) => [res.video, ...prev]);
+          setLastSavedClip(res.video);
+        }
+        setEditStatusMessage(`Saved trimmed original-quality clip to ${res.displayPath}`);
+      } else {
+        const srcUrl = currentVideo.webUrl || ((_a2 = videoRef.current) == null ? void 0 : _a2.currentSrc);
+        if (!srcUrl) {
+          throw new Error("Video source is unavailable.");
+        }
+        const clip = await trimVideoBlobLossless(
+          srcUrl,
+          startSec,
+          endSec,
+          currentVideo.title || currentVideo.displayName
+        );
+        const clipUrl = URL.createObjectURL(clip.blob);
+        webObjectUrlsRef.current.push(clipUrl);
+        triggerWebVideoDownload(clip.blob, clip.fileName);
+        const newItem = {
+          id: `web-trim-${Date.now()}`,
+          title: `${currentVideo.title || currentVideo.displayName} (Trimmed)`,
+          displayName: clip.fileName,
+          durationMs: clip.durationMs,
+          size: clip.blob.size,
+          mimeType: "video/mp4",
+          resolution: currentVideo.resolution,
+          uri: clipUrl,
+          webUrl: clipUrl
+        };
+        setVideos((prev) => [newItem, ...prev]);
+        setLastSavedClip(newItem);
+        setEditStatusMessage(`Trimmed without quality loss · Downloaded ${clip.fileName}`);
+      }
+    } catch (err) {
+      console.error("Lossless trim failed:", err);
+      setEditErrorMessage(
+        err instanceof Error && err.message ? err.message : "Could not trim video without quality loss."
+      );
+    } finally {
+      setIsProcessingEdit(false);
+    }
+  };
+  const handleSaveSplitTimeline = async () => {
+    var _a2, _b;
+    if (!currentVideo || isProcessingEdit) return;
+    const keptSegments = splitSegments.filter((s) => !s.removed && s.sourceEnd - s.sourceStart > 0.1);
+    const removedCount = splitSegments.filter((s) => s.removed).length;
+    const hasExtraClips = splitSegments.some(
+      (s) => s.mediaType === "image" || s.sourceUri !== currentVideo.uri
+    );
+    const hasChanges = removedCount > 0 || splitSegments.length > 1 || hasExtraClips || Boolean(splitCustomAudio) || isMuted;
+    if (keptSegments.length === 0) {
+      setEditErrorMessage("Keep at least one clip before saving.");
+      return;
+    }
+    if (!hasChanges) {
+      setEditErrorMessage("Tap Split, Add sound, or + to edit your video first.");
+      return;
+    }
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    if (splitAudioRef.current && !splitAudioRef.current.paused) {
+      splitAudioRef.current.pause();
+    }
+    setIsPlaying(false);
+    setIsProcessingEdit(true);
+    setExportProgressPct(null);
+    setEditErrorMessage(null);
+    setEditStatusMessage(null);
+    try {
+      if (canExportSplitLossless) {
+        if (removedCount === 0 && keptSegments.length === 2) {
+          const cutSec = keptSegments[0].sourceEnd;
+          if (isNativeAndroid()) {
+            const res = await AudioLibrary.splitVideoLossless({
+              uri: currentVideo.uri,
+              displayName: currentVideo.displayName,
+              title: currentVideo.title,
+              splitMs: Math.round(cutSec * 1e3),
+              keepPart: "both"
+            });
+            const newItems = (res == null ? void 0 : res.videos) || [];
+            if (newItems.length > 0) {
+              setVideos((prev) => [...newItems, ...prev]);
+              setLastSavedClip(newItems[0]);
+            }
+            setEditStatusMessage("Split into 2 original-quality clips in Movies/BeatPulse/");
+          } else {
+            const srcUrl = mainVideoUrlRef.current || currentVideo.webUrl || ((_a2 = videoRef.current) == null ? void 0 : _a2.currentSrc);
+            if (!srcUrl) throw new Error("Video source is unavailable.");
+            const clips = await splitVideoBlobLossless(
+              srcUrl,
+              cutSec,
+              "both",
+              currentVideo.title || currentVideo.displayName
+            );
+            const addedItems = clips.map((clip, i) => {
+              const clipUrl = URL.createObjectURL(clip.blob);
+              webObjectUrlsRef.current.push(clipUrl);
+              window.setTimeout(() => triggerWebVideoDownload(clip.blob, clip.fileName), i * 250);
+              return {
+                id: `web-split-${Date.now()}-${i}`,
+                title: `${currentVideo.title || currentVideo.displayName} (${clip.partLabel || `Part ${i + 1}`})`,
+                displayName: clip.fileName,
+                durationMs: clip.durationMs,
+                size: clip.blob.size,
+                mimeType: "video/mp4",
+                resolution: currentVideo.resolution,
+                uri: clipUrl,
+                webUrl: clipUrl
+              };
+            });
+            if (addedItems.length > 0) {
+              setVideos((prev) => [...addedItems, ...prev]);
+              setLastSavedClip(addedItems[0]);
+            }
+            setEditStatusMessage(`Saved ${clips.length} split parts in original quality`);
+          }
+          return;
+        }
+        if (isNativeAndroid()) {
+          const res = await AudioLibrary.exportVideoSegmentsLossless({
+            uri: currentVideo.uri,
+            displayName: currentVideo.displayName,
+            title: currentVideo.title,
+            segments: keptSegments.map((s) => ({
+              startMs: Math.round(s.sourceStart * 1e3),
+              endMs: Math.round(s.sourceEnd * 1e3)
+            }))
+          });
+          if (res == null ? void 0 : res.video) {
+            setVideos((prev) => [res.video, ...prev]);
+            setLastSavedClip(res.video);
+          }
+          setEditStatusMessage(`Saved edited original-quality video to ${res.displayPath}`);
+        } else {
+          const srcUrl = mainVideoUrlRef.current || currentVideo.webUrl || ((_b = videoRef.current) == null ? void 0 : _b.currentSrc);
+          if (!srcUrl) throw new Error("Video source is unavailable.");
+          const clip = await exportVideoSegmentsBlobLossless(
+            srcUrl,
+            keptSegments.map((s) => ({ startSec: s.sourceStart, endSec: s.sourceEnd })),
+            currentVideo.title || currentVideo.displayName
+          );
+          const clipUrl = URL.createObjectURL(clip.blob);
+          webObjectUrlsRef.current.push(clipUrl);
+          triggerWebVideoDownload(clip.blob, clip.fileName);
+          const newItem = {
+            id: `web-edited-${Date.now()}`,
+            title: `${currentVideo.title || currentVideo.displayName} (Edited)`,
+            displayName: clip.fileName,
+            durationMs: clip.durationMs,
+            size: clip.blob.size,
+            mimeType: "video/mp4",
+            resolution: currentVideo.resolution,
+            uri: clipUrl,
+            webUrl: clipUrl
+          };
+          setVideos((prev) => [newItem, ...prev]);
+          setLastSavedClip(newItem);
+          setEditStatusMessage(`Saved original-quality video · Downloaded ${clip.fileName}`);
+        }
+        return;
+      }
+      setExportProgressPct(1);
+      const composed = await composeSplitTimelineBlob(
+        keptSegments.map((s) => ({
+          mediaType: s.mediaType,
+          sourceUrl: s.sourceUrl,
+          sourceStart: s.sourceStart,
+          sourceEnd: s.sourceEnd
+        })),
+        {
+          baseTitle: currentVideo.title || currentVideo.displayName,
+          videoMuted: isMuted,
+          customAudioUrl: (splitCustomAudio == null ? void 0 : splitCustomAudio.url) || null,
+          onProgress: (pct) => setExportProgressPct(pct)
+        }
+      );
+      const savedTitle = `${currentVideo.title || currentVideo.displayName} (Edited)`;
+      const savedRes = await saveExportedVideoBlob(
+        composed.blob,
+        composed.fileName,
+        savedTitle,
+        composed.durationMs,
+        composed.resolution
+      );
+      if (savedRes.video) {
+        setVideos((prev) => [savedRes.video, ...prev]);
+        setLastSavedClip(savedRes.video);
+      } else {
+        const clipUrl = URL.createObjectURL(composed.blob);
+        webObjectUrlsRef.current.push(clipUrl);
+        const newItem = {
+          id: `web-mix-${Date.now()}`,
+          title: savedTitle,
+          displayName: composed.fileName,
+          durationMs: composed.durationMs,
+          size: composed.blob.size,
+          mimeType: composed.mimeType,
+          resolution: composed.resolution,
+          uri: clipUrl,
+          webUrl: clipUrl
+        };
+        setVideos((prev) => [newItem, ...prev]);
+        setLastSavedClip(newItem);
+      }
+      setEditStatusMessage(`Saved edited video to ${savedRes.displayPath}`);
+    } catch (err) {
+      console.error("Split export failed:", err);
+      setEditErrorMessage(
+        err instanceof Error && err.message ? err.message : "Could not save edited video."
+      );
+    } finally {
+      setIsProcessingEdit(false);
+      setExportProgressPct(null);
+    }
+  };
   const handleWebFilesSelected = (files) => {
     if (!files || files.length === 0) return;
     const added = [];
@@ -28363,253 +31107,1330 @@ const StandaloneVideoPlayer = ({
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        ref: splitAudioUploadInputRef,
+        type: "file",
+        accept: "audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac",
+        className: "hidden",
+        onChange: (e) => {
+          handleUploadReplacementAudioFiles(e.target.files);
+          e.target.value = "";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        ref: splitAddVideoInputRef,
+        type: "file",
+        accept: "video/*,.mp4,.webm,.mov,.mkv,.m4v",
+        className: "hidden",
+        onChange: (e) => {
+          void handleUploadExtraVideoFiles(e.target.files);
+          e.target.value = "";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        ref: splitAddImageInputRef,
+        type: "file",
+        accept: "image/*",
+        className: "hidden",
+        onChange: (e) => {
+          void handleUploadExtraImageFiles(e.target.files);
+          e.target.value = "";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "audio",
+      {
+        ref: splitAudioRef,
+        src: (splitCustomAudio == null ? void 0 : splitCustomAudio.url) || void 0,
+        loop: true,
+        preload: "auto",
+        className: "hidden"
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
         ref: playerContainerRef,
         className: isPlayerOpen ? "fixed inset-0 z-50 bg-black flex flex-col w-full h-full overflow-hidden select-none" : "hidden",
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "relative flex-1 min-h-0 w-full flex items-center justify-center bg-black overflow-hidden",
-            onClick: () => setShowControls((prev) => !prev),
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "video",
-                {
-                  ref: videoRef,
-                  playsInline: true,
-                  onTimeUpdate: () => {
-                    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
-                  },
-                  onLoadedMetadata: () => {
-                    const el = videoRef.current;
-                    if (!el) return;
-                    if (isFinite(el.duration)) {
-                      setDuration(el.duration);
-                    }
-                  },
-                  onPlay: () => {
-                    onPlaybackStarted();
-                    setIsPlaying(true);
-                  },
-                  onPause: () => setIsPlaying(false),
-                  onEnded: () => {
-                    setIsPlaying(false);
-                    setShowControls(true);
-                  },
-                  className: `w-full h-full bg-black ${fitMode === "cover" ? "object-cover" : "object-contain"}`
+        children: [
+          editMode === "split" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "shrink-0 flex items-center justify-between gap-2 px-3.5 sm:px-5 pt-3 pb-2 bg-black z-30", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: exitSplitToPlayer,
+                className: "w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center cursor-pointer shrink-0 transition-colors",
+                title: "Back to Player",
+                "aria-label": "Back to Video Player",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "w-5 h-5" })
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 text-center px-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs font-semibold text-white truncate", children: splitSegments.length > 1 ? `${splitSegments.filter((s) => !s.removed).length} kept · ${splitSegments.filter((s) => s.removed).length} removed` : "Scroll & Split video" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] font-mono tabular-nums text-slate-400", children: isProcessingEdit && exportProgressPct !== null ? `Saving video... ${exportProgressPct}%` : canExportSplitLossless ? "Original quality · No re-encoding" : "Custom audio & media mix" })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => void handleSaveSplitTimeline(),
+                disabled: isProcessingEdit,
+                className: "min-h-[44px] px-4 rounded-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors whitespace-nowrap",
+                title: "Save Video",
+                "aria-label": "Save Edited Video",
+                children: isProcessingEdit ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Save" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "w-4 h-4" })
+                ] })
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: `relative flex-1 min-h-0 w-full flex items-center justify-center bg-black overflow-hidden ${editMode === "split" ? "px-5 sm:px-10 py-1" : ""}`,
+              onClick: () => {
+                if (editMode === "split" || isPreviewingTrim) {
+                  void handleTogglePlayPause();
+                } else {
+                  setShowControls((prev) => !prev);
                 }
-              ),
-              isLoadingVideo && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "div",
-                {
-                  onClick: (e) => e.stopPropagation(),
-                  className: `absolute top-0 left-0 right-0 z-10 px-3 sm:px-5 pt-3 pb-8 bg-gradient-to-b from-black/90 via-black/55 to-transparent flex items-center justify-between gap-2 transition-opacity duration-200 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`,
-                  children: [
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5 flex-1 min-w-0", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: () => void closePlayer(),
-                          className: "min-w-[44px] min-h-[44px] rounded-xl bg-black/50 hover:bg-white/15 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0",
-                          title: "Back to Videos",
-                          "aria-label": "Back to Video List",
-                          children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "w-5 h-5" })
+              },
+              children: [
+                editMode === "split" && (activeSplitSegAtPlayhead == null ? void 0 : activeSplitSegAtPlayhead.mediaType) === "image" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "img",
+                  {
+                    src: activeSplitSegAtPlayhead.sourceUrl,
+                    alt: activeSplitSegAtPlayhead.title,
+                    className: "max-w-full max-h-full w-auto h-full rounded-xl object-contain"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "video",
+                  {
+                    ref: videoRef,
+                    playsInline: true,
+                    onTimeUpdate: () => {
+                      const el = videoRef.current;
+                      if (!el) return;
+                      const now = el.currentTime;
+                      const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
+                      if (mode === "split") {
+                        return;
+                      }
+                      if (mode === "trim" && end > start) {
+                        if (now >= end) {
+                          el.pause();
+                          el.currentTime = end;
+                          setCurrentTime(end);
+                          setIsPlaying(false);
+                          return;
                         }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm sm:text-base font-bold text-white truncate", children: (currentVideo == null ? void 0 : currentVideo.title) || (currentVideo == null ? void 0 : currentVideo.displayName) || "Video Player" }),
-                        (currentVideo == null ? void 0 : currentVideo.resolution) && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-mono text-slate-300 truncate", children: currentVideo.resolution })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 shrink-0", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: cycleSpeed,
-                          className: "min-w-[44px] min-h-[40px] px-2.5 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white text-xs font-mono font-bold cursor-pointer transition-colors",
-                          title: "Playback Speed",
-                          children: [
-                            playbackSpeed,
-                            "x"
-                          ]
+                        if (now < start - 0.1 && !el.paused) {
+                          el.currentTime = start;
+                          setCurrentTime(start);
+                          return;
                         }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: () => {
-                            setShowControls(true);
-                            setFitMode((prev) => prev === "contain" ? "cover" : "contain");
-                          },
-                          className: "min-w-[44px] min-h-[40px] px-2.5 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center gap-1 text-xs font-semibold cursor-pointer transition-colors",
-                          title: fitMode === "contain" ? "Fill Screen" : "Fit Whole Video",
-                          "aria-label": "Toggle Video Fit or Fill",
-                          children: fitMode === "contain" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Expand, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Shrink, { className: "w-4 h-4" })
+                      }
+                      setCurrentTime(now);
+                    },
+                    onSeeked: () => {
+                      setIsMaskingTrimSeek(false);
+                    },
+                    onLoadedMetadata: () => {
+                      const el = videoRef.current;
+                      if (!el) return;
+                      const pending = pendingSplitSeekRef.current;
+                      if (trimBoundsRef.current.editMode === "split" && pending && activeSplitVideoUrlRef.current === pending.sourceUrl) {
+                        pendingSplitSeekRef.current = null;
+                        el.currentTime = pending.sourceTime;
+                        el.muted = trimBoundsRef.current.isMuted;
+                        el.playbackRate = trimBoundsRef.current.playbackSpeed;
+                        if (pending.autoPlay) {
+                          void el.play().catch(() => {
+                          });
                         }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: () => void handleFullscreen(),
-                          className: "min-w-[44px] min-h-[40px] rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center cursor-pointer transition-colors",
-                          title: isOsFullscreen ? "Exit Fullscreen" : "Fullscreen",
-                          "aria-label": "Toggle Fullscreen",
-                          children: isOsFullscreen ? /* @__PURE__ */ jsxRuntimeExports.jsx(Minimize, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Maximize, { className: "w-4 h-4" })
+                        return;
+                      }
+                      if (trimBoundsRef.current.editMode !== "split" && isFinite(el.duration) && el.duration > 0) {
+                        setDuration(el.duration);
+                        setTrimEnd((prev) => prev <= 0 ? el.duration : Math.min(prev, el.duration));
+                      }
+                    },
+                    onPlay: () => {
+                      const el = videoRef.current;
+                      const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
+                      if (el && mode === "trim" && end > start) {
+                        if (el.currentTime < start - 0.05 || el.currentTime >= end - 0.05) {
+                          el.currentTime = start;
+                          setCurrentTime(start);
                         }
-                      )
-                    ] })
-                  ]
-                }
-              ),
-              !isLoadingVideo && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  type: "button",
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    void handleTogglePlayPause();
-                  },
-                  "aria-label": isPlaying ? "Pause Video" : "Play Video",
-                  className: `absolute z-10 w-16 h-16 rounded-full bg-black/65 hover:bg-emerald-500 text-white hover:text-slate-950 border border-white/25 flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer active:scale-95 ${showControls ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"}`,
-                  children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-7 h-7 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-7 h-7 fill-current ml-0.5" })
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                "div",
-                {
-                  onClick: (e) => e.stopPropagation(),
-                  className: `absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pt-10 pb-5 bg-gradient-to-t from-black/95 via-black/75 to-transparent space-y-3 transition-opacity duration-200 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`,
-                  children: [
-                    errorMessage && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs text-center", children: errorMessage }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "input",
-                        {
-                          type: "range",
-                          min: 0,
-                          max: duration > 0 ? duration : 100,
-                          step: 0.1,
-                          value: Math.min(currentTime, duration > 0 ? duration : 100),
-                          disabled: duration <= 0,
-                          onChange: (e) => {
-                            setShowControls(true);
-                            const next = parseFloat(e.target.value);
-                            setCurrentTime(next);
-                            if (videoRef.current) {
-                              videoRef.current.currentTime = next;
-                            }
-                          },
-                          "aria-label": "Video timeline",
-                          className: "w-full h-2 accent-emerald-400 cursor-pointer disabled:opacity-40"
-                        }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-mono tabular-nums text-slate-200", children: [
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(currentTime) }),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(duration) })
-                      ] })
-                    ] }),
-                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: () => {
-                            setShowControls(true);
-                            const next = !isMuted;
-                            setIsMuted(next);
-                            if (videoRef.current) {
-                              videoRef.current.muted = next;
-                            }
-                          },
-                          className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
-                          title: isMuted ? "Unmute" : "Mute",
-                          "aria-label": isMuted ? "Unmute Video" : "Mute Video",
-                          children: isMuted ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "w-5 h-5 text-red-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "w-5 h-5" })
-                        }
-                      ),
-                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 sm:gap-3", children: [
+                      }
+                      onPlaybackStarted();
+                      setIsPlaying(true);
+                    },
+                    onPause: () => {
+                      if (trimBoundsRef.current.editMode !== "split") {
+                        setIsPlaying(false);
+                      }
+                    },
+                    onEnded: () => {
+                      if (trimBoundsRef.current.editMode !== "split") {
+                        setIsPlaying(false);
+                        setShowControls(true);
+                      }
+                    },
+                    className: `bg-black transition-opacity duration-75 ${editMode === "split" && (activeSplitSegAtPlayhead == null ? void 0 : activeSplitSegAtPlayhead.mediaType) === "image" ? "hidden" : editMode === "split" ? "max-w-full max-h-full w-auto h-full rounded-xl object-contain" : `w-full h-full ${fitMode === "cover" ? "object-cover" : "object-contain"}`} ${isMaskingTrimSeek ? "opacity-0" : "opacity-100"}`
+                  }
+                ),
+                isLoadingVideo && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) }),
+                editMode !== "split" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    onClick: (e) => e.stopPropagation(),
+                    className: `absolute top-0 left-0 right-0 z-10 px-2.5 sm:px-5 pt-3 pb-8 bg-gradient-to-b from-black/90 via-black/60 to-transparent flex items-center justify-between gap-2 transition-opacity duration-200 ${showControls || editMode !== "none" ? "opacity-100" : "opacity-0 pointer-events-none"}`,
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 flex-1 min-w-0", children: [
                         /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
                             type: "button",
-                            onClick: () => handleStepVideo(-1),
-                            disabled: videos.length === 0,
-                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
-                            title: "Previous Video",
-                            "aria-label": "Previous Video",
-                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipBack, { className: "w-5 h-5" })
+                            onClick: () => void closePlayer(),
+                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-black/50 hover:bg-white/15 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0",
+                            title: "Back to Videos",
+                            "aria-label": "Back to Video List",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "w-5 h-5" })
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-xs sm:text-base font-bold text-white truncate", children: (currentVideo == null ? void 0 : currentVideo.title) || (currentVideo == null ? void 0 : currentVideo.displayName) || "Video Player" }),
+                          (currentVideo == null ? void 0 : currentVideo.resolution) && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[10px] sm:text-[11px] font-mono text-slate-300 truncate", children: currentVideo.resolution })
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1 sm:gap-1.5 shrink-0", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: openTrimEditor,
+                            disabled: isProcessingEdit,
+                            className: `min-h-[44px] px-2 sm:px-3 rounded-lg border text-[11px] sm:text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 ${editMode === "trim" ? "bg-emerald-400 border-emerald-300 text-slate-950 font-bold" : "bg-black/55 hover:bg-white/15 border-white/15 text-white"}`,
+                            title: "Trim Video (Original Quality)",
+                            "aria-label": "Trim Video",
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Scissors, { className: "w-3.5 h-3.5 shrink-0" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Trim" })
+                            ]
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: openSplitEditor,
+                            disabled: isProcessingEdit,
+                            className: "min-h-[44px] px-2 sm:px-3 rounded-lg border text-[11px] sm:text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 bg-black/55 hover:bg-white/15 border-white/15 text-white",
+                            title: "Split Video (Original Quality)",
+                            "aria-label": "Split Video",
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(SquareSplitHorizontal, { className: "w-3.5 h-3.5 shrink-0" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Split" })
+                            ]
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: cycleSpeed,
+                            className: "min-w-[38px] min-h-[44px] px-2 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white text-[11px] sm:text-xs font-mono font-bold cursor-pointer transition-colors whitespace-nowrap shrink-0",
+                            title: "Playback Speed",
+                            children: [
+                              playbackSpeed,
+                              "x"
+                            ]
                           }
                         ),
                         /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
                             type: "button",
-                            onClick: () => handleSeekRelative(-10),
-                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
-                            title: "Rewind 10s",
-                            "aria-label": "Rewind 10 seconds",
-                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "w-5 h-5" })
+                            onClick: () => {
+                              setShowControls(true);
+                              setFitMode((prev) => prev === "contain" ? "cover" : "contain");
+                            },
+                            className: "min-w-[38px] sm:min-w-[44px] min-h-[44px] px-2 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center text-xs font-semibold cursor-pointer transition-colors shrink-0",
+                            title: fitMode === "contain" ? "Fill Screen" : "Fit Whole Video",
+                            "aria-label": "Toggle Video Fit or Fill",
+                            children: fitMode === "contain" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Expand, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Shrink, { className: "w-4 h-4" })
                           }
                         ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => void handleFullscreen(),
+                            className: "min-w-[38px] sm:min-w-[44px] min-h-[44px] px-2 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center cursor-pointer transition-colors shrink-0",
+                            title: isOsFullscreen ? "Exit Fullscreen" : "Fullscreen",
+                            "aria-label": "Toggle Fullscreen",
+                            children: isOsFullscreen ? /* @__PURE__ */ jsxRuntimeExports.jsx(Minimize, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Maximize, { className: "w-4 h-4" })
+                          }
+                        )
+                      ] })
+                    ]
+                  }
+                ),
+                !isLoadingVideo && editMode === "none" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      void handleTogglePlayPause();
+                    },
+                    "aria-label": isPlaying ? "Pause Video" : "Play Video",
+                    className: `absolute z-10 w-16 h-16 rounded-full bg-black/65 hover:bg-emerald-500 text-white hover:text-slate-950 border border-white/25 flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer active:scale-95 ${showControls ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"}`,
+                    children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-7 h-7 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-7 h-7 fill-current ml-0.5" })
+                  }
+                ),
+                editMode === "trim" && isPreviewingTrim ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    onClick: (e) => e.stopPropagation(),
+                    className: "absolute bottom-0 left-0 right-0 z-20 px-3.5 sm:px-6 pt-8 pb-4 bg-gradient-to-t from-black via-black/95 to-transparent space-y-3",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 min-w-0", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "px-2 py-0.5 rounded bg-emerald-400 text-slate-950 text-[10px] font-bold uppercase tracking-wider shrink-0", children: "Cut Preview" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-mono tabular-nums text-slate-200 truncate", children: [
+                            formatPreciseTime(Math.max(0, trimEnd - trimStart)),
+                            " trimmed clip"
+                          ] })
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 shrink-0", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                if (videoRef.current && !videoRef.current.paused) {
+                                  videoRef.current.pause();
+                                  setIsPlaying(false);
+                                }
+                                setIsPreviewingTrim(false);
+                              },
+                              className: "min-h-[40px] px-3 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold cursor-pointer whitespace-nowrap",
+                              children: "Adjust Cut"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                if (videoRef.current && !videoRef.current.paused) {
+                                  videoRef.current.pause();
+                                  setIsPlaying(false);
+                                }
+                                setIsPreviewingTrim(false);
+                                setEditMode("none");
+                              },
+                              className: "min-w-[40px] min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 flex items-center justify-center cursor-pointer",
+                              title: "Close Trim",
+                              "aria-label": "Close Trim Preview",
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+                            }
+                          )
+                        ] })
+                      ] }),
+                      (() => {
+                        const clipDuration = Math.max(0.2, trimEnd - trimStart);
+                        const clipPos = Math.max(0, Math.min(clipDuration, currentTime - trimStart));
+                        return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5 bg-slate-900/85 border border-emerald-500/25 rounded-xl p-3", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "input",
+                            {
+                              type: "range",
+                              min: 0,
+                              max: clipDuration,
+                              step: 0.05,
+                              value: clipPos,
+                              onChange: (e) => {
+                                const offset = parseFloat(e.target.value);
+                                seekVideoTo(trimStart + offset);
+                              },
+                              "aria-label": "Trimmed video preview timeline",
+                              className: "w-full h-2 accent-emerald-400 cursor-pointer"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-mono tabular-nums text-emerald-300", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatPreciseTime(clipPos) }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatPreciseTime(clipDuration) })
+                          ] })
+                        ] });
+                      })(),
+                      editErrorMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs flex items-center gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "w-4 h-4 shrink-0" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: editErrorMessage })
+                      ] }),
+                      editStatusMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-200 text-xs flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 min-w-0", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: editStatusMessage })
+                        ] }),
+                        lastSavedClip && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => void playVideoItem(lastSavedClip),
+                            className: "px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-bold text-[11px] whitespace-nowrap shrink-0 cursor-pointer",
+                            children: "Play Clip"
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5", children: [
                         /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
                             type: "button",
                             onClick: () => void handleTogglePlayPause(),
-                            className: "w-13 h-13 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer shrink-0",
-                            title: isPlaying ? "Pause" : "Play",
-                            "aria-label": isPlaying ? "Pause Video" : "Play Video",
-                            children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-6 h-6 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-6 h-6 fill-current ml-0.5" })
+                            disabled: isProcessingEdit,
+                            className: "min-h-[44px] px-4 rounded-xl bg-white/15 hover:bg-white/25 border border-white/15 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap disabled:opacity-50",
+                            children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-4 h-4 fill-current" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Pause" })
+                            ] }) : currentTime >= trimEnd - 0.05 ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "w-4 h-4" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Replay Cut" })
+                            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 fill-current" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Play Cut" })
+                            ] })
                           }
                         ),
                         /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
                             type: "button",
-                            onClick: () => handleSeekRelative(10),
-                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
-                            title: "Forward 10s",
-                            "aria-label": "Forward 10 seconds",
-                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCw, { className: "w-5 h-5" })
+                            onClick: () => void handleExecuteLosslessTrim(),
+                            disabled: isProcessingEdit,
+                            className: "flex-1 min-h-[44px] px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 text-slate-950 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap",
+                            children: isProcessingEdit ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Saving Original Quality..." })
+                            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Scissors, { className: "w-4 h-4 shrink-0" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Save Trimmed Video" })
+                            ] })
                           }
-                        ),
-                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        )
+                      ] })
+                    ]
+                  }
+                ) : editMode === "trim" ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "div",
+                  {
+                    onClick: (e) => e.stopPropagation(),
+                    className: "absolute bottom-0 left-0 right-0 z-20 px-3.5 sm:px-6 pt-8 pb-4 bg-gradient-to-t from-black via-black/95 to-transparent space-y-3",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "min-w-0", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-xs sm:text-sm font-bold text-white", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(Scissors, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Trim Video" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-slate-400 font-normal hidden sm:inline", children: "·" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-mono text-emerald-400 font-medium hidden sm:inline", children: "Play stays inside selection" })
+                        ] }) }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 shrink-0", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => handleSeekRelative(-1),
+                              className: "min-w-[40px] min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-mono font-bold px-2 cursor-pointer",
+                              title: "Back 1s inside selection",
+                              children: "-1s"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => void handleTogglePlayPause(),
+                              className: "min-w-[40px] min-h-[40px] rounded-lg bg-white/15 hover:bg-white/25 text-white flex items-center justify-center cursor-pointer",
+                              "aria-label": isPlaying ? "Pause Selected Part" : "Play Selected Part",
+                              title: "Play Selected Part Only",
+                              children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-4 h-4 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 fill-current ml-0.5" })
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => handleSeekRelative(1),
+                              className: "min-w-[40px] min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-mono font-bold px-2 cursor-pointer",
+                              title: "Forward 1s inside selection",
+                              children: "+1s"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                setIsPreviewingTrim(false);
+                                setEditMode("none");
+                              },
+                              className: "min-w-[40px] min-h-[40px] rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 flex items-center justify-center cursor-pointer",
+                              title: "Close Trim",
+                              "aria-label": "Close Trim Editor",
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+                            }
+                          )
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-2 bg-slate-900/85 border border-white/10 rounded-xl p-3", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative h-8 flex items-center select-none", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-2.5 rounded-full bg-white/15 relative overflow-hidden", children: duration > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "absolute top-0 bottom-0 bg-emerald-400/80",
+                              style: {
+                                left: `${Math.max(0, Math.min(100, trimStart / duration * 100))}%`,
+                                width: `${Math.max(0, Math.min(100, (trimEnd - trimStart) / duration * 100))}%`
+                              }
+                            }
+                          ) }),
+                          duration > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "absolute top-1 bottom-1 w-0.5 bg-white pointer-events-none z-10",
+                              style: {
+                                left: `${Math.max(0, Math.min(100, currentTime / duration * 100))}%`
+                              }
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "input",
+                            {
+                              type: "range",
+                              min: 0,
+                              max: duration > 0 ? duration : 100,
+                              step: 0.1,
+                              value: trimStart,
+                              onChange: (e) => {
+                                const next = Math.min(parseFloat(e.target.value), Math.max(0, trimEnd - 0.3));
+                                setTrimStart(next);
+                                setEditStatusMessage(null);
+                                setEditErrorMessage(null);
+                                seekVideoTo(next);
+                              },
+                              "aria-label": "Trim start time",
+                              className: "absolute inset-0 w-full appearance-none bg-transparent pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-emerald-400 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-ew-resize [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-emerald-400"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "input",
+                            {
+                              type: "range",
+                              min: 0,
+                              max: duration > 0 ? duration : 100,
+                              step: 0.1,
+                              value: trimEnd,
+                              onChange: (e) => {
+                                const next = Math.max(parseFloat(e.target.value), Math.min(duration, trimStart + 0.3));
+                                setTrimEnd(next);
+                                setEditStatusMessage(null);
+                                setEditErrorMessage(null);
+                                seekVideoTo(next);
+                              },
+                              "aria-label": "Trim end time",
+                              className: "absolute inset-0 w-full appearance-none bg-transparent pointer-events-none z-20 [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-ew-resize [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-emerald-400 [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white"
+                            }
+                          )
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono tabular-nums", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                const next = Math.min(currentTime, Math.max(0, trimEnd - 0.3));
+                                setTrimStart(next);
+                                setEditStatusMessage(null);
+                                setEditErrorMessage(null);
+                              },
+                              className: "px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer",
+                              title: "Set Start to current video frame",
+                              children: [
+                                "Set Start (",
+                                formatPreciseTime(trimStart),
+                                ")"
+                              ]
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-emerald-400 font-bold", children: [
+                            "Keep ",
+                            formatPreciseTime(Math.max(0, trimEnd - trimStart))
+                          ] }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                const next = Math.max(currentTime, Math.min(duration, trimStart + 0.3));
+                                setTrimEnd(next);
+                                setEditStatusMessage(null);
+                                setEditErrorMessage(null);
+                              },
+                              className: "px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer",
+                              title: "Set End to current video frame",
+                              children: [
+                                "Set End (",
+                                formatPreciseTime(trimEnd),
+                                ")"
+                              ]
+                            }
+                          )
+                        ] })
+                      ] }),
+                      editErrorMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs flex items-center gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "w-4 h-4 shrink-0" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: editErrorMessage })
+                      ] }),
+                      editStatusMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-200 text-xs flex items-center justify-between gap-2", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 min-w-0", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: editStatusMessage })
+                        ] }),
+                        lastSavedClip && /* @__PURE__ */ jsxRuntimeExports.jsx(
                           "button",
                           {
                             type: "button",
-                            onClick: () => handleStepVideo(1),
-                            disabled: videos.length === 0,
-                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
-                            title: "Next Video",
-                            "aria-label": "Next Video",
-                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipForward, { className: "w-5 h-5" })
+                            onClick: () => void playVideoItem(lastSavedClip),
+                            className: "px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-bold text-[11px] whitespace-nowrap shrink-0 cursor-pointer",
+                            children: "Play Clip"
                           }
                         )
                       ] }),
-                      /* @__PURE__ */ jsxRuntimeExports.jsx(
-                        "button",
-                        {
-                          type: "button",
-                          onClick: () => void closePlayer(),
-                          className: "min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center cursor-pointer transition-colors",
-                          title: "Close Player",
-                          "aria-label": "Close Video Player",
-                          children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-5 h-5" })
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => void handlePreviewTrim(),
+                            disabled: isProcessingEdit,
+                            className: "min-h-[44px] px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap disabled:opacity-50",
+                            children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Preview Cut" })
+                            ]
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => void handleExecuteLosslessTrim(),
+                            disabled: isProcessingEdit,
+                            className: "flex-1 min-h-[44px] px-4 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 text-slate-950 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap",
+                            children: isProcessingEdit ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Saving Original Quality..." })
+                            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                              /* @__PURE__ */ jsxRuntimeExports.jsx(Scissors, { className: "w-4 h-4 shrink-0" }),
+                              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Save Trimmed Video" })
+                            ] })
+                          }
+                        )
+                      ] })
+                    ]
+                  }
+                ) : editMode === "split" ? null : (
+                  /* Bottom VLC Overlay Controls: Seek Bar + Transport */
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      onClick: (e) => e.stopPropagation(),
+                      className: `absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pt-10 pb-5 bg-gradient-to-t from-black/95 via-black/75 to-transparent space-y-3 transition-opacity duration-200 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`,
+                      children: [
+                        errorMessage && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs text-center", children: errorMessage }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "input",
+                            {
+                              type: "range",
+                              min: 0,
+                              max: duration > 0 ? duration : 100,
+                              step: 0.1,
+                              value: Math.min(currentTime, duration > 0 ? duration : 100),
+                              disabled: duration <= 0,
+                              onChange: (e) => {
+                                setShowControls(true);
+                                const next = parseFloat(e.target.value);
+                                setCurrentTime(next);
+                                if (videoRef.current) {
+                                  videoRef.current.currentTime = next;
+                                }
+                              },
+                              "aria-label": "Video timeline",
+                              className: "w-full h-2 accent-emerald-400 cursor-pointer disabled:opacity-40"
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-mono tabular-nums text-slate-200", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(currentTime) }),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(duration) })
+                          ] })
+                        ] }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => {
+                                setShowControls(true);
+                                const next = !isMuted;
+                                setIsMuted(next);
+                                if (videoRef.current) {
+                                  videoRef.current.muted = next;
+                                }
+                              },
+                              className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                              title: isMuted ? "Unmute" : "Mute",
+                              "aria-label": isMuted ? "Unmute Video" : "Mute Video",
+                              children: isMuted ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "w-5 h-5 text-red-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "w-5 h-5" })
+                            }
+                          ),
+                          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 sm:gap-3", children: [
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => handleStepVideo(-1),
+                                disabled: videos.length === 0,
+                                className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
+                                title: "Previous Video",
+                                "aria-label": "Previous Video",
+                                children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipBack, { className: "w-5 h-5" })
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => handleSeekRelative(-10),
+                                className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                                title: "Rewind 10s",
+                                "aria-label": "Rewind 10 seconds",
+                                children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "w-5 h-5" })
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => void handleTogglePlayPause(),
+                                className: "w-13 h-13 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer shrink-0",
+                                title: isPlaying ? "Pause" : "Play",
+                                "aria-label": isPlaying ? "Pause Video" : "Play Video",
+                                children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-6 h-6 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-6 h-6 fill-current ml-0.5" })
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => handleSeekRelative(10),
+                                className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                                title: "Forward 10s",
+                                "aria-label": "Forward 10 seconds",
+                                children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCw, { className: "w-5 h-5" })
+                              }
+                            ),
+                            /* @__PURE__ */ jsxRuntimeExports.jsx(
+                              "button",
+                              {
+                                type: "button",
+                                onClick: () => handleStepVideo(1),
+                                disabled: videos.length === 0,
+                                className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
+                                title: "Next Video",
+                                "aria-label": "Next Video",
+                                children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipForward, { className: "w-5 h-5" })
+                              }
+                            )
+                          ] }),
+                          /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: () => void closePlayer(),
+                              className: "min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center cursor-pointer transition-colors",
+                              title: "Close Player",
+                              "aria-label": "Close Video Player",
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-5 h-5" })
+                            }
+                          )
+                        ] })
+                      ]
+                    }
+                  )
+                )
+              ]
+            }
+          ),
+          editMode === "split" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "shrink-0 bg-black border-t border-white/10 pt-2 pb-3 flex flex-col gap-2 z-20 relative", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-4 flex items-center justify-between gap-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs font-mono tabular-nums min-w-[92px]", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-white font-semibold", children: formatTimePadded(currentTime) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-slate-500", children: [
+                  "/",
+                  formatTimePadded(activeSplitDuration)
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => void handleTogglePlayPause(),
+                  className: "w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer active:scale-95 transition-transform",
+                  "aria-label": isPlaying ? "Pause" : "Play",
+                  children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-5 h-5 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-5 h-5 fill-current ml-0.5" })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-end gap-1 min-w-[92px]", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleUndoSplit,
+                    disabled: splitUndoStack.length === 0,
+                    className: "min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 disabled:opacity-30 text-white flex items-center justify-center cursor-pointer",
+                    title: "Undo",
+                    "aria-label": "Undo Split Change",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Undo2, { className: "w-4 h-4" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleRedoSplit,
+                    disabled: splitRedoStack.length === 0,
+                    className: "min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 disabled:opacity-30 text-white flex items-center justify-center cursor-pointer",
+                    title: "Redo",
+                    "aria-label": "Redo Split Change",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Redo2, { className: "w-4 h-4" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void handleFullscreen(),
+                    className: "min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 text-white flex items-center justify-center cursor-pointer",
+                    title: "Fullscreen",
+                    "aria-label": "Toggle Fullscreen",
+                    children: isOsFullscreen ? /* @__PURE__ */ jsxRuntimeExports.jsx(Minimize, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Maximize, { className: "w-4 h-4" })
+                  }
+                )
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative w-full h-[90px] bg-black overflow-hidden", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    const next = !isMuted;
+                    setIsMuted(next);
+                    if (videoRef.current) videoRef.current.muted = next;
+                  },
+                  className: `absolute left-2 top-8 z-30 w-10 h-10 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${isMuted ? "bg-red-500/20 border-red-400/50 text-red-300" : "bg-black/80 border-white/15 text-white hover:bg-white/15"}`,
+                  title: isMuted ? "Unmute Video Sound" : "Mute Video Sound",
+                  "aria-label": isMuted ? "Unmute Video Sound" : "Mute Video Sound",
+                  children: isMuted ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "w-4 h-4" })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowAddMediaMenu((prev) => !prev),
+                  disabled: isPreparingSplitMedia || isProcessingEdit,
+                  className: "absolute right-2.5 top-8 z-30 w-10 h-10 rounded-xl bg-white hover:bg-slate-200 text-slate-950 shadow-lg flex items-center justify-center cursor-pointer active:scale-95 transition-transform disabled:opacity-50",
+                  title: "Add Video or Image",
+                  "aria-label": "Add Video or Image",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(Plus, { className: `w-5 h-5 stroke-[2.5] transition-transform ${showAddMediaMenu ? "rotate-45" : ""}` })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2.5px] bg-white z-30 pointer-events-none rounded-full shadow-[0_0_8px_rgba(255,255,255,0.75)]" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "div",
+                {
+                  ref: splitTimelineRef,
+                  onPointerDown: (e) => {
+                    isUserScrubbingTimelineRef.current = true;
+                    if (videoRef.current && !videoRef.current.paused) {
+                      videoRef.current.pause();
+                    }
+                    if (splitAudioRef.current && !splitAudioRef.current.paused) {
+                      splitAudioRef.current.pause();
+                    }
+                    setIsPlaying(false);
+                    if (e.pointerType === "mouse" && splitTimelineRef.current) {
+                      const startX = e.clientX;
+                      const startScroll = splitTimelineRef.current.scrollLeft;
+                      let moved = false;
+                      const onMove = (ev) => {
+                        const dx = ev.clientX - startX;
+                        if (Math.abs(dx) > 3) moved = true;
+                        if (moved && splitTimelineRef.current) {
+                          splitTimelineRef.current.scrollLeft = startScroll - dx;
                         }
-                      )
+                      };
+                      const onUp = () => {
+                        isUserScrubbingTimelineRef.current = false;
+                        window.removeEventListener("pointermove", onMove);
+                        window.removeEventListener("pointerup", onUp);
+                      };
+                      window.addEventListener("pointermove", onMove);
+                      window.addEventListener("pointerup", onUp);
+                    }
+                  },
+                  onPointerUp: () => {
+                    isUserScrubbingTimelineRef.current = false;
+                  },
+                  onTouchEnd: () => {
+                    isUserScrubbingTimelineRef.current = false;
+                  },
+                  onScroll: (e) => {
+                    if (isSyncingTimelineScrollRef.current) return;
+                    const target = e.currentTarget;
+                    const nextTime = Math.max(0, Math.min(totalSplitDuration, target.scrollLeft / splitPxPerSec));
+                    seekSplitTimelineTo(nextTime, false);
+                  },
+                  className: "w-full h-full overflow-x-auto overflow-y-hidden no-scrollbar cursor-grab active:cursor-grabbing",
+                  style: { WebkitOverflowScrolling: "touch" },
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                    "div",
+                    {
+                      className: "relative h-full box-content",
+                      style: {
+                        width: `${Math.max(120, totalSplitDuration * splitPxPerSec)}px`,
+                        paddingLeft: "50%",
+                        paddingRight: "50%"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative h-5 w-full", children: (() => {
+                          const stepSec = totalSplitDuration <= 45 ? 1 : totalSplitDuration <= 150 ? 5 : totalSplitDuration <= 480 ? 15 : 30;
+                          const ticks = [];
+                          for (let t = 0; t <= Math.ceil(totalSplitDuration); t += stepSec) {
+                            ticks.push(t);
+                          }
+                          return ticks.map((t) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                            "div",
+                            {
+                              className: "absolute top-0 flex flex-col items-center -translate-x-1/2 pointer-events-none",
+                              style: { left: `${t * splitPxPerSec}px` },
+                              children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-mono tabular-nums text-slate-400 leading-none", children: formatTimePadded(t) })
+                            },
+                            t
+                          ));
+                        })() }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "relative h-[58px] mt-1 flex items-center", children: mappedSplitSegments.map((seg, idx) => {
+                          const segWidth = Math.max(24, (seg.globalEnd - seg.globalStart) * splitPxPerSec);
+                          const isSelected = selectedSplitSegId === seg.id;
+                          const sourceFrames = seg.mediaType === "video" ? splitFramesBySource[seg.sourceUrl] || [] : [];
+                          const segThumbs = sourceFrames.length > 0 ? sourceFrames.filter(
+                            (f) => f.time >= seg.sourceStart - 2 && f.time <= seg.sourceEnd + 2
+                          ) : [];
+                          const displayFrames = segThumbs.length > 0 ? segThumbs : sourceFrames.slice(0, 3);
+                          const isSourceExtracting = Boolean(extractingSources[seg.sourceUrl]);
+                          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                            "button",
+                            {
+                              type: "button",
+                              onClick: (e) => {
+                                e.stopPropagation();
+                                setSelectedSplitSegId(seg.id);
+                              },
+                              style: { width: `${segWidth}px` },
+                              className: `relative h-full shrink-0 overflow-hidden rounded-lg transition-all cursor-pointer ${idx > 0 ? "ml-0.5" : ""} ${seg.removed ? "opacity-35 grayscale border border-red-400/50 bg-slate-900" : isSelected ? "ring-2 ring-white z-10 bg-slate-900" : "border border-white/20 bg-slate-900"}`,
+                              children: [
+                                seg.mediaType === "image" ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 flex", children: Array.from({ length: Math.max(2, Math.ceil(segWidth / 44)) }).map((_, tileIdx) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                  "img",
+                                  {
+                                    src: seg.thumbnailUrl || seg.sourceUrl,
+                                    alt: "",
+                                    draggable: false,
+                                    className: "h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
+                                  },
+                                  tileIdx
+                                )) }) : displayFrames.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 flex", children: Array.from({ length: Math.max(2, Math.ceil(segWidth / 44)) }).map(
+                                  (_, tileIdx) => {
+                                    const frame = displayFrames[Math.min(
+                                      displayFrames.length - 1,
+                                      Math.floor(
+                                        tileIdx / Math.max(1, Math.ceil(segWidth / 44)) * displayFrames.length
+                                      )
+                                    )];
+                                    return /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                      "img",
+                                      {
+                                        src: frame == null ? void 0 : frame.url,
+                                        alt: "",
+                                        draggable: false,
+                                        className: "h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
+                                      },
+                                      tileIdx
+                                    );
+                                  }
+                                ) }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                                  "div",
+                                  {
+                                    className: `absolute inset-0 ${isSourceExtracting ? "bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 animate-pulse" : "bg-slate-800"}`
+                                  }
+                                ),
+                                seg.removed && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-red-950/60 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "px-1.5 py-0.5 rounded bg-black/80 text-red-200 text-[10px] font-bold uppercase tracking-wider", children: "Removed" }) }),
+                                !seg.removed && segWidth >= 44 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/75 text-[9px] font-mono tabular-nums text-white leading-none", children: formatPreciseTime(seg.globalEnd - seg.globalStart) })
+                              ]
+                            },
+                            seg.id
+                          );
+                        }) })
+                      ]
+                    }
+                  )
+                }
+              )
+            ] }),
+            showAddMediaMenu && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-2xl bg-slate-900 border border-white/15 p-2 flex items-center gap-2 shadow-2xl", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: openAddVideoPickerModal,
+                  className: "flex-1 min-h-[48px] px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Video" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: openAddImagePickerModal,
+                  className: "flex-1 min-h-[48px] px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-colors whitespace-nowrap",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Image$1, { className: "w-4 h-4 text-cyan-300 shrink-0" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Image" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setShowAddMediaMenu(false),
+                  className: "min-w-[44px] min-h-[48px] rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 flex items-center justify-center cursor-pointer",
+                  "aria-label": "Close Add Menu",
+                  children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+                }
+              )
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "px-3", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-[44px] rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-between gap-2 px-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => void openAudioPickerModal(),
+                  className: "flex-1 min-h-[44px] px-2 flex items-center gap-2 text-left text-xs font-semibold text-white hover:text-emerald-300 transition-colors cursor-pointer min-w-0",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: splitCustomAudio ? splitCustomAudio.title : "Add sound" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 shrink-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => {
+                      const next = !isMuted;
+                      setIsMuted(next);
+                      if (videoRef.current) videoRef.current.muted = next;
+                    },
+                    className: `min-h-[34px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-colors whitespace-nowrap ${isMuted ? "bg-red-500/20 text-red-200 border border-red-400/30" : "bg-white/10 hover:bg-white/20 text-slate-200"}`,
+                    children: isMuted ? "Video Muted" : "Mute Video"
+                  }
+                ),
+                splitCustomAudio && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => {
+                      if (splitAudioRef.current) splitAudioRef.current.pause();
+                      setSplitCustomAudio(null);
+                    },
+                    className: "min-w-[34px] min-h-[34px] rounded-lg bg-white/10 hover:bg-red-500/25 text-slate-200 hover:text-red-200 flex items-center justify-center cursor-pointer",
+                    title: "Remove added sound",
+                    "aria-label": "Remove added sound",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+                  }
+                )
+              ] })
+            ] }) }),
+            (editErrorMessage || editStatusMessage) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3.5", children: [
+              editErrorMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(CircleAlert, { className: "w-4 h-4 shrink-0" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: editErrorMessage })
+              ] }),
+              editStatusMessage && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-200 text-xs flex items-center justify-between gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 min-w-0", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate", children: editStatusMessage })
+                ] }),
+                lastSavedClip && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void playVideoItem(lastSavedClip),
+                    className: "px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-bold text-[11px] whitespace-nowrap shrink-0 cursor-pointer",
+                    children: "Play Clip"
+                  }
+                )
+              ] })
+            ] }),
+            (() => {
+              const activeSeg = splitSegments.find((s) => s.id === selectedSplitSegId) || activeSplitSegAtPlayhead || splitSegments[0];
+              const isSelectedRemoved = Boolean(activeSeg == null ? void 0 : activeSeg.removed);
+              const keptCount = splitSegments.filter((s) => !s.removed).length;
+              const hasAnyEdits = splitSegments.some((s) => s.removed) || splitSegments.length > 1 || splitSegments.some((s) => s.mediaType === "image" || s.sourceUri !== (currentVideo == null ? void 0 : currentVideo.uri)) || Boolean(splitCustomAudio) || isMuted;
+              return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "px-3 flex items-center justify-center gap-2 overflow-x-auto no-scrollbar", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleSplitAtPlayhead,
+                    disabled: isProcessingEdit,
+                    className: "min-w-[66px] h-[58px] px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40",
+                    title: "Split at white playhead line",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Scissors, { className: "w-4 h-4" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-medium whitespace-nowrap", children: "Split" })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleToggleRemoveSelectedSegment,
+                    disabled: isProcessingEdit || !isSelectedRemoved && keptCount <= 1,
+                    className: `min-w-[66px] h-[58px] px-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-35 ${isSelectedRemoved ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-300" : "bg-red-500/15 hover:bg-red-500/25 border-red-400/30 text-red-200"}`,
+                    title: isSelectedRemoved ? "Restore selected part" : "Remove selected part",
+                    children: isSelectedRemoved ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "w-4 h-4" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-medium whitespace-nowrap", children: "Restore" })
+                    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "w-4 h-4" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-medium whitespace-nowrap", children: "Remove" })
                     ] })
+                  }
+                ),
+                splitSegments.length > 1 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleKeepOnlySelectedSegment,
+                    disabled: isProcessingEdit,
+                    className: "min-w-[74px] h-[58px] px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40",
+                    title: "Remove all other parts and keep only the selected clip",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { className: "w-4 h-4 text-cyan-300" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-medium whitespace-nowrap", children: "Keep Only" })
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void handleSaveSplitTimeline(),
+                    disabled: isProcessingEdit || !hasAnyEdits,
+                    className: "min-w-[74px] h-[58px] px-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-white/10 disabled:text-slate-400 disabled:border disabled:border-white/10 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0",
+                    title: "Save edited video",
+                    children: [
+                      isProcessingEdit ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowRight, { className: "w-4 h-4" }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] whitespace-nowrap", children: isProcessingEdit && exportProgressPct !== null ? `${exportProgressPct}%` : "Save" })
+                    ]
+                  }
+                )
+              ] });
+            })()
+          ] }),
+          activeSplitPicker !== "none" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute inset-0 z-40 bg-black/95 backdrop-blur-md flex flex-col overflow-hidden", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => setActiveSplitPicker("none"),
+                    className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer shrink-0",
+                    "aria-label": "Close Picker",
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronLeft, { className: "w-5 h-5" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm sm:text-base font-bold text-white truncate", children: activeSplitPicker === "audio" ? "Add / Replace Audio" : activeSplitPicker === "video" ? "Add Video from Phone" : "Add Image from Phone" })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => {
+                    var _a2, _b, _c;
+                    if (activeSplitPicker === "audio") (_a2 = splitAudioUploadInputRef.current) == null ? void 0 : _a2.click();
+                    else if (activeSplitPicker === "video") (_b = splitAddVideoInputRef.current) == null ? void 0 : _b.click();
+                    else (_c = splitAddImageInputRef.current) == null ? void 0 : _c.click();
+                  },
+                  disabled: isPreparingSplitMedia,
+                  className: "min-h-[44px] px-3.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(Upload, { className: "w-4 h-4 shrink-0" }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: activeSplitPicker === "audio" ? "Upload Audio" : activeSplitPicker === "video" ? "Upload Video" : "Upload Image" })
                   ]
                 }
               )
-            ]
-          }
-        )
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "shrink-0 px-4 py-3 border-b border-white/10", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "text",
+                  value: activeSplitPicker === "audio" ? audioPickerSearch : activeSplitPicker === "video" ? videoPickerSearch : imagePickerSearch,
+                  onChange: (e) => {
+                    const val = e.target.value;
+                    if (activeSplitPicker === "audio") setAudioPickerSearch(val);
+                    else if (activeSplitPicker === "video") setVideoPickerSearch(val);
+                    else setImagePickerSearch(val);
+                  },
+                  placeholder: activeSplitPicker === "audio" ? "Search songs on your phone..." : activeSplitPicker === "video" ? "Search videos on your phone..." : "Search images on your phone...",
+                  className: "w-full min-h-[44px] bg-white/10 border border-white/15 focus:border-emerald-400 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none"
+                }
+              )
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 relative", children: [
+              isPreparingSplitMedia && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/75 z-20 flex items-center justify-center", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5 bg-slate-900 border border-white/15 px-4 py-3 rounded-xl", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-semibold text-white", children: "Adding to timeline..." })
+              ] }) }),
+              activeSplitPicker === "audio" && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: audioPermissionDenied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-10 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "w-10 h-10 text-amber-400 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-white", children: "Audio Permission Required" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void openAudioPickerModal(),
+                    className: "min-h-[44px] px-5 rounded-xl bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer",
+                    children: "Allow Audio Access"
+                  }
+                )
+              ] }) : isLoadingAudioPicker ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 font-mono", children: "Scanning phone audio..." })
+              ] }) : filteredDeviceSongs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-10 h-10 text-slate-600 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-300", children: "Tap Upload Audio above to pick an audio file" })
+              ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-white/10", children: filteredDeviceSongs.map((song) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => void handleSelectReplacementAudio(song),
+                  className: "w-full min-h-[58px] px-3 py-2.5 flex items-center justify-between gap-3 hover:bg-white/10 rounded-xl transition-colors cursor-pointer text-left",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 min-w-0", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-4 h-4" }) }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs sm:text-sm font-semibold text-white truncate", children: song.title || song.displayName }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] text-slate-400 truncate", children: song.artist || song.displayName })
+                      ] })
+                    ] }),
+                    song.durationMs > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-mono tabular-nums text-slate-400 shrink-0", children: formatTime(song.durationMs / 1e3) })
+                  ]
+                },
+                song.id
+              )) }) }),
+              activeSplitPicker === "video" && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: permissionDenied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-10 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "w-10 h-10 text-amber-400 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-white", children: "Video Permission Required" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void loadDeviceVideos(),
+                    className: "min-h-[44px] px-5 rounded-xl bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer",
+                    children: "Allow Video Access"
+                  }
+                )
+              ] }) : isLoadingLibrary ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 font-mono", children: "Scanning phone videos..." })
+              ] }) : filteredPickerVideos.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Film, { className: "w-10 h-10 text-slate-600 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-300", children: "No videos found · Tap Upload Video above" })
+              ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "dark grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3", children: filteredPickerVideos.map((vid) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                VideoThumbnailCard,
+                {
+                  video: vid,
+                  isSelected: false,
+                  onSelect: (selected) => void appendVideoToTimeline(selected)
+                },
+                `pick-${vid.id}`
+              )) }) }),
+              activeSplitPicker === "image" && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: imagePermissionDenied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-10 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "w-10 h-10 text-amber-400 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-white", children: "Photos Permission Required" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 max-w-sm mx-auto", children: "Allow photos & images access so BeatPulse can show all images on your phone." }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => void loadDeviceImages(),
+                    className: "min-h-[44px] px-5 rounded-xl bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer",
+                    children: "Allow Photos Access"
+                  }
+                )
+              ] }) : isLoadingImagePicker ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 font-mono", children: "Scanning phone images..." })
+              ] }) : filteredDeviceImages.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 text-center space-y-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Image$1, { className: "w-10 h-10 text-slate-600 mx-auto" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-300", children: "No images found · Tap Upload Image above" })
+              ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3", children: filteredDeviceImages.map((img) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                ImageThumbnailCard,
+                {
+                  image: img,
+                  onSelect: (selected) => void appendImageToTimeline(selected)
+                },
+                `img-${img.id}`
+              )) }) })
+            ] })
+          ] })
+        ]
       }
     ),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl min-w-0", children: [

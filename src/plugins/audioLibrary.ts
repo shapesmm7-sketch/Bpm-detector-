@@ -26,6 +26,19 @@ export interface VideoTrackItem {
   thumbnailUrl?: string;
 }
 
+export interface ImageTrackItem {
+  id: string;
+  title: string;
+  displayName: string;
+  width: number;
+  height: number;
+  size: number;
+  mimeType: string;
+  uri: string;
+  webUrl?: string;
+  thumbnailUrl?: string;
+}
+
 export interface ExternalMediaPayload {
   requestId: string;
   mediaKind: 'audio' | 'video';
@@ -59,6 +72,23 @@ export interface SetDefaultPlayerResult extends DefaultPlayerStatus {
 
 export type AppThemeMode = 'dark' | 'light' | 'system';
 
+export interface VideoTrimResult {
+  saved: boolean;
+  displayPath: string;
+  video: VideoTrackItem;
+}
+
+export interface VideoSplitResult {
+  saved: boolean;
+  displayPaths: string[];
+  videos: VideoTrackItem[];
+}
+
+export interface VideoSegmentRange {
+  startMs: number;
+  endMs: number;
+}
+
 interface AudioLibraryPluginInterface {
   getAllAudioFiles(): Promise<{
     granted: boolean;
@@ -67,6 +97,10 @@ interface AudioLibraryPluginInterface {
   getAllVideoFiles(): Promise<{
     granted: boolean;
     videos: VideoTrackItem[];
+  }>;
+  getAllImageFiles(): Promise<{
+    granted: boolean;
+    images: ImageTrackItem[];
   }>;
   prepareAudioFile(options: {
     uri: string;
@@ -78,7 +112,8 @@ interface AudioLibraryPluginInterface {
   prepareMediaFile(options: {
     uri: string;
     displayName?: string;
-    mediaKind?: 'audio' | 'video';
+    mediaKind?: 'audio' | 'video' | 'image';
+    keepAlive?: boolean;
   }): Promise<{
     filePath?: string;
     localUrl: string;
@@ -90,6 +125,33 @@ interface AudioLibraryPluginInterface {
     filePath?: string;
     localUrl: string;
   }>;
+  getImageThumbnail(options: {
+    id: string;
+    uri: string;
+  }): Promise<{
+    filePath?: string;
+    localUrl: string;
+  }>;
+  trimVideoLossless(options: {
+    uri: string;
+    displayName?: string;
+    title?: string;
+    startMs: number;
+    endMs: number;
+  }): Promise<VideoTrimResult>;
+  splitVideoLossless(options: {
+    uri: string;
+    displayName?: string;
+    title?: string;
+    splitMs: number;
+    keepPart?: 'both' | 'part1' | 'part2';
+  }): Promise<VideoSplitResult>;
+  exportVideoSegmentsLossless(options: {
+    uri: string;
+    displayName?: string;
+    title?: string;
+    segments: VideoSegmentRange[];
+  }): Promise<VideoTrimResult>;
   consumePendingExternalMedia(): Promise<{
     media: ExternalMediaPayload | null;
   }>;
@@ -136,6 +198,14 @@ interface AudioLibraryPluginInterface {
   cancelAudioExport(options: {
     exportId: string;
   }): Promise<void>;
+  finishVideoExport(options: {
+    exportId: string;
+    fileName: string;
+    mimeType: string;
+    title?: string;
+    durationMs?: number;
+    resolution?: string;
+  }): Promise<VideoTrimResult>;
 }
 
 export const AudioLibrary = registerPlugin<AudioLibraryPluginInterface>('AudioLibrary');
@@ -213,5 +283,61 @@ export async function saveExportedAudioBlob(
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   onProgress?.(100);
+  return { displayPath: fileName };
+}
+
+/**
+ * Saves a composed video Blob (multi-clip / images / replaced audio) locally:
+ * - On native Android: streams in 384 KB chunks into Android MediaStore Movies/BeatPulse/.
+ * - On Web: triggers a browser file download.
+ */
+export async function saveExportedVideoBlob(
+  blob: Blob,
+  fileName: string,
+  title: string,
+  durationMs: number,
+  resolution: string
+): Promise<{ displayPath: string; video?: VideoTrackItem }> {
+  if (isNativeAndroid()) {
+    const { exportId } = await AudioLibrary.beginAudioExport();
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const chunkBytes = 384 * 1024;
+      const total = bytes.length;
+
+      for (let offset = 0; offset < total; offset += chunkBytes) {
+        const slice = bytes.subarray(offset, Math.min(offset + chunkBytes, total));
+        const base64Chunk = uint8ToBase64(slice);
+        await AudioLibrary.appendAudioExportChunk({ exportId, base64Chunk });
+      }
+
+      const result = await AudioLibrary.finishVideoExport({
+        exportId,
+        fileName,
+        mimeType: blob.type || 'video/mp4',
+        title,
+        durationMs: Math.round(durationMs),
+        resolution,
+      });
+      return { displayPath: result.displayPath, video: result.video };
+    } catch (err) {
+      try {
+        await AudioLibrary.cancelAudioExport({ exportId });
+      } catch {
+        // ignore cleanup error
+      }
+      throw err;
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return { displayPath: fileName };
 }
