@@ -51,6 +51,246 @@ function formatSize(bytes: number): string {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
+function formatQualityLabel(resolution: string): string {
+  if (!resolution) return '';
+  const parts = resolution.split(/[x×]/i).map((p) => parseInt(p.trim(), 10));
+  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return '';
+  const shortSide = Math.min(parts[0], parts[1]);
+  if (shortSide >= 2160) return '4K';
+  if (shortSide >= 1440) return '1440p';
+  if (shortSide >= 1080) return '1080p';
+  if (shortSide >= 720) return '720p';
+  if (shortSide >= 480) return '480p';
+  return 'SD';
+}
+
+const videoThumbnailCache = new Map<string, string>();
+let activeThumbJobs = 0;
+const thumbWaitQueue: Array<() => void> = [];
+
+async function withThumbnailSlot<T>(task: () => Promise<T>): Promise<T> {
+  if (activeThumbJobs >= 3) {
+    await new Promise<void>((resolve) => thumbWaitQueue.push(resolve));
+  }
+  activeThumbJobs++;
+  try {
+    return await task();
+  } finally {
+    activeThumbJobs--;
+    const next = thumbWaitQueue.shift();
+    if (next) next();
+  }
+}
+
+function extractWebVideoThumbnail(srcUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const tempVideo = document.createElement('video');
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
+    tempVideo.preload = 'metadata';
+
+    let settled = false;
+    const finish = (dataUrl: string) => {
+      if (settled) return;
+      settled = true;
+      tempVideo.removeAttribute('src');
+      tempVideo.load();
+      resolve(dataUrl);
+    };
+
+    const timer = window.setTimeout(() => finish(''), 5000);
+
+    tempVideo.onloadedmetadata = () => {
+      const targetTime =
+        isFinite(tempVideo.duration) && tempVideo.duration > 1 ? Math.min(1.0, tempVideo.duration * 0.15) : 0;
+      if (targetTime > 0) {
+        tempVideo.currentTime = targetTime;
+      } else {
+        // Trigger frame capture cleanly on loadeddata
+      }
+    };
+
+    const captureFrame = () => {
+      window.clearTimeout(timer);
+      try {
+        const vw = tempVideo.videoWidth || 320;
+        const vh = tempVideo.videoHeight || 180;
+        const scale = Math.min(1, 360 / Math.max(vw, vh));
+        const cw = Math.max(1, Math.round(vw * scale));
+        const ch = Math.max(1, Math.round(vh * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(tempVideo, 0, 0, cw, ch);
+          finish(canvas.toDataURL('image/jpeg', 0.78));
+          return;
+        }
+      } catch {
+        // ignore canvas capture errors
+      }
+      finish('');
+    };
+
+    tempVideo.onseeked = captureFrame;
+    tempVideo.onloadeddata = () => {
+      if (!isFinite(tempVideo.duration) || tempVideo.duration <= 1) {
+        captureFrame();
+      }
+    };
+    tempVideo.onerror = () => {
+      window.clearTimeout(timer);
+      finish('');
+    };
+
+    tempVideo.src = srcUrl;
+  });
+}
+
+interface VideoThumbnailCardProps {
+  video: VideoTrackItem;
+  isSelected: boolean;
+  onSelect: (video: VideoTrackItem) => void;
+}
+
+const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
+  video,
+  isSelected,
+  onSelect,
+}) => {
+  const cardRef = useRef<HTMLButtonElement | null>(null);
+  const [thumbUrl, setThumbUrl] = useState<string>(
+    () => video.thumbnailUrl || videoThumbnailCache.get(video.id) || ''
+  );
+  const [hasFailed, setHasFailed] = useState<boolean>(false);
+
+  useEffect(() => {
+    const cached = video.thumbnailUrl || videoThumbnailCache.get(video.id);
+    if (cached) {
+      setThumbUrl(cached);
+      return;
+    }
+
+    const node = cardRef.current;
+    if (!node) return;
+
+    let cancelled = false;
+    const loadThumb = async () => {
+      const url = await withThumbnailSlot(async () => {
+        if (cancelled) return '';
+        if (video.webUrl) {
+          return await extractWebVideoThumbnail(video.webUrl);
+        }
+        if (isNativeAndroid()) {
+          try {
+            const res = await AudioLibrary.getVideoThumbnail({
+              id: video.id,
+              uri: video.uri,
+            });
+            return res.filePath ? resolvePlayableAudioUrl(res) : res.localUrl || '';
+          } catch {
+            return '';
+          }
+        }
+        return '';
+      });
+
+      if (!cancelled && url) {
+        videoThumbnailCache.set(video.id, url);
+        setThumbUrl(url);
+      }
+    };
+
+    if (typeof IntersectionObserver === 'undefined') {
+      void loadThumb();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          void loadThumb();
+        }
+      },
+      { rootMargin: '220px' }
+    );
+
+    observer.observe(node);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [video.id, video.uri, video.webUrl, video.thumbnailUrl]);
+
+  const qualityLabel = formatQualityLabel(video.resolution);
+  const durationLabel = video.durationMs > 0 ? formatTime(video.durationMs / 1000) : '';
+  const sizeLabel = formatSize(video.size);
+
+  return (
+    <button
+      ref={cardRef}
+      type="button"
+      onClick={() => onSelect(video)}
+      className={`group text-left flex flex-col gap-1.5 min-w-0 cursor-pointer rounded-xl p-1.5 transition-colors ${
+        isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-800/50'
+      }`}
+    >
+      <div
+        className={`relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border ${
+          isSelected
+            ? 'border-emerald-400 ring-1 ring-emerald-400/60'
+            : 'border-slate-800 group-hover:border-slate-700'
+        }`}
+      >
+        {thumbUrl && !hasFailed ? (
+          <img
+            src={thumbUrl}
+            alt={video.title || video.displayName}
+            referrerPolicy="no-referrer"
+            onError={() => setHasFailed(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
+            <Video className="w-7 h-7 text-slate-700" />
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/35 pointer-events-none" />
+
+        {qualityLabel && (
+          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-mono font-bold text-white leading-none">
+            {qualityLabel}
+          </span>
+        )}
+
+        {durationLabel && (
+          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono font-semibold tabular-nums text-white leading-none">
+            {durationLabel}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 px-0.5">
+        <p
+          className={`text-xs sm:text-sm font-semibold truncate ${
+            isSelected ? 'text-emerald-300' : 'text-slate-100'
+          }`}
+        >
+          {video.title || video.displayName}
+        </p>
+        <p className="text-[11px] font-mono tabular-nums text-slate-400 truncate">
+          {sizeLabel || video.displayName}
+        </p>
+      </div>
+    </button>
+  );
+};
+
 const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
 
 export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
@@ -737,54 +977,15 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             )}
           </div>
         ) : (
-          <div className="divide-y divide-slate-800/70">
-            {filteredVideos.map((vid) => {
-              const isSelected = currentVideo?.id === vid.id;
-              return (
-                <button
-                  key={vid.id}
-                  type="button"
-                  onClick={() => void playVideoItem(vid)}
-                  className={`w-full min-h-[60px] px-4 py-3 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                    isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div
-                      className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
-                        isSelected
-                          ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-                          : 'bg-slate-950 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <Play className="w-4 h-4 fill-current ml-0.5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm font-semibold truncate ${
-                          isSelected ? 'text-emerald-300' : 'text-slate-100'
-                        }`}
-                      >
-                        {vid.title || vid.displayName}
-                      </p>
-                      <p className="text-xs text-slate-400 truncate">
-                        {vid.resolution ? `${vid.resolution} · ` : ''}
-                        {vid.displayName}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0 font-mono tabular-nums text-[11px] text-slate-400 space-y-0.5">
-                    {vid.durationMs > 0 && (
-                      <div className="text-emerald-400 font-semibold">
-                        {formatTime(vid.durationMs / 1000)}
-                      </div>
-                    )}
-                    {vid.size > 0 && <div>{formatSize(vid.size)}</div>}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 p-3 sm:p-4">
+            {filteredVideos.map((vid) => (
+              <VideoThumbnailCard
+                key={vid.id}
+                video={vid}
+                isSelected={currentVideo?.id === vid.id}
+                onSelect={(selected) => void playVideoItem(selected)}
+              />
+            ))}
           </div>
         )}
       </section>

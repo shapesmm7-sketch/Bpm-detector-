@@ -27145,9 +27145,6 @@ const StandaloneAudioPlayer = ({
     }
     const merged = [...added, ...songs];
     setSongs(merged);
-    if (!currentTrack && added[0]) {
-      void playTrack(added[0]);
-    }
   };
   const cycleRepeat = () => {
     setRepeatMode((prev) => prev === "off" ? "all" : prev === "all" ? "one" : "off");
@@ -27185,43 +27182,37 @@ const StandaloneAudioPlayer = ({
         }
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-5 overflow-hidden min-w-0", children: [
+    currentTrack && /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-emerald-500/35 rounded-2xl p-5 shadow-2xl space-y-5 overflow-hidden min-w-0", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 min-w-0", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3.5 min-w-0 flex-1", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0", children: isLoadingTrack ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-6 h-6" }) }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base sm:text-lg font-bold text-slate-100 truncate", children: currentTrack ? currentTrack.title || currentTrack.displayName : "Audio Player" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 truncate", children: currentTrack ? `${currentTrack.artist}${currentTrack.album ? ` · ${currentTrack.album}` : ""}` : songs.length > 0 ? `Select any song below · ${songs.length} tracks` : "Play songs from your phone library" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base sm:text-lg font-bold text-slate-100 truncate", children: currentTrack.title || currentTrack.displayName }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 truncate", children: [
+              currentTrack.artist,
+              currentTrack.album ? ` · ${currentTrack.album}` : ""
+            ] })
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2 shrink-0", children: isNativeAndroid() ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => void loadDeviceAudios(),
-            disabled: isLoadingLibrary,
-            className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60",
-            title: "Refresh Phone Audio List",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: `w-4 h-4 text-emerald-400 ${isLoadingLibrary ? "animate-spin" : ""}` }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden sm:inline", children: "Refresh" })
-            ]
-          }
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
             onClick: () => {
-              var _a2;
-              return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+              if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+              }
+              setIsPlaying(false);
+              setCurrentTime(0);
+              setCurrentTrack(null);
             },
-            className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Audio" })
-            ]
+            className: "min-w-[44px] min-h-[44px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0",
+            title: "Close Audio Player",
+            "aria-label": "Close Audio Player",
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
           }
-        ) })
+        )
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27351,17 +27342,51 @@ const StandaloneAudioPlayer = ({
       ] }),
       errorMessage && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs", children: errorMessage })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl min-w-0", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold text-slate-100", children: "Phone Audio Library" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 font-mono tabular-nums", children: [
-            filteredSongs.length,
-            " ",
-            filteredSongs.length === 1 ? "audio file" : "audio files"
-          ] })
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl min-w-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 sm:p-5 border-b border-slate-800 space-y-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-5 h-5" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base sm:text-lg font-bold text-slate-100 truncate", children: "Phone Audio Library" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 font-mono tabular-nums truncate", children: [
+                filteredSongs.length,
+                " ",
+                filteredSongs.length === 1 ? "song" : "songs",
+                " · Tap any song to play"
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "shrink-0", children: isNativeAndroid() ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => void loadDeviceAudios(),
+              disabled: isLoadingLibrary,
+              className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60",
+              title: "Refresh Phone Audio List",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: `w-4 h-4 text-emerald-400 ${isLoadingLibrary ? "animate-spin" : ""}` }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden sm:inline", children: "Refresh" })
+              ]
+            }
+          ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                var _a2;
+                return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+              },
+              className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Audio" })
+              ]
+            }
+          ) })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex-1 sm:max-w-xs", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "input",
@@ -27369,8 +27394,8 @@ const StandaloneAudioPlayer = ({
               type: "text",
               value: searchQuery,
               onChange: (e) => setSearchQuery(e.target.value),
-              placeholder: "Search songs...",
-              className: "w-full min-h-[42px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              placeholder: "Search songs on your phone...",
+              className: "w-full min-h-[44px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             }
           ),
           searchQuery && /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -27380,7 +27405,7 @@ const StandaloneAudioPlayer = ({
               onClick: () => setSearchQuery(""),
               className: "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-1",
               "aria-label": "Clear audio search",
-              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-3.5 h-3.5" })
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
             }
           )
         ] })
@@ -27419,7 +27444,7 @@ const StandaloneAudioPlayer = ({
             ]
           }
         )
-      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-slate-800/70 max-h-[420px] overflow-y-auto", children: filteredSongs.map((song) => {
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-slate-800/70", children: filteredSongs.map((song) => {
         const isSelected = (currentTrack == null ? void 0 : currentTrack.id) === song.id;
         return /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
@@ -27479,6 +27504,199 @@ function formatSize(bytes) {
   if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
 }
+function formatQualityLabel(resolution) {
+  if (!resolution) return "";
+  const parts = resolution.split(/[x×]/i).map((p) => parseInt(p.trim(), 10));
+  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return "";
+  const shortSide = Math.min(parts[0], parts[1]);
+  if (shortSide >= 2160) return "4K";
+  if (shortSide >= 1440) return "1440p";
+  if (shortSide >= 1080) return "1080p";
+  if (shortSide >= 720) return "720p";
+  if (shortSide >= 480) return "480p";
+  return "SD";
+}
+const videoThumbnailCache = /* @__PURE__ */ new Map();
+let activeThumbJobs = 0;
+const thumbWaitQueue = [];
+async function withThumbnailSlot(task) {
+  if (activeThumbJobs >= 3) {
+    await new Promise((resolve) => thumbWaitQueue.push(resolve));
+  }
+  activeThumbJobs++;
+  try {
+    return await task();
+  } finally {
+    activeThumbJobs--;
+    const next = thumbWaitQueue.shift();
+    if (next) next();
+  }
+}
+function extractWebVideoThumbnail(srcUrl) {
+  return new Promise((resolve) => {
+    const tempVideo = document.createElement("video");
+    tempVideo.muted = true;
+    tempVideo.playsInline = true;
+    tempVideo.preload = "metadata";
+    let settled = false;
+    const finish = (dataUrl) => {
+      if (settled) return;
+      settled = true;
+      tempVideo.removeAttribute("src");
+      tempVideo.load();
+      resolve(dataUrl);
+    };
+    const timer = window.setTimeout(() => finish(""), 5e3);
+    tempVideo.onloadedmetadata = () => {
+      const targetTime = isFinite(tempVideo.duration) && tempVideo.duration > 1 ? Math.min(1, tempVideo.duration * 0.15) : 0;
+      if (targetTime > 0) {
+        tempVideo.currentTime = targetTime;
+      }
+    };
+    const captureFrame = () => {
+      window.clearTimeout(timer);
+      try {
+        const vw = tempVideo.videoWidth || 320;
+        const vh = tempVideo.videoHeight || 180;
+        const scale = Math.min(1, 360 / Math.max(vw, vh));
+        const cw = Math.max(1, Math.round(vw * scale));
+        const ch = Math.max(1, Math.round(vh * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(tempVideo, 0, 0, cw, ch);
+          finish(canvas.toDataURL("image/jpeg", 0.78));
+          return;
+        }
+      } catch {
+      }
+      finish("");
+    };
+    tempVideo.onseeked = captureFrame;
+    tempVideo.onloadeddata = () => {
+      if (!isFinite(tempVideo.duration) || tempVideo.duration <= 1) {
+        captureFrame();
+      }
+    };
+    tempVideo.onerror = () => {
+      window.clearTimeout(timer);
+      finish("");
+    };
+    tempVideo.src = srcUrl;
+  });
+}
+const VideoThumbnailCard = ({
+  video,
+  isSelected,
+  onSelect
+}) => {
+  const cardRef = reactExports.useRef(null);
+  const [thumbUrl, setThumbUrl] = reactExports.useState(
+    () => video.thumbnailUrl || videoThumbnailCache.get(video.id) || ""
+  );
+  const [hasFailed, setHasFailed] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    const cached = video.thumbnailUrl || videoThumbnailCache.get(video.id);
+    if (cached) {
+      setThumbUrl(cached);
+      return;
+    }
+    const node = cardRef.current;
+    if (!node) return;
+    let cancelled = false;
+    const loadThumb = async () => {
+      const url = await withThumbnailSlot(async () => {
+        if (cancelled) return "";
+        if (video.webUrl) {
+          return await extractWebVideoThumbnail(video.webUrl);
+        }
+        if (isNativeAndroid()) {
+          try {
+            const res = await AudioLibrary.getVideoThumbnail({
+              id: video.id,
+              uri: video.uri
+            });
+            return res.filePath ? resolvePlayableAudioUrl(res) : res.localUrl || "";
+          } catch {
+            return "";
+          }
+        }
+        return "";
+      });
+      if (!cancelled && url) {
+        videoThumbnailCache.set(video.id, url);
+        setThumbUrl(url);
+      }
+    };
+    if (typeof IntersectionObserver === "undefined") {
+      void loadThumb();
+      return () => {
+        cancelled = true;
+      };
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          void loadThumb();
+        }
+      },
+      { rootMargin: "220px" }
+    );
+    observer.observe(node);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [video.id, video.uri, video.webUrl, video.thumbnailUrl]);
+  const qualityLabel = formatQualityLabel(video.resolution);
+  const durationLabel = video.durationMs > 0 ? formatTime(video.durationMs / 1e3) : "";
+  const sizeLabel = formatSize(video.size);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      ref: cardRef,
+      type: "button",
+      onClick: () => onSelect(video),
+      className: `group text-left flex flex-col gap-1.5 min-w-0 cursor-pointer rounded-xl p-1.5 transition-colors ${isSelected ? "bg-emerald-500/10" : "hover:bg-slate-800/50"}`,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: `relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border ${isSelected ? "border-emerald-400 ring-1 ring-emerald-400/60" : "border-slate-800 group-hover:border-slate-700"}`,
+            children: [
+              thumbUrl && !hasFailed ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: thumbUrl,
+                  alt: video.title || video.displayName,
+                  referrerPolicy: "no-referrer",
+                  onError: () => setHasFailed(true),
+                  className: "w-full h-full object-cover"
+                }
+              ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Video, { className: "w-7 h-7 text-slate-700" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/35 pointer-events-none" }),
+              qualityLabel && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-mono font-bold text-white leading-none", children: qualityLabel }),
+              durationLabel && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono font-semibold tabular-nums text-white leading-none", children: durationLabel })
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 px-0.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "p",
+            {
+              className: `text-xs sm:text-sm font-semibold truncate ${isSelected ? "text-emerald-300" : "text-slate-100"}`,
+              children: video.title || video.displayName
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-mono tabular-nums text-slate-400 truncate", children: sizeLabel || video.displayName })
+        ] })
+      ]
+    }
+  );
+};
 const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
 const StandaloneVideoPlayer = ({
   isActiveTab,
@@ -28104,46 +28322,15 @@ const StandaloneVideoPlayer = ({
             ]
           }
         )
-      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-slate-800/70", children: filteredVideos.map((vid) => {
-        const isSelected = (currentVideo == null ? void 0 : currentVideo.id) === vid.id;
-        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => void playVideoItem(vid),
-            className: `w-full min-h-[60px] px-4 py-3 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${isSelected ? "bg-emerald-500/10" : "hover:bg-slate-800/60"}`,
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 flex-1 min-w-0", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "div",
-                  {
-                    className: `w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isSelected ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-400"}`,
-                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 fill-current ml-0.5" })
-                  }
-                ),
-                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsx(
-                    "p",
-                    {
-                      className: `text-sm font-semibold truncate ${isSelected ? "text-emerald-300" : "text-slate-100"}`,
-                      children: vid.title || vid.displayName
-                    }
-                  ),
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 truncate", children: [
-                    vid.resolution ? `${vid.resolution} · ` : "",
-                    vid.displayName
-                  ] })
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right shrink-0 font-mono tabular-nums text-[11px] text-slate-400 space-y-0.5", children: [
-                vid.durationMs > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-emerald-400 font-semibold", children: formatTime(vid.durationMs / 1e3) }),
-                vid.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: formatSize(vid.size) })
-              ] })
-            ]
-          },
-          vid.id
-        );
-      }) })
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 p-3 sm:p-4", children: filteredVideos.map((vid) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+        VideoThumbnailCard,
+        {
+          video: vid,
+          isSelected: (currentVideo == null ? void 0 : currentVideo.id) === vid.id,
+          onSelect: (selected) => void playVideoItem(selected)
+        },
+        vid.id
+      )) })
     ] })
   ] });
 };

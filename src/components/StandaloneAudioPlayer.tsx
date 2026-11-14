@@ -281,9 +281,6 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     }
     const merged = [...added, ...songs];
     setSongs(merged);
-    if (!currentTrack && added[0]) {
-      void playTrack(added[0]);
-    }
   };
 
   const cycleRepeat = () => {
@@ -320,55 +317,47 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         }}
       />
 
-      {/* Standalone Audio Player Deck */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-5 overflow-hidden min-w-0">
-        <div className="flex items-center justify-between gap-3 min-w-0">
-          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-              {isLoadingTrack ? (
-                <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
-              ) : (
-                <Music className="w-6 h-6" />
-              )}
+      {/* Audio Player Deck — visible only once user taps a song */}
+      {currentTrack && (
+        <section className="bg-slate-900 border border-emerald-500/35 rounded-2xl p-5 shadow-2xl space-y-5 overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                {isLoadingTrack ? (
+                  <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+                ) : (
+                  <Music className="w-6 h-6" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                  {currentTrack.title || currentTrack.displayName}
+                </h2>
+                <p className="text-xs text-slate-400 truncate">
+                  {currentTrack.artist}
+                  {currentTrack.album ? ` · ${currentTrack.album}` : ''}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base sm:text-lg font-bold text-slate-100 truncate">
-                {currentTrack ? currentTrack.title || currentTrack.displayName : 'Audio Player'}
-              </h2>
-              <p className="text-xs text-slate-400 truncate">
-                {currentTrack
-                  ? `${currentTrack.artist}${currentTrack.album ? ` · ${currentTrack.album}` : ''}`
-                  : songs.length > 0
-                  ? `Select any song below · ${songs.length} tracks`
-                  : 'Play songs from your phone library'}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {isNativeAndroid() ? (
-              <button
-                type="button"
-                onClick={() => void loadDeviceAudios()}
-                disabled={isLoadingLibrary}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60"
-                title="Refresh Phone Audio List"
-              >
-                <RefreshCw className={`w-4 h-4 text-emerald-400 ${isLoadingLibrary ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => webFileInputRef.current?.click()}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-              >
-                <FolderPlus className="w-4 h-4" />
-                <span>Add Audio</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.pause();
+                  audioRef.current.currentTime = 0;
+                }
+                setIsPlaying(false);
+                setCurrentTime(0);
+                setCurrentTrack(null);
+              }}
+              className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title="Close Audio Player"
+              aria-label="Close Audio Player"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        </div>
 
         {/* Timeline Scrubber */}
         <div className="space-y-1.5">
@@ -513,26 +502,60 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             {errorMessage}
           </div>
         )}
-      </section>
+        </section>
+      )}
 
       {/* Phone Audio Library List */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl min-w-0">
-        <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-100">Phone Audio Library</h3>
-            <p className="text-xs text-slate-400 font-mono tabular-nums">
-              {filteredSongs.length} {filteredSongs.length === 1 ? 'audio file' : 'audio files'}
-            </p>
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl min-w-0">
+        <div className="p-4 sm:p-5 border-b border-slate-800 space-y-4">
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                <Music className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                  Phone Audio Library
+                </h2>
+                <p className="text-xs text-slate-400 font-mono tabular-nums truncate">
+                  {filteredSongs.length} {filteredSongs.length === 1 ? 'song' : 'songs'} · Tap any song to play
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0">
+              {isNativeAndroid() ? (
+                <button
+                  type="button"
+                  onClick={() => void loadDeviceAudios()}
+                  disabled={isLoadingLibrary}
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60"
+                  title="Refresh Phone Audio List"
+                >
+                  <RefreshCw className={`w-4 h-4 text-emerald-400 ${isLoadingLibrary ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => webFileInputRef.current?.click()}
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  <span>Add Audio</span>
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="relative flex-1 sm:max-w-xs">
+          <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search songs..."
-              className="w-full min-h-[42px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              placeholder="Search songs on your phone..."
+              className="w-full min-h-[44px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
             />
             {searchQuery && (
               <button
@@ -541,7 +564,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-1"
                 aria-label="Clear audio search"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -585,7 +608,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             )}
           </div>
         ) : (
-          <div className="divide-y divide-slate-800/70 max-h-[420px] overflow-y-auto">
+          <div className="divide-y divide-slate-800/70">
             {filteredSongs.map((song) => {
               const isSelected = currentTrack?.id === song.id;
               return (

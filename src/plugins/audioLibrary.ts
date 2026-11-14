@@ -23,6 +23,7 @@ export interface VideoTrackItem {
   resolution: string;
   uri: string;
   webUrl?: string;
+  thumbnailUrl?: string;
 }
 
 interface AudioLibraryPluginInterface {
@@ -45,6 +46,13 @@ interface AudioLibraryPluginInterface {
     uri: string;
     displayName?: string;
     mediaKind?: 'audio' | 'video';
+  }): Promise<{
+    filePath?: string;
+    localUrl: string;
+  }>;
+  getVideoThumbnail(options: {
+    id: string;
+    uri: string;
   }): Promise<{
     filePath?: string;
     localUrl: string;

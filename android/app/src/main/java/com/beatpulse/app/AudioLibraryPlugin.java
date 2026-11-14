@@ -6,12 +6,15 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Size;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -48,6 +51,7 @@ public class AudioLibraryPlugin extends Plugin {
     private File lastPlayerVideoFile;
     private final Map<String, File> pendingExports = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService thumbExecutor = Executors.newFixedThreadPool(3);
 
     @Override
     public void load() {
@@ -459,6 +463,119 @@ public class AudioLibraryPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getVideoThumbnail(PluginCall call) {
+        String id = call.getString("id", "");
+        String uriString = call.getString("uri");
+
+        if (uriString == null || uriString.isEmpty()) {
+            JSObject empty = new JSObject();
+            empty.put("localUrl", "");
+            call.resolve(empty);
+            return;
+        }
+
+        final String safeId = (id != null && !id.isEmpty() ? id : String.valueOf(uriString.hashCode()))
+            .replaceAll("[^a-zA-Z0-9_-]", "_");
+
+        thumbExecutor.execute(() -> {
+            Bitmap bitmap = null;
+            Bitmap scaled = null;
+            try {
+                File thumbDir = new File(getContext().getCacheDir(), "video_thumbs");
+                if (!thumbDir.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    thumbDir.mkdirs();
+                }
+
+                File thumbFile = new File(thumbDir, "v_" + safeId + ".jpg");
+                if (thumbFile.exists() && thumbFile.length() > 0) {
+                    String path = thumbFile.getAbsolutePath();
+                    JSObject cached = new JSObject();
+                    cached.put("filePath", path);
+                    cached.put("localUrl", bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + path);
+                    call.resolve(cached);
+                    return;
+                }
+
+                Uri contentUri = Uri.parse(uriString);
+                ContentResolver resolver = getContext().getContentResolver();
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        bitmap = resolver.loadThumbnail(contentUri, new Size(400, 240), null);
+                    } catch (Exception ignored) {
+                        bitmap = null;
+                    }
+                }
+
+                if (bitmap == null) {
+                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                    try {
+                        retriever.setDataSource(getContext(), contentUri);
+                        bitmap = retriever.getFrameAtTime(1000000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        if (bitmap == null) {
+                            bitmap = retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                        }
+                    } catch (Exception ignored) {
+                        bitmap = null;
+                    } finally {
+                        try {
+                            retriever.release();
+                        } catch (Exception ignored) {
+                            // ignore release error
+                        }
+                    }
+                }
+
+                if (bitmap == null) {
+                    JSObject empty = new JSObject();
+                    empty.put("localUrl", "");
+                    call.resolve(empty);
+                    return;
+                }
+
+                int w = bitmap.getWidth();
+                int h = bitmap.getHeight();
+                Bitmap toSave = bitmap;
+                if (w > 400 || h > 400) {
+                    float scale = Math.min(400f / w, 400f / h);
+                    int targetW = Math.max(1, Math.round(w * scale));
+                    int targetH = Math.max(1, Math.round(h * scale));
+                    scaled = Bitmap.createScaledBitmap(bitmap, targetW, targetH, true);
+                    toSave = scaled;
+                }
+
+                File tmpFile = new File(thumbDir, "v_" + safeId + "_" + System.nanoTime() + ".tmp");
+                try (FileOutputStream out = new FileOutputStream(tmpFile)) {
+                    toSave.compress(Bitmap.CompressFormat.JPEG, 78, out);
+                    out.flush();
+                }
+                if (!tmpFile.renameTo(thumbFile)) {
+                    //noinspection ResultOfMethodCallIgnored
+                    tmpFile.delete();
+                }
+
+                String filePath = thumbFile.getAbsolutePath();
+                JSObject result = new JSObject();
+                result.put("filePath", filePath);
+                result.put("localUrl", bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + filePath);
+                call.resolve(result);
+            } catch (Exception e) {
+                JSObject empty = new JSObject();
+                empty.put("localUrl", "");
+                call.resolve(empty);
+            } finally {
+                if (scaled != null && scaled != bitmap && !scaled.isRecycled()) {
+                    scaled.recycle();
+                }
+                if (bitmap != null && !bitmap.isRecycled()) {
+                    bitmap.recycle();
+                }
+            }
+        });
+    }
+
+    @PluginMethod
     public void beginAudioExport(PluginCall call) {
         executor.execute(() -> {
             try {
@@ -688,5 +805,6 @@ public class AudioLibraryPlugin extends Plugin {
         }
         pendingExports.clear();
         executor.shutdownNow();
+        thumbExecutor.shutdownNow();
     }
 }
