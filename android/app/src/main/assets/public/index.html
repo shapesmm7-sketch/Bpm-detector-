@@ -12,10 +12,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-DsBVxLxI.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-yaWKh8zv.css">
+    <meta name="theme-color" content="#020617" />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('beatpulse_theme') || 'dark';
+          var isDark =
+            saved === 'dark' ||
+            (saved === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          if (isDark) {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
+          }
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-IAPEqlGf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DCRgI628.css">
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-slate-950 min-h-screen">
+  <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-emerald-500 selection:text-slate-950 min-h-screen transition-colors">
     <div id="root"></div>
   </body>
 </html>

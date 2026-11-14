@@ -1,4 +1,4 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor, PluginListenerHandle, registerPlugin } from '@capacitor/core';
 
 export interface AudioTrackItem {
   id: string;
@@ -25,6 +25,39 @@ export interface VideoTrackItem {
   webUrl?: string;
   thumbnailUrl?: string;
 }
+
+export interface ExternalMediaPayload {
+  requestId: string;
+  mediaKind: 'audio' | 'video';
+  title: string;
+  displayName: string;
+  mimeType: string;
+  size: number;
+  durationMs: number;
+  resolution?: string;
+  uri: string;
+  filePath?: string;
+  localUrl: string;
+}
+
+export interface DefaultPlayerStatus {
+  supported: boolean;
+  isAudioDefault: boolean;
+  isVideoDefault: boolean;
+  audioDefaultApp: string | null;
+  audioDefaultPkg: string | null;
+  videoDefaultApp: string | null;
+  videoDefaultPkg: string | null;
+}
+
+export interface SetDefaultPlayerResult extends DefaultPlayerStatus {
+  action: 'prompted_chooser' | 'opened_clear_defaults' | 'already_default' | 'opened_settings';
+  target: 'audio' | 'video' | 'both';
+  lockedApp?: string;
+  lockedPackage?: string;
+}
+
+export type AppThemeMode = 'dark' | 'light' | 'system';
 
 interface AudioLibraryPluginInterface {
   getAllAudioFiles(): Promise<{
@@ -57,6 +90,33 @@ interface AudioLibraryPluginInterface {
     filePath?: string;
     localUrl: string;
   }>;
+  consumePendingExternalMedia(): Promise<{
+    media: ExternalMediaPayload | null;
+  }>;
+  getDefaultPlayerStatus(): Promise<DefaultPlayerStatus>;
+  setAsDefaultPlayer(options?: {
+    mediaType?: 'auto' | 'audio' | 'video';
+  }): Promise<SetDefaultPlayerResult>;
+  openDefaultAppsSettings(options?: {
+    packageName?: string;
+  }): Promise<{
+    opened: boolean;
+  }>;
+  setAppAppearance(options: {
+    theme: AppThemeMode;
+  }): Promise<{
+    applied: boolean;
+    theme: AppThemeMode;
+    isDark: boolean;
+  }>;
+  addListener(
+    eventName: 'externalMediaOpened',
+    listenerFunc: (payload: ExternalMediaPayload) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'defaultPlayerStatusChanged',
+    listenerFunc: (status: DefaultPlayerStatus) => void
+  ): Promise<PluginListenerHandle>;
   beginAudioExport(): Promise<{
     exportId: string;
   }>;

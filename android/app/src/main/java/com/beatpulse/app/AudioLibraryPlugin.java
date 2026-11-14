@@ -1,10 +1,18 @@
 package com.beatpulse.app;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.media.MediaMetadataRetriever;
@@ -13,13 +21,23 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.Size;
+import android.view.View;
+import android.view.Window;
+import android.webkit.MimeTypeMap;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.Bridge;
 import com.getcapacitor.JSArray;
@@ -34,6 +52,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,12 +62,18 @@ import java.util.concurrent.Executors;
 @CapacitorPlugin(name = "AudioLibrary")
 public class AudioLibraryPlugin extends Plugin {
 
+    private static final String PROBE_AUDIO_FILENAME = "beatpulse_default_setup_probe.mp3";
+    private static final String PROBE_VIDEO_FILENAME = "beatpulse_default_setup_probe.mp4";
+
     private ActivityResultLauncher<String> permissionLauncher;
     private String pendingCallId;
     private String pendingPermissionType = "audio";
     private File lastTempAudioFile;
     private File lastPlayerAudioFile;
     private File lastPlayerVideoFile;
+    private File lastExternalMediaFile;
+    private final Object pendingMediaLock = new Object();
+    private JSObject pendingExternalMedia;
     private final Map<String, File> pendingExports = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ExecutorService thumbExecutor = Executors.newFixedThreadPool(3);
@@ -93,6 +118,619 @@ public class AudioLibraryPlugin extends Plugin {
                 }
             }
         );
+
+        if (getActivity() != null) {
+            handleExternalIntent(getActivity().getIntent());
+        }
+    }
+
+    public void handleExternalIntent(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
+            return;
+        }
+        if (intent.getBooleanExtra("beatpulse_handled", false)) {
+            return;
+        }
+        Uri data = intent.getData();
+        if (data == null) {
+            return;
+        }
+        intent.putExtra("beatpulse_handled", true);
+
+        String uriString = data.toString();
+        if (uriString.contains("beatpulse_default_setup_probe")) {
+            JSObject status = buildDefaultPlayerStatus();
+            notifyListeners("defaultPlayerStatusChanged", status);
+            if (getActivity() != null) {
+                boolean audioSet = status.optBoolean("isAudioDefault", false);
+                boolean videoSet = status.optBoolean("isVideoDefault", false);
+                String msg = (audioSet || videoSet)
+                    ? "BeatPulse set as default player!"
+                    : "Choose 'Always' next time to set BeatPulse as default.";
+                getActivity().runOnUiThread(() ->
+                    Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show()
+                );
+            }
+            return;
+        }
+
+        final String intentMime = intent.getType();
+        executor.execute(() -> {
+            try {
+                ContentResolver resolver = getContext().getContentResolver();
+                String resolvedMime = intentMime;
+                if (resolvedMime == null || resolvedMime.isEmpty() || "*/*".equals(resolvedMime)) {
+                    resolvedMime = resolver.getType(data);
+                }
+
+                String displayName = null;
+                long size = 0;
+                String scheme = data.getScheme() != null ? data.getScheme().toLowerCase(Locale.US) : "";
+
+                if ("content".equals(scheme)) {
+                    try (Cursor cursor = resolver.query(
+                        data,
+                        new String[] { OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE },
+                        null,
+                        null,
+                        null
+                    )) {
+                        if (cursor != null && cursor.moveToFirst()) {
+                            int nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                            int sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE);
+                            if (nameIdx >= 0) {
+                                displayName = cursor.getString(nameIdx);
+                            }
+                            if (sizeIdx >= 0 && !cursor.isNull(sizeIdx)) {
+                                size = cursor.getLong(sizeIdx);
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // fallback below
+                    }
+                }
+
+                if (displayName == null || displayName.isEmpty()) {
+                    String lastSeg = data.getLastPathSegment();
+                    if (lastSeg != null && !lastSeg.isEmpty()) {
+                        int slash = lastSeg.lastIndexOf('/');
+                        displayName = slash >= 0 ? lastSeg.substring(slash + 1) : lastSeg;
+                    }
+                }
+
+                String ext = extractExtension(displayName, uriString, resolvedMime);
+                if (resolvedMime == null || resolvedMime.isEmpty() || "*/*".equals(resolvedMime)) {
+                    resolvedMime = inferMimeFromExtension(ext);
+                }
+
+                String mediaKind = determineMediaKind(resolvedMime, ext);
+                if (mediaKind == null) {
+                    return;
+                }
+
+                if (displayName == null || displayName.isEmpty()) {
+                    displayName = "video".equals(mediaKind) ? "external_video" + ext : "external_audio" + ext;
+                }
+
+                String title = displayName;
+                int dotIdx = title.lastIndexOf('.');
+                if (dotIdx > 0) {
+                    title = title.substring(0, dotIdx);
+                }
+
+                String filePath = null;
+                String localUrl;
+
+                if ("http".equals(scheme) || "https".equals(scheme)) {
+                    localUrl = uriString;
+                } else {
+                    // Check if file:// URI points to a directly readable local file
+                    if ("file".equals(scheme) && data.getPath() != null) {
+                        File directFile = new File(data.getPath());
+                        if (directFile.exists() && directFile.canRead()) {
+                            filePath = directFile.getAbsolutePath();
+                            if (size <= 0) {
+                                size = directFile.length();
+                            }
+                        }
+                    }
+
+                    // Check MediaStore DATA column for content:// URIs
+                    if (filePath == null && "content".equals(scheme)) {
+                        try (Cursor pathCursor = resolver.query(
+                            data,
+                            new String[] { MediaStore.MediaColumns.DATA },
+                            null,
+                            null,
+                            null
+                        )) {
+                            if (pathCursor != null && pathCursor.moveToFirst()) {
+                                int dataIdx = pathCursor.getColumnIndex(MediaStore.MediaColumns.DATA);
+                                if (dataIdx >= 0) {
+                                    String candidate = pathCursor.getString(dataIdx);
+                                    if (candidate != null && !candidate.isEmpty()) {
+                                        File directFile = new File(candidate);
+                                        if (directFile.exists() && directFile.canRead()) {
+                                            filePath = directFile.getAbsolutePath();
+                                            if (size <= 0) {
+                                                size = directFile.length();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception ignored) {
+                            filePath = null;
+                        }
+                    }
+
+                    // Fallback: copy stream into local cache while temporary content URI grant is active
+                    if (filePath == null) {
+                        if (lastExternalMediaFile != null && lastExternalMediaFile.exists()) {
+                            //noinspection ResultOfMethodCallIgnored
+                            lastExternalMediaFile.delete();
+                        }
+                        String safeExt = (ext != null && !ext.isEmpty()) ? ext : ("video".equals(mediaKind) ? ".mp4" : ".mp3");
+                        File outFile = new File(
+                            getContext().getCacheDir(),
+                            "beatpulse_external_" + mediaKind + "_" + System.currentTimeMillis() + safeExt
+                        );
+                        lastExternalMediaFile = outFile;
+
+                        try (InputStream in = resolver.openInputStream(data);
+                             FileOutputStream out = new FileOutputStream(outFile)) {
+                            if (in == null) {
+                                return;
+                            }
+                            byte[] buf = new byte[131072];
+                            int len;
+                            long totalWritten = 0;
+                            while ((len = in.read(buf)) != -1) {
+                                out.write(buf, 0, len);
+                                totalWritten += len;
+                            }
+                            out.flush();
+                            if (size <= 0) {
+                                size = totalWritten;
+                            }
+                        }
+                        filePath = outFile.getAbsolutePath();
+                    }
+
+                    localUrl = bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + filePath;
+                }
+
+                long durationMs = 0;
+                String resolution = "";
+                if (filePath != null) {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    try {
+                        mmr.setDataSource(filePath);
+                        String durStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                        if (durStr != null) {
+                            durationMs = Long.parseLong(durStr);
+                        }
+                        if ("video".equals(mediaKind)) {
+                            String vw = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+                            String vh = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                            if (vw != null && vh != null) {
+                                resolution = vw + "x" + vh;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // ignore metadata extraction errors
+                    } finally {
+                        try {
+                            mmr.release();
+                        } catch (Exception ignored) {
+                            // ignore
+                        }
+                    }
+                }
+
+                JSObject payload = new JSObject();
+                payload.put("requestId", UUID.randomUUID().toString());
+                payload.put("mediaKind", mediaKind);
+                payload.put("title", title);
+                payload.put("displayName", displayName);
+                payload.put("mimeType", resolvedMime != null ? resolvedMime : ("video".equals(mediaKind) ? "video/*" : "audio/*"));
+                payload.put("size", size);
+                payload.put("durationMs", durationMs);
+                payload.put("resolution", resolution);
+                payload.put("uri", uriString);
+                if (filePath != null) {
+                    payload.put("filePath", filePath);
+                }
+                payload.put("localUrl", localUrl);
+
+                synchronized (pendingMediaLock) {
+                    pendingExternalMedia = payload;
+                }
+                notifyListeners("externalMediaOpened", payload);
+            } catch (Exception e) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() ->
+                        Toast.makeText(getContext(), "Unable to open media file in BeatPulse", Toast.LENGTH_SHORT).show()
+                    );
+                }
+            }
+        });
+    }
+
+    @PluginMethod
+    public void consumePendingExternalMedia(PluginCall call) {
+        JSObject result = new JSObject();
+        synchronized (pendingMediaLock) {
+            result.put("media", pendingExternalMedia);
+            pendingExternalMedia = null;
+        }
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void getDefaultPlayerStatus(PluginCall call) {
+        call.resolve(buildDefaultPlayerStatus());
+    }
+
+    @PluginMethod
+    public void setAsDefaultPlayer(PluginCall call) {
+        if (getActivity() == null) {
+            call.reject("Activity unavailable");
+            return;
+        }
+
+        String requestedType = call.getString("mediaType", "auto");
+        DefaultResolution audioRes = resolveMediaDefault("audio/mpeg", PROBE_AUDIO_FILENAME);
+        DefaultResolution videoRes = resolveMediaDefault("video/mp4", PROBE_VIDEO_FILENAME);
+
+        String target;
+        DefaultResolution targetRes;
+
+        if ("audio".equals(requestedType)) {
+            target = "audio";
+            targetRes = audioRes;
+        } else if ("video".equals(requestedType)) {
+            target = "video";
+            targetRes = videoRes;
+        } else {
+            if (!audioRes.isDefault) {
+                target = "audio";
+                targetRes = audioRes;
+            } else if (!videoRes.isDefault) {
+                target = "video";
+                targetRes = videoRes;
+            } else {
+                JSObject already = buildDefaultPlayerStatus(audioRes, videoRes);
+                already.put("action", "already_default");
+                already.put("target", "both");
+                call.resolve(already);
+                return;
+            }
+        }
+
+        if (targetRes.isDefault) {
+            JSObject already = buildDefaultPlayerStatus(audioRes, videoRes);
+            already.put("action", "already_default");
+            already.put("target", target);
+            call.resolve(already);
+            return;
+        }
+
+        // If another app is already locked as the default handler, open its App Info so the user can tap Clear defaults
+        if (targetRes.otherPackage != null && !targetRes.otherPackage.isEmpty()) {
+            boolean opened = openAppDetailsSettingsInternal(targetRes.otherPackage);
+            if (!opened) {
+                openManageDefaultAppsInternal();
+            }
+            JSObject res = buildDefaultPlayerStatus(audioRes, videoRes);
+            res.put("action", "opened_clear_defaults");
+            res.put("target", target);
+            res.put("lockedApp", targetRes.otherAppName != null ? targetRes.otherAppName : targetRes.otherPackage);
+            res.put("lockedPackage", targetRes.otherPackage);
+            call.resolve(res);
+            return;
+        }
+
+        // No default set yet: launch raw ACTION_VIEW on probe media so Android shows "Open with BeatPulse -> Always"
+        try {
+            boolean isVideo = "video".equals(target);
+            File probeFile = ensureProbeFile(
+                isVideo ? PROBE_VIDEO_FILENAME : PROBE_AUDIO_FILENAME,
+                isVideo
+            );
+            Uri probeUri = FileProvider.getUriForFile(
+                getContext(),
+                getContext().getPackageName() + ".fileprovider",
+                probeFile
+            );
+            Intent viewIntent = new Intent(Intent.ACTION_VIEW);
+            viewIntent.setDataAndType(probeUri, isVideo ? "video/mp4" : "audio/mpeg");
+            viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(viewIntent);
+
+            JSObject res = buildDefaultPlayerStatus(audioRes, videoRes);
+            res.put("action", "prompted_chooser");
+            res.put("target", target);
+            call.resolve(res);
+        } catch (Exception e) {
+            openManageDefaultAppsInternal();
+            JSObject res = buildDefaultPlayerStatus(audioRes, videoRes);
+            res.put("action", "opened_settings");
+            res.put("target", target);
+            call.resolve(res);
+        }
+    }
+
+    @PluginMethod
+    public void openDefaultAppsSettings(PluginCall call) {
+        String pkg = call.getString("packageName");
+        boolean opened;
+        if (pkg != null && !pkg.isEmpty()) {
+            opened = openAppDetailsSettingsInternal(pkg);
+        } else {
+            opened = openManageDefaultAppsInternal();
+        }
+        JSObject res = new JSObject();
+        res.put("opened", opened);
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void setAppAppearance(PluginCall call) {
+        String rawTheme = call.getString("theme", "dark");
+        String theme = ("light".equals(rawTheme) || "system".equals(rawTheme)) ? rawTheme : "dark";
+
+        Context ctx = getContext();
+        SharedPreferences prefs = ctx.getSharedPreferences("beatpulse_prefs", Context.MODE_PRIVATE);
+        prefs.edit().putString("app_theme", theme).apply();
+
+        boolean isDark = resolveIsDarkTheme(ctx, theme);
+        Activity activity = getActivity();
+        WebView webView = bridge != null ? bridge.getWebView() : null;
+
+        if (activity != null) {
+            activity.runOnUiThread(() -> applyNativeAppearance(activity, webView, isDark));
+        }
+
+        JSObject res = new JSObject();
+        res.put("applied", true);
+        res.put("theme", theme);
+        res.put("isDark", isDark);
+        call.resolve(res);
+    }
+
+    public static void applyStoredAppearance(Activity activity, WebView webView) {
+        if (activity == null) return;
+        SharedPreferences prefs = activity.getSharedPreferences("beatpulse_prefs", Context.MODE_PRIVATE);
+        String theme = prefs.getString("app_theme", "dark");
+        boolean isDark = resolveIsDarkTheme(activity, theme);
+        activity.runOnUiThread(() -> applyNativeAppearance(activity, webView, isDark));
+    }
+
+    private static boolean resolveIsDarkTheme(Context context, String theme) {
+        if ("light".equals(theme)) {
+            return false;
+        }
+        if ("system".equals(theme)) {
+            int nightFlags = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+            return nightFlags == Configuration.UI_MODE_NIGHT_YES;
+        }
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void applyNativeAppearance(Activity activity, WebView webView, boolean isDark) {
+        Window window = activity.getWindow();
+        if (window != null) {
+            View decorView = window.getDecorView();
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decorView);
+            if (controller != null) {
+                controller.setAppearanceLightStatusBars(!isDark);
+                controller.setAppearanceLightNavigationBars(!isDark);
+            }
+            if (Build.VERSION.SDK_INT < 35) {
+                window.setStatusBarColor(isDark ? 0xFF020617 : 0xFFF8FAFC);
+                window.setNavigationBarColor(isDark ? 0xFF0F172A : 0xFFFFFFFF);
+            }
+        }
+        if (webView != null) {
+            WebSettings settings = webView.getSettings();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                settings.setAlgorithmicDarkeningAllowed(false);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                settings.setForceDark(WebSettings.FORCE_DARK_OFF);
+            }
+        }
+    }
+
+    private static class DefaultResolution {
+        boolean isDefault;
+        String otherPackage;
+        String otherAppName;
+    }
+
+    private JSObject buildDefaultPlayerStatus() {
+        DefaultResolution audioRes = resolveMediaDefault("audio/mpeg", PROBE_AUDIO_FILENAME);
+        DefaultResolution videoRes = resolveMediaDefault("video/mp4", PROBE_VIDEO_FILENAME);
+        return buildDefaultPlayerStatus(audioRes, videoRes);
+    }
+
+    private JSObject buildDefaultPlayerStatus(DefaultResolution audioRes, DefaultResolution videoRes) {
+        JSObject status = new JSObject();
+        status.put("supported", true);
+        status.put("isAudioDefault", audioRes.isDefault);
+        status.put("isVideoDefault", videoRes.isDefault);
+        status.put("audioDefaultApp", audioRes.otherAppName);
+        status.put("audioDefaultPkg", audioRes.otherPackage);
+        status.put("videoDefaultApp", videoRes.otherAppName);
+        status.put("videoDefaultPkg", videoRes.otherPackage);
+        return status;
+    }
+
+    private DefaultResolution resolveMediaDefault(String mimeType, String probeFileName) {
+        DefaultResolution result = new DefaultResolution();
+        try {
+            PackageManager pm = getContext().getPackageManager();
+            String myPkg = getContext().getPackageName();
+            File probeFile = ensureProbeFile(probeFileName, mimeType.startsWith("video/"));
+            Uri probeUri = FileProvider.getUriForFile(getContext(), myPkg + ".fileprovider", probeFile);
+
+            Intent queryIntent = new Intent(Intent.ACTION_VIEW);
+            queryIntent.setDataAndType(probeUri, mimeType);
+            queryIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            ResolveInfo ri = pm.resolveActivity(queryIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            if (ri != null && ri.activityInfo != null) {
+                ActivityInfo ai = ri.activityInfo;
+                if (myPkg.equals(ai.packageName)) {
+                    result.isDefault = true;
+                } else if (!isSystemResolver(ai)) {
+                    result.otherPackage = ai.packageName;
+                    CharSequence label = ri.loadLabel(pm);
+                    result.otherAppName = label != null ? label.toString() : ai.packageName;
+                }
+            }
+        } catch (Exception ignored) {
+            // Leave defaults as false/null if package resolution is restricted
+        }
+        return result;
+    }
+
+    private boolean isSystemResolver(ActivityInfo ai) {
+        if (ai == null) return true;
+        String pkg = ai.packageName != null ? ai.packageName.toLowerCase(Locale.US) : "";
+        String cls = ai.name != null ? ai.name.toLowerCase(Locale.US) : "";
+        return "android".equals(pkg)
+            || cls.contains("resolveractivity")
+            || cls.contains("chooseractivity")
+            || pkg.contains("resolver")
+            || pkg.contains("intentresolver");
+    }
+
+    private File ensureProbeFile(String fileName, boolean isVideo) {
+        File file = new File(getContext().getCacheDir(), fileName);
+        if (file.exists() && file.length() > 0) {
+            return file;
+        }
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            if (isVideo) {
+                byte[] mp4Header = new byte[] {
+                    0x00, 0x00, 0x00, 0x14, 'f', 't', 'y', 'p',
+                    'i', 's', 'o', 'm', 0x00, 0x00, 0x00, 0x01,
+                    'i', 's', 'o', 'm'
+                };
+                out.write(mp4Header);
+            } else {
+                byte[] mp3Frame = new byte[417];
+                mp3Frame[0] = (byte) 0xFF;
+                mp3Frame[1] = (byte) 0xFB;
+                mp3Frame[2] = (byte) 0x90;
+                mp3Frame[3] = 0x00;
+                out.write(mp3Frame);
+            }
+            out.flush();
+        } catch (Exception ignored) {
+            // ignore write error
+        }
+        return file;
+    }
+
+    private boolean openAppDetailsSettingsInternal(String packageName) {
+        if (getActivity() == null) return false;
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + packageName));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getActivity().startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            return false;
+        }
+    }
+
+    private boolean openManageDefaultAppsInternal() {
+        if (getActivity() == null) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getActivity().startActivity(intent);
+                return true;
+            } catch (ActivityNotFoundException ignored) {
+                // fallback below
+            }
+        }
+        return openAppDetailsSettingsInternal(getContext().getPackageName());
+    }
+
+    private String extractExtension(String displayName, String uriString, String mimeType) {
+        String candidate = displayName != null && !displayName.isEmpty() ? displayName : uriString;
+        if (candidate != null) {
+            int qIdx = candidate.indexOf('?');
+            if (qIdx >= 0) {
+                candidate = candidate.substring(0, qIdx);
+            }
+            int dotIdx = candidate.lastIndexOf('.');
+            if (dotIdx >= 0 && dotIdx < candidate.length() - 1) {
+                String rawExt = candidate.substring(dotIdx).replaceAll("[^a-zA-Z0-9.]", "").toLowerCase(Locale.US);
+                if (rawExt.length() >= 2 && rawExt.length() <= 6) {
+                    return rawExt;
+                }
+            }
+        }
+        if (mimeType != null && !mimeType.isEmpty()) {
+            String ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType.toLowerCase(Locale.US));
+            if (ext != null && !ext.isEmpty()) {
+                return "." + ext.toLowerCase(Locale.US);
+            }
+        }
+        return "";
+    }
+
+    private String inferMimeFromExtension(String ext) {
+        if (ext == null || ext.isEmpty()) return "";
+        String clean = ext.startsWith(".") ? ext.substring(1).toLowerCase(Locale.US) : ext.toLowerCase(Locale.US);
+        String mapped = MimeTypeMap.getSingleton().getMimeTypeFromExtension(clean);
+        if (mapped != null && !mapped.isEmpty()) {
+            return mapped;
+        }
+        switch (clean) {
+            case "mp3": return "audio/mpeg";
+            case "wav": return "audio/wav";
+            case "flac": return "audio/flac";
+            case "m4a": return "audio/mp4";
+            case "aac": return "audio/aac";
+            case "ogg":
+            case "opus": return "audio/ogg";
+            case "mp4":
+            case "m4v": return "video/mp4";
+            case "mkv": return "video/x-matroska";
+            case "webm": return "video/webm";
+            case "mov": return "video/quicktime";
+            case "avi": return "video/x-msvideo";
+            case "3gp": return "video/3gpp";
+            default: return "";
+        }
+    }
+
+    private String determineMediaKind(String mimeType, String ext) {
+        String mime = mimeType != null ? mimeType.toLowerCase(Locale.US) : "";
+        if (mime.startsWith("video/") || "application/mp4".equals(mime)) {
+            return "video";
+        }
+        if (mime.startsWith("audio/") || "application/ogg".equals(mime) || "application/x-flac".equals(mime)) {
+            return "audio";
+        }
+        String e = ext != null ? ext.toLowerCase(Locale.US) : "";
+        if (".mp4".equals(e) || ".mkv".equals(e) || ".webm".equals(e) || ".mov".equals(e)
+            || ".m4v".equals(e) || ".avi".equals(e) || ".3gp".equals(e) || ".ts".equals(e) || ".flv".equals(e)) {
+            return "video";
+        }
+        if (".mp3".equals(e) || ".wav".equals(e) || ".flac".equals(e) || ".m4a".equals(e)
+            || ".aac".equals(e) || ".ogg".equals(e) || ".opus".equals(e) || ".wma".equals(e) || ".aiff".equals(e)) {
+            return "audio";
+        }
+        return null;
     }
 
     @PluginMethod
@@ -796,6 +1434,10 @@ public class AudioLibraryPlugin extends Plugin {
         if (lastPlayerVideoFile != null && lastPlayerVideoFile.exists()) {
             //noinspection ResultOfMethodCallIgnored
             lastPlayerVideoFile.delete();
+        }
+        if (lastExternalMediaFile != null && lastExternalMediaFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            lastExternalMediaFile.delete();
         }
         for (File f : pendingExports.values()) {
             if (f != null && f.exists()) {

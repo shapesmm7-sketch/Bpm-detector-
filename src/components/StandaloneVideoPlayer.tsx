@@ -31,6 +31,7 @@ interface StandaloneVideoPlayerProps {
   isActiveTab: boolean;
   pauseSignal: number;
   onPlaybackStarted: () => void;
+  externalVideoRequest?: { requestId: string; video: VideoTrackItem } | null;
 }
 
 function formatTime(sec: number): string {
@@ -236,14 +237,14 @@ const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
       type="button"
       onClick={() => onSelect(video)}
       className={`group text-left flex flex-col gap-1.5 min-w-0 cursor-pointer rounded-xl p-1.5 transition-colors ${
-        isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-800/50'
+        isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
       }`}
     >
       <div
-        className={`relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border ${
+        className={`relative w-full aspect-video rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-950 border ${
           isSelected
-            ? 'border-emerald-400 ring-1 ring-emerald-400/60'
-            : 'border-slate-800 group-hover:border-slate-700'
+            ? 'border-emerald-500 dark:border-emerald-400 ring-1 ring-emerald-500/60 dark:ring-emerald-400/60'
+            : 'border-slate-200 group-hover:border-slate-300 dark:border-slate-800 dark:group-hover:border-slate-700'
         }`}
       >
         {thumbUrl && !hasFailed ? (
@@ -255,8 +256,8 @@ const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
-            <Video className="w-7 h-7 text-slate-700" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-900 dark:to-slate-950">
+            <Video className="w-7 h-7 text-slate-400 dark:text-slate-700" />
           </div>
         )}
 
@@ -278,12 +279,12 @@ const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
       <div className="min-w-0 px-0.5">
         <p
           className={`text-xs sm:text-sm font-semibold truncate ${
-            isSelected ? 'text-emerald-300' : 'text-slate-100'
+            isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-100'
           }`}
         >
           {video.title || video.displayName}
         </p>
-        <p className="text-[11px] font-mono tabular-nums text-slate-400 truncate">
+        <p className="text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-400 truncate">
           {sizeLabel || video.displayName}
         </p>
       </div>
@@ -297,12 +298,14 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   isActiveTab,
   pauseSignal,
   onPlaybackStarted,
+  externalVideoRequest,
 }) => {
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const webFileInputRef = useRef<HTMLInputElement | null>(null);
   const webObjectUrlsRef = useRef<string[]>([]);
   const hasAutoLoadedRef = useRef<boolean>(false);
+  const lastExternalRequestIdRef = useRef<string | null>(null);
   const hideControlsTimerRef = useRef<number | null>(null);
 
   const [videos, setVideos] = useState<VideoTrackItem[]>([]);
@@ -484,6 +487,20 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       setIsLoadingVideo(false);
     }
   };
+
+  // Auto-open VLC-style player and start playback when an external video is opened in BeatPulse
+  useEffect(() => {
+    if (!externalVideoRequest) return;
+    if (lastExternalRequestIdRef.current === externalVideoRequest.requestId) return;
+    lastExternalRequestIdRef.current = externalVideoRequest.requestId;
+
+    const incoming = externalVideoRequest.video;
+    setVideos((prev) => {
+      const exists = prev.some((v) => v.id === incoming.id || (v.uri && v.uri === incoming.uri));
+      return exists ? prev : [incoming, ...prev];
+    });
+    void playVideoItem(incoming);
+  }, [externalVideoRequest]);
 
   const handleTogglePlayPause = async () => {
     const videoEl = videoRef.current;
@@ -875,18 +892,18 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       </div>
 
       {/* Phone Video Library List */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl min-w-0">
-        <div className="p-4 sm:p-5 border-b border-slate-800 space-y-4">
+      <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl min-w-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-4">
           <div className="flex items-center justify-between gap-3 min-w-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Video className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-bold text-slate-100 truncate">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
                   Phone Videos
                 </h2>
-                <p className="text-xs text-slate-400 font-mono tabular-nums">
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono tabular-nums">
                   {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} · Tap any video to open player
                 </p>
               </div>
@@ -898,17 +915,17 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   type="button"
                   onClick={() => void loadDeviceVideos()}
                   disabled={isLoadingLibrary}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60"
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60"
                   title="Refresh Phone Video List"
                 >
-                  <RefreshCw className={`w-4 h-4 text-emerald-400 ${isLoadingLibrary ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${isLoadingLibrary ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => webFileInputRef.current?.click()}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <FolderPlus className="w-4 h-4" />
                   <span>Add Video</span>
@@ -918,19 +935,19 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           </div>
 
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search videos on your phone..."
-              className="w-full min-h-[44px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+              className="w-full min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-1"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer p-1"
                 aria-label="Clear video search"
               >
                 <X className="w-4 h-4" />
@@ -941,35 +958,35 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
         {permissionDenied ? (
           <div className="py-12 px-6 text-center space-y-3">
-            <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
-            <p className="text-sm font-semibold text-slate-200">Video Permission Required</p>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <ShieldAlert className="w-10 h-10 text-amber-500 dark:text-amber-400 mx-auto" />
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Video Permission Required</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
               Allow video access so BeatPulse can list and play all videos stored on your phone.
             </p>
             <button
               type="button"
               onClick={() => void loadDeviceVideos()}
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold cursor-pointer transition-colors"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold cursor-pointer transition-colors"
             >
               Allow Video Access
             </button>
           </div>
         ) : isLoadingLibrary ? (
           <div className="py-12 px-6 text-center space-y-2">
-            <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-slate-400 font-mono">Scanning phone videos...</p>
+            <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-mono">Scanning phone videos...</p>
           </div>
         ) : filteredVideos.length === 0 ? (
           <div className="py-12 px-6 text-center space-y-3">
-            <Video className="w-10 h-10 text-slate-700 mx-auto" />
-            <p className="text-sm font-semibold text-slate-300">
+            <Video className="w-10 h-10 text-slate-400 dark:text-slate-700 mx-auto" />
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               {videos.length === 0 ? 'No videos loaded yet' : 'No matching videos'}
             </p>
             {!isNativeAndroid() && videos.length === 0 && (
               <button
                 type="button"
                 onClick={() => webFileInputRef.current?.click()}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors"
               >
                 <FolderPlus className="w-4 h-4" />
                 <span>Choose Video Files</span>

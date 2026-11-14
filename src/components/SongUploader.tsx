@@ -32,7 +32,7 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 overflow-hidden min-w-0">
+    <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm dark:shadow-2xl space-y-4 overflow-hidden min-w-0 transition-colors">
       {/* Drop Zone Deck */}
       <div
         onDragOver={(e) => {
@@ -44,35 +44,35 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
         onClick={onTriggerUpload}
         className={`relative border-2 border-dashed rounded-xl p-5 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 overflow-hidden min-w-0 w-full ${
           isDragOver
-            ? 'border-emerald-400 bg-emerald-500/10 scale-[1.005]'
-            : 'border-slate-800 hover:border-emerald-500/50 bg-slate-950/70 hover:bg-slate-950'
+            ? 'border-emerald-500 dark:border-emerald-400 bg-emerald-500/10 scale-[1.005]'
+            : 'border-slate-300 dark:border-slate-800 hover:border-emerald-500/60 bg-slate-50 dark:bg-slate-950/70 hover:bg-slate-100/80 dark:hover:bg-slate-950'
         } ${isAnalyzing ? 'opacity-70 pointer-events-none' : ''}`}
       >
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-          <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
+          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-inner shrink-0">
             {isAnalyzing ? (
-              <div className="w-7 h-7 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
+              <div className="w-7 h-7 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin" />
             ) : (
-              <Disc className="w-7 h-7 text-emerald-400 animate-spin-slow" />
+              <Disc className="w-7 h-7 text-emerald-600 dark:text-emerald-400 animate-spin-slow" />
             )}
           </div>
 
           <div className="space-y-1">
-            <h3 className="font-bold text-slate-100 text-base sm:text-lg flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base sm:text-lg flex flex-wrap items-center justify-center sm:justify-start gap-2">
               <span>Drop any audio track to detect BPM, change key or Tempo</span>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                PulseBPM Precision
+              <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                · PulseBPM Precision
               </span>
             </h3>
-            <p className="text-xs text-slate-400">
-              Compatible with MP3, WAV, FLAC, M4A, AAC, OGG · Drag & drop or{' '}
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Compatible with MP3, WAV, FLAC, M4A, AAC, OGG · Drag &amp; drop or{' '}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onTriggerUpload();
                 }}
-                className="text-emerald-400 underline font-medium hover:text-emerald-300 cursor-pointer inline p-0 bg-transparent border-none"
+                className="text-emerald-600 dark:text-emerald-400 underline font-medium hover:text-emerald-500 dark:hover:text-emerald-300 cursor-pointer inline p-0 bg-transparent border-none"
               >
                 click to browse
               </button>
@@ -106,16 +106,16 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
         </div>
 
         {loadedTrackName && !isAnalyzing && (
-          <div className="pt-1 w-full max-w-full min-w-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-400 font-mono overflow-hidden">
+          <div className="pt-1 w-full max-w-full min-w-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-400 font-mono overflow-hidden">
             <div className="flex items-center justify-center gap-1.5 min-w-0 max-w-full">
-              <FileAudio className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <FileAudio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="min-w-0 max-w-full break-all line-clamp-2 text-center">
-                Currently loaded: <strong className="text-slate-200">{loadedTrackName}</strong>
+                Currently loaded: <strong className="text-slate-900 dark:text-slate-200">{loadedTrackName}</strong>
               </span>
             </div>
             {loadedBpm && (
-              <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
-                {loadedBpm} BPM
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
+                · {loadedBpm} BPM
               </span>
             )}
           </div>
@@ -123,7 +123,7 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
       </div>
 
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs flex items-center gap-2">
+        <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-red-700 dark:text-red-400 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>

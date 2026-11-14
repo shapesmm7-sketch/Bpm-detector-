@@ -18,12 +18,21 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(226, 232, 240, 0.7);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(148, 163, 184, 0.85);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 1);
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 1);
 }

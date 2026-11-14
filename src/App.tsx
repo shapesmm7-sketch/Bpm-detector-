@@ -9,7 +9,16 @@ import { PhoneAudioPickerModal } from './components/PhoneAudioPickerModal';
 import { ExportFormatModal } from './components/ExportFormatModal';
 import { StandaloneAudioPlayer } from './components/StandaloneAudioPlayer';
 import { StandaloneVideoPlayer } from './components/StandaloneVideoPlayer';
-import { AudioLibrary, AudioTrackItem, isNativeAndroid, resolvePlayableAudioUrl, saveExportedAudioBlob } from './plugins/audioLibrary';
+import {
+  AppThemeMode,
+  AudioLibrary,
+  AudioTrackItem,
+  ExternalMediaPayload,
+  VideoTrackItem,
+  isNativeAndroid,
+  resolvePlayableAudioUrl,
+  saveExportedAudioBlob,
+} from './plugins/audioLibrary';
 
 import {
   getAudioContext,
@@ -19,7 +28,7 @@ import {
   detectBPM,
   BpmAnalysisResult,
 } from './utils/audioAnalyzer';
-import { SoundTouchPitchPlayer, exportPitchShiftedAudio, exportTempoAdjustedAudio } from './utils/pitchShifterDsp';
+import { SoundTouchPitchPlayer, exportTempoAdjustedAudio } from './utils/pitchShifterDsp';
 import { AudioExportFormat, getAudioFormatOption } from './utils/audioEncoders';
 import {
   saveAudioToCache,
@@ -30,9 +39,28 @@ import {
 
 import { Music, Home, Video } from 'lucide-react';
 
+const THEME_STORAGE_KEY = 'beatpulse_theme';
+
 export default function App() {
   const [activeSection, setActiveSection] = useState<'home' | 'audio' | 'video'>('home');
   const [activeTab, setActiveTab] = useState<'analyzer' | 'menu' | 'history'>('analyzer');
+  const [themeMode, setThemeMode] = useState<AppThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+        return saved;
+      }
+    } catch {
+      // ignore storage errors
+    }
+    return 'dark';
+  });
+  const [systemPrefersDark, setSystemPrefersDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true;
+  });
   const [audioPauseSignal, setAudioPauseSignal] = useState<number>(0);
   const [videoPauseSignal, setVideoPauseSignal] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -58,19 +86,22 @@ export default function App() {
   const [loopRegion, setLoopRegion] = useState<{ start: number; end: number } | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Pitch-shifted Audio Export State
+  // Unified Audio Export State (Tempo/BPM + Song Key changes combined)
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<number>(0);
   const [exportStatusMessage, setExportStatusMessage] = useState<string | null>(null);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
-
-  // Tempo-adjusted Audio Export State
-  const [isExportingTempo, setIsExportingTempo] = useState<boolean>(false);
-  const [tempoExportProgress, setTempoExportProgress] = useState<number>(0);
-  const [tempoExportStatusMessage, setTempoExportStatusMessage] = useState<string | null>(null);
-  const [tempoExportErrorMessage, setTempoExportErrorMessage] = useState<string | null>(null);
-  const [exportPickerTarget, setExportPickerTarget] = useState<'tempo' | 'key' | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [loadingHistoryId, setLoadingHistoryId] = useState<string | null>(null);
+  const [externalTrackRequest, setExternalTrackRequest] = useState<{
+    requestId: string;
+    track: AudioTrackItem;
+  } | null>(null);
+  const [externalVideoRequest, setExternalVideoRequest] = useState<{
+    requestId: string;
+    video: VideoTrackItem;
+  } | null>(null);
+  const handledExternalIdsRef = useRef<Set<string>>(new Set());
 
   // History State
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -97,7 +128,6 @@ export default function App() {
   const gainNodeRef = useRef<GainNode | null>(null);
   const pitchPlayerRef = useRef<SoundTouchPitchPlayer | null>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
-  const tempoExportAbortRef = useRef<AbortController | null>(null);
   const playbackStartTimeRef = useRef<number>(0);
   const startOffsetRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
@@ -119,6 +149,45 @@ export default function App() {
   // Live dynamic BPM based on pitch slider
   const liveBpm = bpmResult ? bpmResult.bpm * playbackRate : 0;
 
+  const resolvedIsDark =
+    themeMode === 'dark' || (themeMode === 'system' && systemPrefersDark);
+
+  // Listen to OS/browser dark mode preference changes for "System" appearance mode
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setSystemPrefersDark(e.matches);
+    };
+    setSystemPrefersDark(mq.matches);
+    mq.addEventListener('change', handleChange);
+    return () => mq.removeEventListener('change', handleChange);
+  }, []);
+
+  // Apply theme to document root, meta theme-color, localStorage, and native Android bars/WebView
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+    } catch {
+      // ignore storage errors
+    }
+
+    const root = document.documentElement;
+    root.classList.toggle('dark', resolvedIsDark);
+    root.style.colorScheme = resolvedIsDark ? 'dark' : 'light';
+
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) {
+      themeMeta.setAttribute('content', resolvedIsDark ? '#020617' : '#f8fafc');
+    }
+
+    if (isNativeAndroid()) {
+      void AudioLibrary.setAppAppearance({ theme: themeMode }).catch((err) => {
+        console.warn('Could not sync appearance with Android shell:', err);
+      });
+    }
+  }, [themeMode, resolvedIsDark]);
+
   // Save history
   useEffect(() => {
     try {
@@ -135,10 +204,6 @@ export default function App() {
         exportAbortRef.current.abort();
         exportAbortRef.current = null;
       }
-      if (tempoExportAbortRef.current) {
-        tempoExportAbortRef.current.abort();
-        tempoExportAbortRef.current = null;
-      }
       if (pitchPlayerRef.current) {
         pitchPlayerRef.current.dispose();
         pitchPlayerRef.current = null;
@@ -154,6 +219,82 @@ export default function App() {
       }
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, []);
+
+  // Handle audio/video files opened from Android (when BeatPulse is default or chosen player)
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+
+    const handleIncomingMedia = (payload: ExternalMediaPayload | null | undefined) => {
+      if (!payload || !payload.requestId) return;
+      if (handledExternalIdsRef.current.has(payload.requestId)) return;
+      handledExternalIdsRef.current.add(payload.requestId);
+
+      const webUrl = resolvePlayableAudioUrl({
+        filePath: payload.filePath,
+        localUrl: payload.localUrl,
+      });
+
+      stopAudio();
+
+      if (payload.mediaKind === 'video') {
+        setAudioPauseSignal((n) => n + 1);
+        setActiveSection('video');
+        setExternalVideoRequest({
+          requestId: payload.requestId,
+          video: {
+            id: `ext-video-${payload.requestId}`,
+            title: payload.title || payload.displayName || 'Video',
+            displayName: payload.displayName || payload.title || 'video.mp4',
+            durationMs: payload.durationMs || 0,
+            size: payload.size || 0,
+            mimeType: payload.mimeType || 'video/*',
+            resolution: payload.resolution || '',
+            uri: payload.uri,
+            webUrl,
+          },
+        });
+      } else {
+        setVideoPauseSignal((n) => n + 1);
+        setActiveSection('audio');
+        setExternalTrackRequest({
+          requestId: payload.requestId,
+          track: {
+            id: `ext-audio-${payload.requestId}`,
+            title: payload.title || payload.displayName || 'Audio Track',
+            displayName: payload.displayName || payload.title || 'audio.mp3',
+            artist: 'External Audio',
+            album: '',
+            durationMs: payload.durationMs || 0,
+            size: payload.size || 0,
+            mimeType: payload.mimeType || 'audio/*',
+            uri: payload.uri,
+            webUrl,
+          },
+        });
+      }
+    };
+
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+    void AudioLibrary.addListener('externalMediaOpened', handleIncomingMedia).then((handle) => {
+      listenerHandle = handle;
+    });
+
+    void AudioLibrary.consumePendingExternalMedia()
+      .then((res) => {
+        if (res?.media) {
+          handleIncomingMedia(res.media);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not check pending external media:', err);
+      });
+
+    return () => {
+      if (listenerHandle) {
+        void listenerHandle.remove();
       }
     };
   }, []);
@@ -369,8 +510,8 @@ export default function App() {
   const handlePitchChange = (percent: number) => {
     const clamped = Math.max(-50, Math.min(50, percent));
     setPitchPercent(clamped);
-    setTempoExportStatusMessage(null);
-    setTempoExportErrorMessage(null);
+    setExportStatusMessage(null);
+    setExportErrorMessage(null);
     const newRate = 1 + clamped / 100;
     if (pitchPlayerRef.current) {
       pitchPlayerRef.current.setTempo(newRate);
@@ -385,68 +526,6 @@ export default function App() {
 
   const handlePitchBend = (delta: number) => {
     handlePitchChange(Number((pitchPercent + delta).toFixed(1)));
-  };
-
-  const handleExportTempoAudio = async (format: AudioExportFormat) => {
-    if (!audioBuffer || isExportingTempo) return;
-
-    if (tempoExportAbortRef.current) {
-      tempoExportAbortRef.current.abort();
-    }
-    const controller = new AbortController();
-    tempoExportAbortRef.current = controller;
-
-    setIsExportingTempo(true);
-    setTempoExportProgress(0);
-    setTempoExportStatusMessage(null);
-    setTempoExportErrorMessage(null);
-
-    try {
-      const rate = 1 + pitchPercent / 100;
-      const exportedBlob = await exportTempoAdjustedAudio(
-        audioBuffer,
-        rate,
-        keySemitones,
-        format,
-        (dspPct) => {
-          setTempoExportProgress(Math.round(dspPct * (isNativeAndroid() ? 0.75 : 0.98)));
-        },
-        controller.signal
-      );
-
-      const safeBase = (trackName || 'BeatPulse_Track')
-        .replace(/[\\/:*?"<>|]/g, '_')
-        .trim();
-      const targetBpm = bpmResult ? (bpmResult.bpm * rate).toFixed(2) : liveBpm.toFixed(2);
-      const semitoneSuffix =
-        keySemitones !== 0
-          ? `_${keySemitones > 0 ? `+${keySemitones}st` : `${keySemitones}st`}`
-          : '';
-      const fmtOption = getAudioFormatOption(format);
-      const fileName = `${safeBase}_${targetBpm}BPM${semitoneSuffix}.${fmtOption.extension}`;
-
-      const { displayPath } = await saveExportedAudioBlob(exportedBlob, fileName, (savePct) => {
-        if (isNativeAndroid()) {
-          setTempoExportProgress(75 + Math.round(savePct * 0.25));
-        } else {
-          setTempoExportProgress(savePct);
-        }
-      });
-
-      setTempoExportStatusMessage(
-        isNativeAndroid()
-          ? `Saved ${fmtOption.label} (${fmtOption.qualityTag}) to ${displayPath}`
-          : `Downloaded ${displayPath}`
-      );
-    } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') {
-        console.error('Tempo audio export failed:', err);
-        setTempoExportErrorMessage('Could not export tempo-adjusted audio. Please try again.');
-      }
-    } finally {
-      setIsExportingTempo(false);
-      tempoExportAbortRef.current = null;
-    }
   };
 
   const handleKeySemitonesChange = (semitones: number) => {
@@ -492,8 +571,10 @@ export default function App() {
     setExportErrorMessage(null);
 
     try {
-      const exportedBlob = await exportPitchShiftedAudio(
+      const rate = 1 + pitchPercent / 100;
+      const exportedBlob = await exportTempoAdjustedAudio(
         audioBuffer,
+        rate,
         keySemitones,
         format,
         (dspPct) => {
@@ -505,9 +586,10 @@ export default function App() {
       const safeBase = (trackName || 'BeatPulse_Track')
         .replace(/[\\/:*?"<>|]/g, '_')
         .trim();
+      const targetBpm = bpmResult ? (bpmResult.bpm * rate).toFixed(2) : liveBpm.toFixed(2);
       const semitoneTag = keySemitones > 0 ? `+${keySemitones}st` : `${keySemitones}st`;
       const fmtOption = getAudioFormatOption(format);
-      const fileName = `${safeBase}_${semitoneTag}.${fmtOption.extension}`;
+      const fileName = `${safeBase}_${targetBpm}BPM_${semitoneTag}.${fmtOption.extension}`;
 
       const { displayPath } = await saveExportedAudioBlob(exportedBlob, fileName, (savePct) => {
         if (isNativeAndroid()) {
@@ -604,10 +686,6 @@ export default function App() {
       exportAbortRef.current.abort();
       exportAbortRef.current = null;
     }
-    if (tempoExportAbortRef.current) {
-      tempoExportAbortRef.current.abort();
-      tempoExportAbortRef.current = null;
-    }
     stopAudio();
     setIsAnalyzing(true);
     setAnalysisError(null);
@@ -623,11 +701,7 @@ export default function App() {
     setExportProgress(0);
     setExportStatusMessage(null);
     setExportErrorMessage(null);
-    setIsExportingTempo(false);
-    setTempoExportProgress(0);
-    setTempoExportStatusMessage(null);
-    setTempoExportErrorMessage(null);
-    setExportPickerTarget(null);
+    setIsExportModalOpen(false);
     setLoopBarCount(0);
     setLoopRegion(null);
 
@@ -866,7 +940,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Universal Hidden File Input - Always Available */}
       <input
         ref={fileInputRef}
@@ -904,28 +978,28 @@ export default function App() {
 
             {/* HERO BPM DISPLAY */}
             {bpmResult && (
-              <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center overflow-hidden min-w-0">
+              <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-xl dark:shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center overflow-hidden min-w-0">
                 {/* Track Title Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800 text-xs min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800 text-xs min-w-0">
                   <div className="flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto sm:flex-1 min-w-0">
-                    <Music className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <Music className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span
-                      className="font-bold text-slate-200 text-sm min-w-0 max-w-full break-all line-clamp-2 text-center sm:text-left"
+                      className="font-bold text-slate-900 dark:text-slate-200 text-sm min-w-0 max-w-full break-all line-clamp-2 text-center sm:text-left"
                       title={trackName || 'Audio Track'}
                     >
                       {trackName || 'Audio Track'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-center sm:justify-end gap-2 text-slate-400 font-mono text-xs shrink-0">
+                  <div className="flex items-center justify-center sm:justify-end gap-2 text-slate-600 dark:text-slate-400 font-mono text-xs shrink-0">
                     <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
                     <span>·</span>
-                    <span className="text-emerald-400 font-semibold">{bpmResult.source}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{bpmResult.source}</span>
                   </div>
                 </div>
 
                 {/* THE CORE BPM HERO */}
                 <div className="py-2 space-y-3">
-                  <span className="text-xs font-mono uppercase tracking-widest text-slate-400 font-bold block">
+                  <span className="text-xs font-mono uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold block">
                     DETECTED SONG BPM
                   </span>
 
@@ -933,7 +1007,7 @@ export default function App() {
                     {/* /2 button */}
                     <button
                       onClick={handleHalfBpm}
-                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       title="Halve BPM (/ 2)"
                     >
                       / 2
@@ -941,10 +1015,10 @@ export default function App() {
 
                     {/* Massive BPM Number */}
                     <div className="flex items-baseline justify-center gap-1.5 sm:gap-2 min-w-0">
-                      <span className="text-5xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all">
+                      <span className="text-5xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-slate-950 dark:text-white dark:drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all">
                         {liveBpm > 0 ? liveBpm.toFixed(2) : bpmResult.bpmFormatted}
                       </span>
-                      <span className="text-base sm:text-2xl font-bold font-mono text-emerald-400 shrink-0">
+                      <span className="text-base sm:text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
                         BPM
                       </span>
                     </div>
@@ -952,7 +1026,7 @@ export default function App() {
                     {/* x2 button */}
                     <button
                       onClick={handleDoubleBpm}
-                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       title="Double BPM (x 2)"
                     >
                       x 2
@@ -961,7 +1035,7 @@ export default function App() {
 
                   {/* Pitch-adjusted live BPM indicator */}
                   {pitchPercent !== 0 && (
-                    <div className="text-xs font-mono text-cyan-400 font-bold">
+                    <div className="text-xs font-mono text-cyan-700 dark:text-cyan-400 font-bold">
                       Original Tempo: {bpmResult.bpmFormatted} BPM ({pitchPercent > 0 ? `+${pitchPercent.toFixed(1)}%` : `${pitchPercent.toFixed(1)}%`} pitch shift)
                     </div>
                   )}
@@ -987,6 +1061,7 @@ export default function App() {
                       }}
                       loopRegion={loopRegion}
                       onLoopChange={setLoopRegion}
+                      isDarkMode={resolvedIsDark}
                     />
                   </div>
                 )}
@@ -1004,21 +1079,12 @@ export default function App() {
                       pitchPercent={pitchPercent}
                       onPitchChange={handlePitchChange}
                       onPitchBend={handlePitchBend}
-                      onExportTempoAudio={() => {
-                        if (audioBuffer && !isExportingTempo) {
-                          setExportPickerTarget('tempo');
-                        }
-                      }}
-                      isExportingTempo={isExportingTempo}
-                      tempoExportProgress={tempoExportProgress}
-                      tempoExportStatusMessage={tempoExportStatusMessage}
-                      tempoExportErrorMessage={tempoExportErrorMessage}
                       keySemitones={keySemitones}
                       onKeySemitonesChange={handleKeySemitonesChange}
                       onResetKeyShift={handleResetKeyShift}
                       onExportAudio={() => {
                         if (audioBuffer && !isExporting) {
-                          setExportPickerTarget('key');
+                          setIsExportModalOpen(true);
                         }
                       }}
                       isExporting={isExporting}
@@ -1046,6 +1112,8 @@ export default function App() {
           <MenuPanel
             onNavigate={setActiveTab}
             historyCount={history.length}
+            themeMode={themeMode}
+            onThemeChange={setThemeMode}
           />
         )}
 
@@ -1081,6 +1149,7 @@ export default function App() {
             }}
             sharedSongs={phoneSongs}
             onSongsLoaded={setPhoneSongs}
+            externalTrackRequest={externalTrackRequest}
           />
         </div>
 
@@ -1093,12 +1162,13 @@ export default function App() {
               stopAudio();
               setAudioPauseSignal((n) => n + 1);
             }}
+            externalVideoRequest={externalVideoRequest}
           />
         </div>
       </main>
 
       {/* Fixed 3-Section App Footer: Home, Audio, Video */}
-      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800">
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 transition-colors duration-200">
         <nav
           aria-label="Main Sections"
           className="max-w-5xl mx-auto grid grid-cols-3 h-16"
@@ -1113,12 +1183,12 @@ export default function App() {
             }}
             className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
               activeSection === 'home'
-                ? 'text-emerald-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {activeSection === 'home' && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             )}
             <Home className="w-5 h-5" />
             <span className="text-[11px] font-semibold tracking-tight leading-none">
@@ -1136,12 +1206,12 @@ export default function App() {
             }}
             className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
               activeSection === 'audio'
-                ? 'text-emerald-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {activeSection === 'audio' && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             )}
             <Music className="w-5 h-5" />
             <span className="text-[11px] font-semibold tracking-tight leading-none">
@@ -1156,12 +1226,12 @@ export default function App() {
             }}
             className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
               activeSection === 'video'
-                ? 'text-emerald-400'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             {activeSection === 'video' && (
-              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
             )}
             <Video className="w-5 h-5" />
             <span className="text-[11px] font-semibold tracking-tight leading-none">
@@ -1182,28 +1252,15 @@ export default function App() {
 
       {/* Choose Audio Format Modal before Downloading */}
       <ExportFormatModal
-        isOpen={exportPickerTarget !== null}
+        isOpen={isExportModalOpen}
         title="Choose Audio Format"
-        subtitle={
-          exportPickerTarget === 'tempo'
-            ? `Tempo/Bpm Changer · ${(liveBpm > 0 ? liveBpm : bpmResult?.bpm || 0).toFixed(2)} BPM`
-            : `Song Key Changer · ${keySemitones > 0 ? `+${keySemitones}` : keySemitones} st`
-        }
-        durationSec={
-          exportPickerTarget === 'tempo' && playbackRate > 0
-            ? duration / playbackRate
-            : duration
-        }
+        subtitle={`${(liveBpm > 0 ? liveBpm : bpmResult?.bpm || 0).toFixed(2)} BPM · ${keySemitones > 0 ? `+${keySemitones}` : keySemitones} st`}
+        durationSec={playbackRate > 0 ? duration / playbackRate : duration}
         sampleRate={audioBuffer?.sampleRate || 44100}
-        onClose={() => setExportPickerTarget(null)}
+        onClose={() => setIsExportModalOpen(false)}
         onSelectFormat={(format) => {
-          const target = exportPickerTarget;
-          setExportPickerTarget(null);
-          if (target === 'tempo') {
-            void handleExportTempoAudio(format);
-          } else if (target === 'key') {
-            void handleExportAudio(format);
-          }
+          setIsExportModalOpen(false);
+          void handleExportAudio(format);
         }}
       />
     </div>

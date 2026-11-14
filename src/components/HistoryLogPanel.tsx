@@ -30,31 +30,31 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
   onBackToAnalyzer,
 }) => {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm dark:shadow-2xl space-y-5 transition-colors">
       {/* Page Header Bar */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
           {onBackToAnalyzer && (
             <button
               type="button"
               onClick={onBackToAnalyzer}
-              className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
               title="Return to BPM Analyzer"
             >
-              <ArrowLeft className="w-4 h-4 text-emerald-400" />
+              <ArrowLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Back to Analyzer</span>
             </button>
           )}
           <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-emerald-400" />
-            <h2 className="font-bold text-slate-100 text-base">Session Track Analysis History</h2>
+            <History className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base">Session Track Analysis History</h2>
           </div>
         </div>
         {history.length > 0 && (
           <button
             type="button"
             onClick={onClearHistory}
-            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-medium transition-colors cursor-pointer bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20"
+            className="text-xs text-red-600 dark:text-red-400 hover:text-red-500 dark:hover:text-red-300 flex items-center gap-1 font-medium transition-colors cursor-pointer bg-red-50 dark:bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Clear History
@@ -64,9 +64,9 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
 
       {history.length === 0 ? (
         <div className="py-8 text-center text-slate-500 text-xs font-medium space-y-1">
-          <Music className="w-8 h-8 text-slate-700 mx-auto mb-2" />
+          <Music className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
           <p>No tracks analyzed in this session yet.</p>
-          <p className="text-slate-600">Upload any song above to detect its BPM instantly.</p>
+          <p className="text-slate-400 dark:text-slate-600">Upload any song above to detect its BPM instantly.</p>
         </div>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
@@ -84,14 +84,14 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
                     onSelectItem(item);
                   }
                 }}
-                className="flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer overflow-hidden"
+                className="flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 hover:bg-slate-100/80 dark:hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer overflow-hidden"
                 title={`Open ${item.name} in Analyzer`}
               >
                 <div className="space-y-0.5 flex-1 min-w-0 pr-2">
-                  <span className="font-semibold text-slate-200 text-xs block truncate">
+                  <span className="font-semibold text-slate-900 dark:text-slate-200 text-xs block truncate">
                     {item.name}
                   </span>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                     <span>{Math.floor(item.durationSec / 60)}m {Math.round(item.durationSec % 60)}s</span>
                     <span>·</span>
                     <span>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -101,9 +101,9 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right">
                     {isLoading ? (
-                      <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin ml-auto" />
+                      <div className="w-4 h-4 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin ml-auto" />
                     ) : (
-                      <span className="font-mono font-extrabold text-emerald-400 text-sm block">
+                      <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 text-sm block">
                         {item.bpm} BPM
                       </span>
                     )}
@@ -115,7 +115,7 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
                       e.stopPropagation();
                       onRemoveItem(item.id);
                     }}
-                    className="p-2 text-slate-500 hover:text-red-400 transition-colors rounded hover:bg-slate-900 cursor-pointer"
+                    className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 transition-colors rounded hover:bg-slate-200 dark:hover:bg-slate-900 cursor-pointer"
                     title="Remove from log"
                     aria-label={`Remove ${item.name} from history`}
                   >

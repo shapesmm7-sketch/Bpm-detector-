@@ -14,6 +14,7 @@ interface WaveformVisualizerProps {
   onOffsetChange: (offset: number) => void;
   loopRegion: { start: number; end: number } | null;
   onLoopChange: (region: { start: number; end: number } | null) => void;
+  isDarkMode?: boolean;
 }
 
 export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
@@ -29,6 +30,7 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   onOffsetChange,
   loopRegion,
   onLoopChange,
+  isDarkMode = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const overviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -69,8 +71,8 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
     const width = canvas.width;
     const height = canvas.height;
 
-    // Dark sleek background
-    ctx.fillStyle = '#080c14';
+    // Theme-aware background
+    ctx.fillStyle = isDarkMode ? '#080c14' : '#f1f5f9';
     ctx.fillRect(0, 0, width, height);
 
     const channelData = audioBuffer.getChannelData(0);
@@ -134,12 +136,12 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
     const width = canvas.width;
     const height = canvas.height;
 
-    // Dark sleek background
-    ctx.fillStyle = '#060910';
+    // Theme-aware background
+    ctx.fillStyle = isDarkMode ? '#060910' : '#f8fafc';
     ctx.fillRect(0, 0, width, height);
 
     // Subtle horizontal center grid lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, height / 2);
@@ -275,7 +277,7 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
       ctx.lineTo(playheadX, 9);
       ctx.fill();
     }
-  }, [audioBuffer, bpm, customOffset, currentTime, duration, zoomLevel, loopRegion, cuePoint]);
+  }, [audioBuffer, bpm, customOffset, currentTime, duration, zoomLevel, loopRegion, cuePoint, isDarkMode]);
 
   // Click on main waveform to seek
   const handleMainCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -313,38 +315,38 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-2xl space-y-3">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm dark:shadow-2xl space-y-3 transition-colors">
       {/* Waveform Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 font-bold text-slate-100">
-            <Volume2 className="w-4 h-4 text-cyan-400" />
+          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-slate-100">
+            <Volume2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             <span>Beat-Grid Waveform</span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-slate-400 font-mono text-[11px] bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+          <div className="hidden sm:flex items-center gap-2 text-slate-600 dark:text-slate-400 font-mono text-[11px] bg-slate-100 dark:bg-slate-950 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-800">
             <span>GRID:</span>
-            <span className="text-emerald-400 font-bold">{bpm > 0 ? `${bpm} BPM` : '--'}</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{bpm > 0 ? `${bpm} BPM` : '--'}</span>
             <span>·</span>
-            <span className="text-cyan-400">OFFSET: {(customOffset * 1000).toFixed(0)}ms</span>
+            <span className="text-cyan-600 dark:text-cyan-400">OFFSET: {(customOffset * 1000).toFixed(0)}ms</span>
           </div>
         </div>
 
         {/* Nudge Grid & Zoom Controls */}
         <div className="flex items-center gap-2">
           {/* Nudge beat offset */}
-          <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-1 rounded-lg border border-slate-800">
-            <span className="text-slate-400 text-[10px] uppercase font-semibold">Grid Shift:</span>
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
+            <span className="text-slate-600 dark:text-slate-400 text-[10px] uppercase font-semibold">Grid Shift:</span>
             <button
               onClick={() => handleNudgeOffset(-0.01)}
-              className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] transition-colors cursor-pointer"
+              className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent font-mono text-[10px] transition-colors cursor-pointer"
               title="Shift beat grid -10ms"
             >
               -10ms
             </button>
             <button
               onClick={() => handleNudgeOffset(0.01)}
-              className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] transition-colors cursor-pointer"
+              className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent font-mono text-[10px] transition-colors cursor-pointer"
               title="Shift beat grid +10ms"
             >
               +10ms
@@ -354,7 +356,7 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
                 setCustomOffset(firstBeatOffset);
                 onOffsetChange(firstBeatOffset);
               }}
-              className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
               title="Reset offset"
             >
               <RefreshCw className="w-2.5 h-2.5" />
@@ -362,18 +364,18 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
           </div>
 
           {/* Zoom */}
-          <div className="flex items-center gap-1 bg-slate-950 px-1.5 py-1 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 px-1.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
             <button
               onClick={() => setZoomLevel((z) => Math.max(1, z - 1))}
-              className="p-1 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors cursor-pointer"
               title="Zoom out"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <span className="text-slate-300 font-mono text-xs px-1 font-bold">{zoomLevel}x</span>
+            <span className="text-slate-800 dark:text-slate-300 font-mono text-xs px-1 font-bold">{zoomLevel}x</span>
             <button
               onClick={() => setZoomLevel((z) => Math.min(6, z + 1))}
-              className="p-1 text-slate-400 hover:text-white rounded transition-colors cursor-pointer"
+              className="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded transition-colors cursor-pointer"
               title="Zoom in"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -383,7 +385,7 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
       </div>
 
       {/* Main Detailed Waveform Canvas */}
-      <div className="relative w-full h-32 bg-slate-950 rounded-lg overflow-hidden border border-slate-800 cursor-pointer shadow-inner">
+      <div className="relative w-full h-32 bg-slate-50 dark:bg-slate-950 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer shadow-inner">
         <canvas
           ref={canvasRef}
           width={1000}
@@ -394,20 +396,20 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
 
         {!audioBuffer && (
           <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-xs font-semibold">
-            Drop an audio track above to load waveform & beat grid
+            Drop an audio track above to load waveform &amp; beat grid
           </div>
         )}
       </div>
 
       {/* Full Track Overview Mini-Strip */}
       <div className="space-y-1">
-        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
+        <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
           <span>TRACK OVERVIEW (CLICK TO JUMP)</span>
           <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')} TOTAL</span>
         </div>
         <div
           onClick={handleOverviewClick}
-          className="relative w-full h-8 bg-slate-950 rounded border border-slate-800 overflow-hidden cursor-pointer hover:border-slate-700 transition-colors shadow-inner"
+          className="relative w-full h-8 bg-slate-100 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 overflow-hidden cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-inner"
         >
           <canvas
             ref={overviewCanvasRef}
@@ -419,14 +421,14 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
       </div>
 
       {/* Legend & Jog Indicator */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] text-slate-400">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] text-slate-600 dark:text-slate-400">
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 font-medium">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
             Beat 1 (Downbeat)
           </span>
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" />
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 dark:bg-cyan-400 inline-block" />
             Beats 2, 3, 4
           </span>
           <span className="flex items-center gap-1.5 font-medium">
@@ -439,11 +441,11 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
         <div className="flex items-center gap-2 font-mono text-[11px]">
           <div
             style={{ transform: `rotate(${jogRotation}deg)` }}
-            className="w-4 h-4 rounded-full border-2 border-dashed border-emerald-400 flex items-center justify-center transition-transform"
+            className="w-4 h-4 rounded-full border-2 border-dashed border-emerald-500 dark:border-emerald-400 flex items-center justify-center transition-transform"
           >
-            <div className="w-1 h-1 rounded-full bg-emerald-400" />
+            <div className="w-1 h-1 rounded-full bg-emerald-500 dark:bg-emerald-400" />
           </div>
-          <span className={isPlaying ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+          <span className={isPlaying ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500'}>
             {isPlaying ? 'PLATTEN ACTIVE' : 'STOPPED'}
           </span>
         </div>
