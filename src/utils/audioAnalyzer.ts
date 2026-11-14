@@ -38,12 +38,22 @@ let sharedAudioContext: AudioContext | null = null;
 export function getAudioContext(): AudioContext {
   if (!sharedAudioContext) {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    sharedAudioContext = new AudioCtx();
+    sharedAudioContext = new AudioCtx({ latencyHint: 'playback' });
   }
   if (sharedAudioContext.state === 'suspended') {
     sharedAudioContext.resume();
   }
   return sharedAudioContext;
+}
+
+export async function suspendAudioContext(): Promise<void> {
+  if (sharedAudioContext && sharedAudioContext.state === 'running') {
+    try {
+      await sharedAudioContext.suspend();
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /**

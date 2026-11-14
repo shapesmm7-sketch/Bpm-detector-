@@ -12,6 +12,8 @@ import {
   Plus,
   Minus,
   Music,
+  Download,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AudioPlayerControlsProps {
@@ -24,6 +26,19 @@ interface AudioPlayerControlsProps {
   pitchPercent: number; // e.g. 0.0 = original, +2.5 = +2.5%
   onPitchChange: (percent: number) => void;
   onPitchBend: (direction: number) => void;
+  onExportTempoAudio: () => void;
+  isExportingTempo: boolean;
+  tempoExportProgress: number;
+  tempoExportStatusMessage: string | null;
+  tempoExportErrorMessage: string | null;
+  keySemitones: number; // -12 to +12 integer semitones
+  onKeySemitonesChange: (semitones: number) => void;
+  onResetKeyShift: () => void;
+  onExportAudio: () => void;
+  isExporting: boolean;
+  exportProgress: number;
+  exportStatusMessage: string | null;
+  exportErrorMessage: string | null;
   loopBarCount: number; // 0 = off, 1, 2, 4, 8
   onSetLoopBarCount: (bars: number) => void;
   bpm: number;
@@ -32,6 +47,19 @@ interface AudioPlayerControlsProps {
   copied: boolean;
   onHalfBpm?: () => void;
   onDoubleBpm?: () => void;
+}
+
+function formatSemitoneLabel(semitones: number): string {
+  const abs = Math.abs(semitones);
+  const unit = abs === 1 ? 'semitone' : 'semitones';
+  if (semitones > 0) return `+${semitones} ${unit}`;
+  if (semitones < 0) return `${semitones} ${unit}`;
+  return `0 semitones`;
+}
+
+function formatSemitoneSigned(semitones: number): string {
+  if (semitones > 0) return `+${semitones}`;
+  return `${semitones}`;
 }
 
 export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
@@ -44,6 +72,19 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
   pitchPercent,
   onPitchChange,
   onPitchBend,
+  onExportTempoAudio,
+  isExportingTempo,
+  tempoExportProgress,
+  tempoExportStatusMessage,
+  tempoExportErrorMessage,
+  keySemitones,
+  onKeySemitonesChange,
+  onResetKeyShift,
+  onExportAudio,
+  isExporting,
+  exportProgress,
+  exportStatusMessage,
+  exportErrorMessage,
   loopBarCount,
   onSetLoopBarCount,
   bpm,
@@ -108,6 +149,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
       <div className="flex items-center justify-center gap-3.5 pb-2 border-b border-slate-800/80">
         {/* CUE Button */}
         <button
+          type="button"
           onClick={onCue}
           className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-2 border-amber-500/50 hover:border-amber-400 flex flex-col items-center justify-center font-extrabold text-xs shadow-[0_0_20px_rgba(245,158,11,0.25)] active:scale-95 transition-all cursor-pointer select-none shrink-0"
           title="Set / Return to Cue Point"
@@ -118,6 +160,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
 
         {/* PLAY / PAUSE Button */}
         <button
+          type="button"
           onClick={onPlayPause}
           className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex flex-col items-center justify-center font-extrabold transition-all active:scale-95 cursor-pointer select-none border-2 shadow-2xl shrink-0 ${
             isPlaying
@@ -141,6 +184,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
 
         {/* SYNC / RESET Pitch */}
         <button
+          type="button"
           onClick={() => {
             onPitchChange(0);
           }}
@@ -152,16 +196,16 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
         </button>
       </div>
 
-      {/* Main DJ Deck Controls: Tempo Pitch Fader + Loop Roll */}
+      {/* Main DJ Deck Controls: Tempo Pitch Fader, Song Key Changer, Loop Roll */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
-        {/* Tempo Pitch Fader */}
-        <div className="xl:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+        {/* 1. Tempo/Bpm Changer */}
+        <div className="order-1 xl:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400 font-medium flex items-center gap-1">
+            <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Tempo Pitch Fader</span>
+              <span>Tempo/Bpm Changer</span>
             </span>
-            <div className="flex items-center gap-1.5 font-mono text-xs font-bold">
+            <div className="flex items-center gap-1.5 font-mono tabular-nums text-xs font-bold">
               <span className={pitchPercent === 0 ? 'text-slate-400' : pitchPercent > 0 ? 'text-emerald-400' : 'text-amber-400'}>
                 {pitchPercent > 0 ? `+${pitchPercent.toFixed(1)}%` : `${pitchPercent.toFixed(1)}%`}
               </span>
@@ -201,7 +245,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="w-full bg-transparent text-emerald-400 font-mono font-black text-center text-sm py-0.5 border-none focus:outline-none"
+                  className="w-full bg-transparent text-emerald-400 font-mono tabular-nums font-black text-center text-sm py-0.5 border-none focus:outline-none"
                   placeholder="120.00"
                   title="Click to type exact target BPM"
                 />
@@ -223,6 +267,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => onPitchBend(-0.2)}
                 className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded border border-slate-800 cursor-pointer"
                 title="Pitch Bend -"
@@ -239,6 +284,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
                 className="flex-1 accent-cyan-400 cursor-pointer"
               />
               <button
+                type="button"
                 onClick={() => onPitchBend(0.2)}
                 className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded border border-slate-800 cursor-pointer"
                 title="Pitch Bend +"
@@ -250,6 +296,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
             <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
               <span>-50%</span>
               <button
+                type="button"
                 onClick={() => onPitchChange(0)}
                 className="text-slate-400 hover:text-white underline cursor-pointer"
               >
@@ -258,10 +305,215 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               <span>+50%</span>
             </div>
           </div>
+
+          {/* Download Tempo-Adjusted Song */}
+          <div className="pt-2 border-t border-slate-800/80 space-y-2">
+            <button
+              type="button"
+              onClick={onExportTempoAudio}
+              disabled={isExportingTempo}
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-70 text-slate-950 transition-colors cursor-pointer active:scale-95 whitespace-nowrap shadow-lg shadow-cyan-500/15"
+            >
+              {isExportingTempo ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" />
+                  <span className="font-mono tabular-nums">Saving {tempoExportProgress}%</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>
+                    Download ({liveBpm > 0 ? liveBpm.toFixed(2) : bpm.toFixed(2)} BPM)
+                  </span>
+                </>
+              )}
+            </button>
+
+            {isExportingTempo && (
+              <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-cyan-400 transition-all duration-150"
+                  style={{ width: `${tempoExportProgress}%` }}
+                />
+              </div>
+            )}
+
+            {tempoExportStatusMessage && !isExportingTempo && (
+              <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-xs flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0 text-cyan-400" />
+                <span className="break-all">{tempoExportStatusMessage}</span>
+              </div>
+            )}
+
+            {tempoExportErrorMessage && !isExportingTempo && (
+              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{tempoExportErrorMessage}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right: Quick Loop Pads */}
-        <div className="xl:col-span-4 flex flex-col justify-center space-y-2">
+        {/* 2. Song Key Changer (Pitch Shifter directly after Tempo Fader on mobile, full-width below on desktop) */}
+        <div className="order-2 md:col-span-2 xl:order-3 xl:col-span-12 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+          {/* Header Row */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Music className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div>
+                <h4 className="text-xs sm:text-sm font-semibold text-slate-100 leading-tight">
+                  Song Key Changer
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Pitch Shifter
+                </p>
+              </div>
+            </div>
+
+            <div className="font-mono tabular-nums text-xs sm:text-sm font-bold">
+              <span
+                className={
+                  keySemitones === 0
+                    ? 'text-slate-300'
+                    : keySemitones > 0
+                    ? 'text-emerald-400'
+                    : 'text-amber-400'
+                }
+              >
+                {formatSemitoneLabel(keySemitones)}
+              </span>
+            </div>
+          </div>
+
+          {/* Semitone Stepper (- / Readout / +) + Slider */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+            {/* Stepper Controls */}
+            <div className="lg:col-span-5 flex items-center justify-between gap-2 bg-slate-900/90 p-2 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => onKeySemitonesChange(Math.max(-12, keySemitones - 1))}
+                disabled={keySemitones <= -12}
+                aria-label="Decrease pitch by 1 semitone"
+                className="min-w-[44px] min-h-[44px] rounded-lg bg-slate-950 hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none text-slate-200 flex items-center justify-center border border-slate-800 transition-colors cursor-pointer active:scale-95 shrink-0"
+                title="Pitch Down (-1 semitone)"
+              >
+                <Minus className="w-4 h-4" />
+              </button>
+
+              <div className="flex-1 text-center px-2 py-1">
+                <div
+                  className={`font-mono tabular-nums text-xl sm:text-2xl font-black leading-none ${
+                    keySemitones === 0
+                      ? 'text-slate-100'
+                      : keySemitones > 0
+                      ? 'text-emerald-400'
+                      : 'text-amber-400'
+                  }`}
+                >
+                  {formatSemitoneSigned(keySemitones)}
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 mt-1">
+                  {keySemitones === 0 ? 'original pitch' : Math.abs(keySemitones) === 1 ? 'semitone' : 'semitones'}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onKeySemitonesChange(Math.min(12, keySemitones + 1))}
+                disabled={keySemitones >= 12}
+                aria-label="Increase pitch by 1 semitone"
+                className="min-w-[44px] min-h-[44px] rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-40 disabled:pointer-events-none text-emerald-400 flex items-center justify-center border border-emerald-500/40 transition-colors cursor-pointer active:scale-95 shrink-0"
+                title="Pitch Up (+1 semitone)"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Semitone Range Slider (-12 to +12) */}
+            <div className="lg:col-span-7 space-y-1.5">
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="-12"
+                  max="12"
+                  step="1"
+                  value={keySemitones}
+                  onChange={(e) => onKeySemitonesChange(parseInt(e.target.value, 10))}
+                  aria-label="Pitch shift in semitones"
+                  className="w-full h-2 accent-emerald-400 cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono tabular-nums">
+                <span>-12 st</span>
+                <button
+                  type="button"
+                  onClick={onResetKeyShift}
+                  className="text-slate-300 hover:text-emerald-400 underline cursor-pointer px-2 py-0.5"
+                >
+                  Center (0)
+                </button>
+                <span>+12 st</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Export & Save Modified Audio */}
+          <div className="pt-2 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={onExportAudio}
+              disabled={isExporting}
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-70 text-slate-950 transition-colors cursor-pointer active:scale-95 whitespace-nowrap shadow-lg shadow-emerald-500/15"
+            >
+              {isExporting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" />
+                  <span className="font-mono tabular-nums">Saving {exportProgress}%</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  <span>
+                    Download ({formatSemitoneSigned(keySemitones)} st)
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Export Progress Bar */}
+          {isExporting && (
+            <div className="space-y-1.5">
+              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-emerald-400 transition-all duration-150"
+                  style={{ width: `${exportProgress}%` }}
+                />
+              </div>
+              <p className="text-[11px] font-mono text-slate-400">
+                Processing pitch shift locally at original tempo ({exportProgress}%)...
+              </p>
+            </div>
+          )}
+
+          {/* Export Confirmation / Error Feedback */}
+          {exportStatusMessage && !isExporting && (
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs flex items-center gap-2">
+              <Check className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span className="break-all">{exportStatusMessage}</span>
+            </div>
+          )}
+
+          {exportErrorMessage && !isExporting && (
+            <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/25 text-red-400 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{exportErrorMessage}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Right: Quick Loop Pads */}
+        <div className="order-3 xl:order-2 xl:col-span-4 flex flex-col justify-center space-y-2">
           {/* Loop Roll Controls */}
           <div className="flex flex-col gap-2 bg-slate-950 p-3.5 rounded-xl border border-slate-800 h-full justify-center">
             <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
@@ -272,6 +524,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               {[0, 1, 2, 4, 8].map((bars) => (
                 <button
                   key={bars}
+                  type="button"
                   onClick={() => onSetLoopBarCount(bars)}
                   className={`py-2 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
                     loopBarCount === bars
@@ -291,6 +544,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onRestart}
             className="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Jump to Start (0:00)"
@@ -302,7 +556,8 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
           {/* Volume */}
           <div className="flex items-center gap-2 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">
             <button
-              onClick={() => onVolumeChange(volume > 0 ? 0 : 0.8)}
+              type="button"
+              onClick={() => onVolumeChange(volume > 0 ? 0 : 1)}
               className="text-slate-400 hover:text-white cursor-pointer"
             >
               {volume === 0 ? (
@@ -320,7 +575,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
               className="w-20 accent-emerald-500 cursor-pointer"
             />
-            <span className="font-mono text-slate-400 text-[11px] w-7 text-right">
+            <span className="font-mono tabular-nums text-slate-400 text-[11px] w-7 text-right">
               {Math.round(volume * 100)}%
             </span>
           </div>
@@ -328,6 +583,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
 
         {/* Copy Results */}
         <button
+          type="button"
           onClick={onCopyInfo}
           className="px-3.5 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
         >
