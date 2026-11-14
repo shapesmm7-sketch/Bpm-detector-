@@ -84,11 +84,11 @@ export const HistoryLogPanel: React.FC<HistoryLogPanelProps> = ({
                     onSelectItem(item);
                   }
                 }}
-                className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer"
+                className="flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer overflow-hidden"
                 title={`Open ${item.name} in Analyzer`}
               >
-                <div className="space-y-0.5 min-w-0 pr-2">
-                  <span className="font-semibold text-slate-200 text-xs block truncate max-w-xs">
+                <div className="space-y-0.5 flex-1 min-w-0 pr-2">
+                  <span className="font-semibold text-slate-200 text-xs block truncate">
                     {item.name}
                   </span>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">

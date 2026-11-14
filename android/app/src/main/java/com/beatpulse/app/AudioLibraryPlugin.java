@@ -42,7 +42,10 @@ public class AudioLibraryPlugin extends Plugin {
 
     private ActivityResultLauncher<String> permissionLauncher;
     private String pendingCallId;
+    private String pendingPermissionType = "audio";
     private File lastTempAudioFile;
+    private File lastPlayerAudioFile;
+    private File lastPlayerVideoFile;
     private final Map<String, File> pendingExports = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -52,22 +55,35 @@ public class AudioLibraryPlugin extends Plugin {
             new ActivityResultContracts.RequestPermission(),
             isGranted -> {
                 PluginCall savedCall = pendingCallId != null ? bridge.getSavedCall(pendingCallId) : null;
+                String permType = pendingPermissionType != null ? pendingPermissionType : "audio";
                 pendingCallId = null;
+                pendingPermissionType = "audio";
                 if (savedCall == null) {
                     return;
                 }
 
                 if (Boolean.TRUE.equals(isGranted)) {
-                    loadAudioFiles(savedCall, true);
+                    if ("video".equals(permType)) {
+                        loadVideoFiles(savedCall, true);
+                    } else {
+                        loadAudioFiles(savedCall, true);
+                    }
                 } else {
+                    String deniedMsg = "video".equals(permType)
+                        ? "Allow video access to see videos"
+                        : "Allow audio access to see songs";
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() ->
-                            Toast.makeText(getContext(), "Allow audio access to see songs", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(getContext(), deniedMsg, Toast.LENGTH_SHORT).show()
                         );
                     }
                     JSObject result = new JSObject();
                     result.put("granted", false);
-                    result.put("songs", new JSArray());
+                    if ("video".equals(permType)) {
+                        result.put("videos", new JSArray());
+                    } else {
+                        result.put("songs", new JSArray());
+                    }
                     savedCall.resolve(result);
                     bridge.releaseCall(savedCall);
                 }
@@ -96,6 +112,33 @@ public class AudioLibraryPlugin extends Plugin {
             }
             bridge.saveCall(call);
             pendingCallId = call.getCallbackId();
+            pendingPermissionType = "audio";
+            getActivity().runOnUiThread(() -> permissionLauncher.launch(permission));
+        }
+    }
+
+    @PluginMethod
+    public void getAllVideoFiles(PluginCall call) {
+        String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            ? Manifest.permission.READ_MEDIA_VIDEO
+            : Manifest.permission.READ_EXTERNAL_STORAGE;
+
+        if (ContextCompat.checkSelfPermission(getContext(), permission) == PackageManager.PERMISSION_GRANTED) {
+            loadVideoFiles(call, false);
+        } else {
+            if (getActivity() == null) {
+                call.reject("Activity unavailable");
+                return;
+            }
+            if (pendingCallId != null) {
+                PluginCall previous = bridge.getSavedCall(pendingCallId);
+                if (previous != null) {
+                    bridge.releaseCall(previous);
+                }
+            }
+            bridge.saveCall(call);
+            pendingCallId = call.getCallbackId();
+            pendingPermissionType = "video";
             getActivity().runOnUiThread(() -> permissionLauncher.launch(permission));
         }
     }
@@ -228,6 +271,189 @@ public class AudioLibraryPlugin extends Plugin {
                 call.resolve(result);
             } catch (Exception e) {
                 call.reject("Failed to read audio file: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private void loadVideoFiles(PluginCall call, boolean releaseAfter) {
+        executor.execute(() -> {
+            JSArray videos = new JSArray();
+            ContentResolver contentResolver = getContext().getContentResolver();
+
+            Uri collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+            String[] projection = new String[] {
+                MediaStore.Video.Media._ID,
+                MediaStore.Video.Media.TITLE,
+                MediaStore.Video.Media.DISPLAY_NAME,
+                MediaStore.Video.Media.DURATION,
+                MediaStore.Video.Media.SIZE,
+                MediaStore.Video.Media.MIME_TYPE,
+                MediaStore.Video.Media.RESOLUTION
+            };
+
+            String sortOrder = MediaStore.Video.Media.DATE_ADDED + " DESC";
+
+            try (Cursor cursor = contentResolver.query(collection, projection, null, null, sortOrder)) {
+                if (cursor != null) {
+                    int idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID);
+                    int titleCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE);
+                    int displayNameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME);
+                    int durationCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION);
+                    int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE);
+                    int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE);
+                    int resCol = cursor.getColumnIndex(MediaStore.Video.Media.RESOLUTION);
+
+                    while (cursor.moveToNext()) {
+                        long id = cursor.getLong(idCol);
+                        long size = cursor.getLong(sizeCol);
+                        if (size <= 0) {
+                            continue;
+                        }
+
+                        String title = cursor.getString(titleCol);
+                        String displayName = cursor.getString(displayNameCol);
+                        long durationMs = cursor.getLong(durationCol);
+                        String mimeType = cursor.getString(mimeCol);
+                        String resolution = resCol >= 0 ? cursor.getString(resCol) : "";
+
+                        Uri contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
+
+                        JSObject item = new JSObject();
+                        item.put("id", String.valueOf(id));
+                        item.put("title", title != null && !title.isEmpty() ? title : (displayName != null ? displayName : "Video"));
+                        item.put("displayName", displayName != null ? displayName : (title != null ? title : "video.mp4"));
+                        item.put("durationMs", durationMs);
+                        item.put("size", size);
+                        item.put("mimeType", mimeType != null ? mimeType : "video/*");
+                        item.put("resolution", resolution != null ? resolution : "");
+                        item.put("uri", contentUri.toString());
+
+                        videos.put(item);
+                    }
+                }
+
+                JSObject result = new JSObject();
+                result.put("granted", true);
+                result.put("videos", videos);
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject("Failed to query MediaStore video files: " + e.getMessage(), e);
+            } finally {
+                if (releaseAfter) {
+                    bridge.releaseCall(call);
+                }
+            }
+        });
+    }
+
+    @PluginMethod
+    public void prepareMediaFile(PluginCall call) {
+        String uriString = call.getString("uri");
+        String mediaKind = call.getString("mediaKind", "audio");
+        String defaultExt = "video".equals(mediaKind) ? ".mp4" : ".mp3";
+        String displayName = call.getString("displayName", "media" + defaultExt);
+
+        if (uriString == null || uriString.isEmpty()) {
+            call.reject("Missing media URI");
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                Uri contentUri = Uri.parse(uriString);
+                ContentResolver resolver = getContext().getContentResolver();
+
+                // Fast path: if MediaStore exposes a directly readable filesystem path, stream from it with zero copy.
+                String directPath = null;
+                try (Cursor pathCursor = resolver.query(
+                    contentUri,
+                    new String[] { MediaStore.MediaColumns.DATA },
+                    null,
+                    null,
+                    null
+                )) {
+                    if (pathCursor != null && pathCursor.moveToFirst()) {
+                        int dataIdx = pathCursor.getColumnIndex(MediaStore.MediaColumns.DATA);
+                        if (dataIdx >= 0) {
+                            String candidate = pathCursor.getString(dataIdx);
+                            if (candidate != null && !candidate.isEmpty()) {
+                                File directFile = new File(candidate);
+                                if (directFile.exists() && directFile.canRead()) {
+                                    directPath = directFile.getAbsolutePath();
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                    directPath = null;
+                }
+
+                if (directPath != null) {
+                    String localUrl = bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + directPath;
+                    JSObject result = new JSObject();
+                    result.put("filePath", directPath);
+                    result.put("localUrl", localUrl);
+                    call.resolve(result);
+                    return;
+                }
+
+                // Scoped storage fallback: copy stream into dedicated temp cache slot.
+                String ext = defaultExt;
+                if (displayName != null) {
+                    int dotIdx = displayName.lastIndexOf('.');
+                    if (dotIdx >= 0 && dotIdx < displayName.length() - 1) {
+                        String cleaned = displayName.substring(dotIdx).replaceAll("[^a-zA-Z0-9.]", "");
+                        if (!cleaned.isEmpty()) {
+                            ext = cleaned;
+                        }
+                    }
+                }
+
+                File cacheDir = getContext().getCacheDir();
+                if ("video".equals(mediaKind)) {
+                    if (lastPlayerVideoFile != null && lastPlayerVideoFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        lastPlayerVideoFile.delete();
+                    }
+                } else {
+                    if (lastPlayerAudioFile != null && lastPlayerAudioFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        lastPlayerAudioFile.delete();
+                    }
+                }
+
+                File outFile = new File(
+                    cacheDir,
+                    "beatpulse_player_" + mediaKind + "_" + System.currentTimeMillis() + ext
+                );
+                if ("video".equals(mediaKind)) {
+                    lastPlayerVideoFile = outFile;
+                } else {
+                    lastPlayerAudioFile = outFile;
+                }
+
+                try (InputStream in = resolver.openInputStream(contentUri);
+                     FileOutputStream out = new FileOutputStream(outFile)) {
+                    if (in == null) {
+                        call.reject("Unable to open media stream");
+                        return;
+                    }
+                    byte[] buffer = new byte[131072];
+                    int read;
+                    while ((read = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, read);
+                    }
+                    out.flush();
+                }
+
+                String filePath = outFile.getAbsolutePath();
+                String localUrl = bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + filePath;
+                JSObject result = new JSObject();
+                result.put("filePath", filePath);
+                result.put("localUrl", localUrl);
+                call.resolve(result);
+            } catch (Exception e) {
+                call.reject("Failed to prepare media file: " + e.getMessage(), e);
             }
         });
     }
@@ -442,6 +668,18 @@ public class AudioLibraryPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         super.handleOnDestroy();
+        if (lastTempAudioFile != null && lastTempAudioFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            lastTempAudioFile.delete();
+        }
+        if (lastPlayerAudioFile != null && lastPlayerAudioFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            lastPlayerAudioFile.delete();
+        }
+        if (lastPlayerVideoFile != null && lastPlayerVideoFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            lastPlayerVideoFile.delete();
+        }
         for (File f : pendingExports.values()) {
             if (f != null && f.exists()) {
                 //noinspection ResultOfMethodCallIgnored

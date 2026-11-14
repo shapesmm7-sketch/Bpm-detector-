@@ -10,6 +10,19 @@ export interface AudioTrackItem {
   size: number;
   mimeType: string;
   uri: string;
+  webUrl?: string;
+}
+
+export interface VideoTrackItem {
+  id: string;
+  title: string;
+  displayName: string;
+  durationMs: number;
+  size: number;
+  mimeType: string;
+  resolution: string;
+  uri: string;
+  webUrl?: string;
 }
 
 interface AudioLibraryPluginInterface {
@@ -17,9 +30,21 @@ interface AudioLibraryPluginInterface {
     granted: boolean;
     songs: AudioTrackItem[];
   }>;
+  getAllVideoFiles(): Promise<{
+    granted: boolean;
+    videos: VideoTrackItem[];
+  }>;
   prepareAudioFile(options: {
     uri: string;
     displayName?: string;
+  }): Promise<{
+    filePath?: string;
+    localUrl: string;
+  }>;
+  prepareMediaFile(options: {
+    uri: string;
+    displayName?: string;
+    mediaKind?: 'audio' | 'video';
   }): Promise<{
     filePath?: string;
     localUrl: string;

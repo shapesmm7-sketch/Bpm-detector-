@@ -32,7 +32,7 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
   };
 
   return (
-    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+    <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 overflow-hidden min-w-0">
       {/* Drop Zone Deck */}
       <div
         onDragOver={(e) => {
@@ -42,7 +42,7 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         onClick={onTriggerUpload}
-        className={`relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 ${
+        className={`relative border-2 border-dashed rounded-xl p-5 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 overflow-hidden min-w-0 w-full ${
           isDragOver
             ? 'border-emerald-400 bg-emerald-500/10 scale-[1.005]'
             : 'border-slate-800 hover:border-emerald-500/50 bg-slate-950/70 hover:bg-slate-950'
@@ -59,7 +59,7 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
 
           <div className="space-y-1">
             <h3 className="font-bold text-slate-100 text-base sm:text-lg flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <span>Drop any audio track to detect BPM instantly</span>
+              <span>Drop any audio track to detect BPM, change key or Tempo</span>
               <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 PulseBPM Precision
               </span>
@@ -106,11 +106,15 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
         </div>
 
         {loadedTrackName && !isAnalyzing && (
-          <div className="pt-1 flex items-center gap-2 text-xs text-slate-400 font-mono">
-            <FileAudio className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Currently loaded: <strong className="text-slate-200">{loadedTrackName}</strong></span>
+          <div className="pt-1 w-full max-w-full min-w-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-400 font-mono overflow-hidden">
+            <div className="flex items-center justify-center gap-1.5 min-w-0 max-w-full">
+              <FileAudio className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="min-w-0 max-w-full break-all line-clamp-2 text-center">
+                Currently loaded: <strong className="text-slate-200">{loadedTrackName}</strong>
+              </span>
+            </div>
             {loadedBpm && (
-              <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0">
                 {loadedBpm} BPM
               </span>
             )}

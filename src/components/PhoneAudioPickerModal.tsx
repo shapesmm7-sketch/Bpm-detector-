@@ -135,11 +135,11 @@ export const PhoneAudioPickerModal: React.FC<PhoneAudioPickerModalProps> = ({
                 onClick={() => onSelectSong(song)}
                 className="w-full px-5 py-3.5 text-left hover:bg-slate-800/70 active:bg-slate-800 transition-colors flex items-center justify-between gap-3 cursor-pointer"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
+                <div className="flex items-center gap-3.5 flex-1 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-emerald-400 shrink-0">
                     <Music className="w-4 h-4" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-100 truncate">
                       {song.title || song.displayName}
                     </p>

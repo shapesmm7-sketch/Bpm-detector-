@@ -7,6 +7,8 @@ import { HistoryLogPanel, HistoryItem } from './components/HistoryLogPanel';
 import { MenuPanel } from './components/MenuPanel';
 import { PhoneAudioPickerModal } from './components/PhoneAudioPickerModal';
 import { ExportFormatModal } from './components/ExportFormatModal';
+import { StandaloneAudioPlayer } from './components/StandaloneAudioPlayer';
+import { StandaloneVideoPlayer } from './components/StandaloneVideoPlayer';
 import { AudioLibrary, AudioTrackItem, isNativeAndroid, resolvePlayableAudioUrl, saveExportedAudioBlob } from './plugins/audioLibrary';
 
 import {
@@ -26,10 +28,13 @@ import {
   clearAudioCache,
 } from './utils/audioStorage';
 
-import { Music, Play, Pause } from 'lucide-react';
+import { Music, Home, Video } from 'lucide-react';
 
 export default function App() {
+  const [activeSection, setActiveSection] = useState<'home' | 'audio' | 'video'>('home');
   const [activeTab, setActiveTab] = useState<'analyzer' | 'menu' | 'history'>('analyzer');
+  const [audioPauseSignal, setAudioPauseSignal] = useState<number>(0);
+  const [videoPauseSignal, setVideoPauseSignal] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Audio Track State
@@ -186,6 +191,8 @@ export default function App() {
 
     const activeSemitones = overrideSemitones !== undefined ? overrideSemitones : keySemitonesRef.current;
 
+    setAudioPauseSignal((n) => n + 1);
+    setVideoPauseSignal((n) => n + 1);
     stopAudio();
 
     if (activeSemitones !== 0 && audioBuffer) {
@@ -876,11 +883,15 @@ export default function App() {
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        activeSection={activeSection}
+        onSelectHome={() => setActiveSection('home')}
       />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {activeTab === 'analyzer' && (
-          <div className="space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 pb-24 space-y-6 overflow-x-hidden">
+        {/* Section 1: Home (Existing BPM Analyzer App + Menu + History) */}
+        <div className={activeSection === 'home' ? 'block space-y-6 min-w-0' : 'hidden'}>
+          {activeTab === 'analyzer' && (
+            <div className="space-y-6 min-w-0">
             {/* Song Upload Area */}
             <SongUploader
               onFileSelected={handleFileSelected}
@@ -893,16 +904,19 @@ export default function App() {
 
             {/* HERO BPM DISPLAY */}
             {bpmResult && (
-              <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center">
+              <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center overflow-hidden min-w-0">
                 {/* Track Title Banner */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pb-4 border-b border-slate-800 text-xs">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800 text-xs min-w-0">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto sm:flex-1 min-w-0">
                     <Music className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="font-bold text-slate-200 text-sm truncate max-w-md">
+                    <span
+                      className="font-bold text-slate-200 text-sm min-w-0 max-w-full break-all line-clamp-2 text-center sm:text-left"
+                      title={trackName || 'Audio Track'}
+                    >
                       {trackName || 'Audio Track'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-slate-400 font-mono text-xs">
+                  <div className="flex items-center justify-center sm:justify-end gap-2 text-slate-400 font-mono text-xs shrink-0">
                     <span>{Math.floor(duration / 60)}:{Math.floor(duration % 60).toString().padStart(2, '0')}</span>
                     <span>·</span>
                     <span className="text-emerald-400 font-semibold">{bpmResult.source}</span>
@@ -915,22 +929,22 @@ export default function App() {
                     DETECTED SONG BPM
                   </span>
 
-                  <div className="flex items-center justify-center gap-4 sm:gap-6">
+                  <div className="flex items-center justify-center gap-2.5 sm:gap-6">
                     {/* /2 button */}
                     <button
                       onClick={handleHalfBpm}
-                      className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer"
+                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       title="Halve BPM (/ 2)"
                     >
                       / 2
                     </button>
 
                     {/* Massive BPM Number */}
-                    <div className="flex items-baseline justify-center gap-2">
-                      <span className="text-6xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all">
+                    <div className="flex items-baseline justify-center gap-1.5 sm:gap-2 min-w-0">
+                      <span className="text-5xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all">
                         {liveBpm > 0 ? liveBpm.toFixed(2) : bpmResult.bpmFormatted}
                       </span>
-                      <span className="text-lg sm:text-2xl font-bold font-mono text-emerald-400">
+                      <span className="text-base sm:text-2xl font-bold font-mono text-emerald-400 shrink-0">
                         BPM
                       </span>
                     </div>
@@ -938,7 +952,7 @@ export default function App() {
                     {/* x2 button */}
                     <button
                       onClick={handleDoubleBpm}
-                      className="px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer"
+                      className="px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0"
                       title="Double BPM (x 2)"
                     >
                       x 2
@@ -1054,11 +1068,107 @@ export default function App() {
             />
           </div>
         )}
+        </div>
+
+        {/* Section 2: Standalone Phone Audio Player (separate from BPM Analyzer) */}
+        <div className={activeSection === 'audio' ? 'block min-w-0' : 'hidden'}>
+          <StandaloneAudioPlayer
+            isActiveTab={activeSection === 'audio'}
+            pauseSignal={audioPauseSignal}
+            onPlaybackStarted={() => {
+              stopAudio();
+              setVideoPauseSignal((n) => n + 1);
+            }}
+            sharedSongs={phoneSongs}
+            onSongsLoaded={setPhoneSongs}
+          />
+        </div>
+
+        {/* Section 3: Standalone Phone Video Player (separate from BPM Analyzer) */}
+        <div className={activeSection === 'video' ? 'block min-w-0' : 'hidden'}>
+          <StandaloneVideoPlayer
+            isActiveTab={activeSection === 'video'}
+            pauseSignal={videoPauseSignal}
+            onPlaybackStarted={() => {
+              stopAudio();
+              setAudioPauseSignal((n) => n + 1);
+            }}
+          />
+        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500 font-mono">
-        <p>PulseBPM — High Precision Beat Induction & Exact Tempo Detection</p>
+      {/* Fixed 3-Section App Footer: Home, Audio, Video */}
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800">
+        <nav
+          aria-label="Main Sections"
+          className="max-w-5xl mx-auto grid grid-cols-3 h-16"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (activeSection === 'video') {
+                setVideoPauseSignal((n) => n + 1);
+              }
+              setActiveSection('home');
+            }}
+            className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
+              activeSection === 'home'
+                ? 'text-emerald-400'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {activeSection === 'home' && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+            )}
+            <Home className="w-5 h-5" />
+            <span className="text-[11px] font-semibold tracking-tight leading-none">
+              Home
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (activeSection === 'video') {
+                setVideoPauseSignal((n) => n + 1);
+              }
+              setActiveSection('audio');
+            }}
+            className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
+              activeSection === 'audio'
+                ? 'text-emerald-400'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {activeSection === 'audio' && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+            )}
+            <Music className="w-5 h-5" />
+            <span className="text-[11px] font-semibold tracking-tight leading-none">
+              Audio
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSection('video');
+            }}
+            className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
+              activeSection === 'video'
+                ? 'text-emerald-400'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {activeSection === 'video' && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" />
+            )}
+            <Video className="w-5 h-5" />
+            <span className="text-[11px] font-semibold tracking-tight leading-none">
+              Video
+            </span>
+          </button>
+        </nav>
       </footer>
 
       {/* Android MediaStore Phone Audio Picker Modal */}

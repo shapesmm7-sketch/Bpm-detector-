@@ -14423,94 +14423,111 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$t = [
+const __iconNode$G = [
   ["path", { d: "m12 19-7-7 7-7", key: "1l729n" }],
   ["path", { d: "M19 12H5", key: "x3x0zl" }]
 ];
-const ArrowLeft = createLucideIcon("arrow-left", __iconNode$t);
+const ArrowLeft = createLucideIcon("arrow-left", __iconNode$G);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$s = [
+const __iconNode$F = [
   ["path", { d: "M5 12h14", key: "1ays0h" }],
   ["path", { d: "m12 5 7 7-7 7", key: "xquz4c" }]
 ];
-const ArrowRight = createLucideIcon("arrow-right", __iconNode$s);
+const ArrowRight = createLucideIcon("arrow-right", __iconNode$F);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$r = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("check", __iconNode$r);
+const __iconNode$E = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$E);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$q = [
+const __iconNode$D = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
   ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
 ];
-const CircleAlert = createLucideIcon("circle-alert", __iconNode$q);
+const CircleAlert = createLucideIcon("circle-alert", __iconNode$D);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$p = [
+const __iconNode$C = [
   ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
 ];
-const Clock = createLucideIcon("clock", __iconNode$p);
+const Clock = createLucideIcon("clock", __iconNode$C);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$o = [
+const __iconNode$B = [
   ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
   ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
 ];
-const Copy = createLucideIcon("copy", __iconNode$o);
+const Copy = createLucideIcon("copy", __iconNode$B);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$n = [
+const __iconNode$A = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["circle", { cx: "12", cy: "12", r: "2", key: "1c9p78" }]
 ];
-const Disc = createLucideIcon("disc", __iconNode$n);
+const Disc = createLucideIcon("disc", __iconNode$A);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$m = [
+const __iconNode$z = [
   ["path", { d: "M12 15V3", key: "m9g1x1" }],
   ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
   ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const Download = createLucideIcon("download", __iconNode$m);
+const Download = createLucideIcon("download", __iconNode$z);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$l = [
+const __iconNode$y = [
+  ["path", { d: "m15 15 6 6", key: "1s409w" }],
+  ["path", { d: "m15 9 6-6", key: "ko1vev" }],
+  ["path", { d: "M21 16v5h-5", key: "1ck2sf" }],
+  ["path", { d: "M21 8V3h-5", key: "1qoq8a" }],
+  ["path", { d: "M3 16v5h5", key: "1t08am" }],
+  ["path", { d: "m3 21 6-6", key: "wwnumi" }],
+  ["path", { d: "M3 8V3h5", key: "1ln10m" }],
+  ["path", { d: "M9 9 3 3", key: "v551iv" }]
+];
+const Expand = createLucideIcon("expand", __iconNode$y);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$x = [
   ["path", { d: "M17.5 22h.5a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3", key: "rslqgf" }],
   ["path", { d: "M14 2v4a2 2 0 0 0 2 2h4", key: "tnqrlb" }],
   [
@@ -14521,14 +14538,14 @@ const __iconNode$l = [
     }
   ]
 ];
-const FileAudio = createLucideIcon("file-audio", __iconNode$l);
+const FileAudio = createLucideIcon("file-audio", __iconNode$x);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$k = [
+const __iconNode$w = [
   [
     "path",
     {
@@ -14537,14 +14554,32 @@ const __iconNode$k = [
     }
   ]
 ];
-const FolderOpen = createLucideIcon("folder-open", __iconNode$k);
+const FolderOpen = createLucideIcon("folder-open", __iconNode$w);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$j = [
+const __iconNode$v = [
+  ["path", { d: "M12 10v6", key: "1bos4e" }],
+  ["path", { d: "M9 13h6", key: "1uhe8q" }],
+  [
+    "path",
+    {
+      d: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
+      key: "1kt360"
+    }
+  ]
+];
+const FolderPlus = createLucideIcon("folder-plus", __iconNode$v);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$u = [
   ["line", { x1: "22", x2: "2", y1: "12", y2: "12", key: "1y58io" }],
   [
     "path",
@@ -14556,7 +14591,145 @@ const __iconNode$j = [
   ["line", { x1: "6", x2: "6.01", y1: "16", y2: "16", key: "sgf278" }],
   ["line", { x1: "10", x2: "10.01", y1: "16", y2: "16", key: "1l4acy" }]
 ];
-const HardDrive = createLucideIcon("hard-drive", __iconNode$j);
+const HardDrive = createLucideIcon("hard-drive", __iconNode$u);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$t = [
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
+  ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
+];
+const History = createLucideIcon("history", __iconNode$t);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$s = [
+  ["path", { d: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", key: "5wwlr5" }],
+  [
+    "path",
+    {
+      d: "M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+      key: "r6nss1"
+    }
+  ]
+];
+const House = createLucideIcon("house", __iconNode$s);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$r = [
+  ["path", { d: "M8 3H5a2 2 0 0 0-2 2v3", key: "1dcmit" }],
+  ["path", { d: "M21 8V5a2 2 0 0 0-2-2h-3", key: "1e4gt3" }],
+  ["path", { d: "M3 16v3a2 2 0 0 0 2 2h3", key: "wsl5sc" }],
+  ["path", { d: "M16 21h3a2 2 0 0 0 2-2v-3", key: "18trek" }]
+];
+const Maximize = createLucideIcon("maximize", __iconNode$r);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$q = [
+  ["path", { d: "M4 5h16", key: "1tepv9" }],
+  ["path", { d: "M4 12h16", key: "1lakjw" }],
+  ["path", { d: "M4 19h16", key: "1djgab" }]
+];
+const Menu = createLucideIcon("menu", __iconNode$q);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$p = [
+  ["path", { d: "M8 3v3a2 2 0 0 1-2 2H3", key: "hohbtr" }],
+  ["path", { d: "M21 8h-3a2 2 0 0 1-2-2V3", key: "5jw1f3" }],
+  ["path", { d: "M3 16h3a2 2 0 0 1 2 2v3", key: "198tvr" }],
+  ["path", { d: "M16 21v-3a2 2 0 0 1 2-2h3", key: "ph8mxp" }]
+];
+const Minimize = createLucideIcon("minimize", __iconNode$p);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$o = [["path", { d: "M5 12h14", key: "1ays0h" }]];
+const Minus = createLucideIcon("minus", __iconNode$o);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$n = [
+  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
+  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
+  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
+];
+const Music = createLucideIcon("music", __iconNode$n);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$m = [
+  ["rect", { x: "14", y: "3", width: "5", height: "18", rx: "1", key: "kaeet6" }],
+  ["rect", { x: "5", y: "3", width: "5", height: "18", rx: "1", key: "1wsw3u" }]
+];
+const Pause = createLucideIcon("pause", __iconNode$m);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$l = [
+  [
+    "path",
+    {
+      d: "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z",
+      key: "10ikf1"
+    }
+  ]
+];
+const Play = createLucideIcon("play", __iconNode$l);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$k = [
+  ["path", { d: "M5 12h14", key: "1ays0h" }],
+  ["path", { d: "M12 5v14", key: "s699le" }]
+];
+const Plus = createLucideIcon("plus", __iconNode$k);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$j = [
+  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
+  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
+  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+];
+const RefreshCw = createLucideIcon("refresh-cw", __iconNode$j);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14564,11 +14737,13 @@ const HardDrive = createLucideIcon("hard-drive", __iconNode$j);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$i = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }],
-  ["path", { d: "M12 7v5l4 2", key: "1fdv2h" }]
+  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
+  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
+  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
+  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }],
+  ["path", { d: "M11 10h1v4", key: "70cz1p" }]
 ];
-const History = createLucideIcon("history", __iconNode$i);
+const Repeat1 = createLucideIcon("repeat-1", __iconNode$i);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14576,19 +14751,23 @@ const History = createLucideIcon("history", __iconNode$i);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$h = [
-  ["path", { d: "M4 5h16", key: "1tepv9" }],
-  ["path", { d: "M4 12h16", key: "1lakjw" }],
-  ["path", { d: "M4 19h16", key: "1djgab" }]
+  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
+  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
+  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
+  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }]
 ];
-const Menu = createLucideIcon("menu", __iconNode$h);
+const Repeat = createLucideIcon("repeat", __iconNode$h);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$g = [["path", { d: "M5 12h14", key: "1ays0h" }]];
-const Minus = createLucideIcon("minus", __iconNode$g);
+const __iconNode$g = [
+  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
+  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+];
+const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$g);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14596,11 +14775,10 @@ const Minus = createLucideIcon("minus", __iconNode$g);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$f = [
-  ["path", { d: "M9 18V5l12-2v13", key: "1jmyc2" }],
-  ["circle", { cx: "6", cy: "18", r: "3", key: "fqmcym" }],
-  ["circle", { cx: "18", cy: "16", r: "3", key: "1hluhg" }]
+  ["path", { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8", key: "1p45f6" }],
+  ["path", { d: "M21 3v5h-5", key: "1q7to0" }]
 ];
-const Music = createLucideIcon("music", __iconNode$f);
+const RotateCw = createLucideIcon("rotate-cw", __iconNode$f);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14608,10 +14786,10 @@ const Music = createLucideIcon("music", __iconNode$f);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$e = [
-  ["rect", { x: "14", y: "3", width: "5", height: "18", rx: "1", key: "kaeet6" }],
-  ["rect", { x: "5", y: "3", width: "5", height: "18", rx: "1", key: "1wsw3u" }]
+  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
+  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
 ];
-const Pause = createLucideIcon("pause", __iconNode$e);
+const Search = createLucideIcon("search", __iconNode$e);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14622,12 +14800,14 @@ const __iconNode$d = [
   [
     "path",
     {
-      d: "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z",
-      key: "10ikf1"
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "oel41y"
     }
-  ]
+  ],
+  ["path", { d: "M12 8v4", key: "1got3b" }],
+  ["path", { d: "M12 16h.01", key: "1drbdi" }]
 ];
-const Play = createLucideIcon("play", __iconNode$d);
+const ShieldAlert = createLucideIcon("shield-alert", __iconNode$d);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14635,10 +14815,12 @@ const Play = createLucideIcon("play", __iconNode$d);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$c = [
-  ["path", { d: "M5 12h14", key: "1ays0h" }],
-  ["path", { d: "M12 5v14", key: "s699le" }]
+  ["path", { d: "m15 15 6 6m-6-6v4.8m0-4.8h4.8", key: "17vawe" }],
+  ["path", { d: "M9 19.8V15m0 0H4.2M9 15l-6 6", key: "chjx8e" }],
+  ["path", { d: "M15 4.2V9m0 0h4.8M15 9l6-6", key: "lav6yq" }],
+  ["path", { d: "M9 4.2V9m0 0H4.2M9 9 3 3", key: "1pxi2q" }]
 ];
-const Plus = createLucideIcon("plus", __iconNode$c);
+const Shrink = createLucideIcon("shrink", __iconNode$c);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14646,12 +14828,13 @@ const Plus = createLucideIcon("plus", __iconNode$c);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$b = [
-  ["path", { d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", key: "v9h5vc" }],
-  ["path", { d: "M21 3v5h-5", key: "1q7to0" }],
-  ["path", { d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", key: "3uifl3" }],
-  ["path", { d: "M8 16H3v5", key: "1cv678" }]
+  ["path", { d: "m18 14 4 4-4 4", key: "10pe0f" }],
+  ["path", { d: "m18 2 4 4-4 4", key: "pucp1d" }],
+  ["path", { d: "M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22", key: "1ailkh" }],
+  ["path", { d: "M2 6h1.972a4 4 0 0 1 3.6 2.2", key: "km57vx" }],
+  ["path", { d: "M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45", key: "os18l9" }]
 ];
-const RefreshCw = createLucideIcon("refresh-cw", __iconNode$b);
+const Shuffle = createLucideIcon("shuffle", __iconNode$b);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14659,12 +14842,16 @@ const RefreshCw = createLucideIcon("refresh-cw", __iconNode$b);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$a = [
-  ["path", { d: "m17 2 4 4-4 4", key: "nntrym" }],
-  ["path", { d: "M3 11v-1a4 4 0 0 1 4-4h14", key: "84bu3i" }],
-  ["path", { d: "m7 22-4-4 4-4", key: "1wqhfi" }],
-  ["path", { d: "M21 13v1a4 4 0 0 1-4 4H3", key: "1rx37r" }]
+  [
+    "path",
+    {
+      d: "M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z",
+      key: "15892j"
+    }
+  ],
+  ["path", { d: "M3 20V4", key: "1ptbpl" }]
 ];
-const Repeat = createLucideIcon("repeat", __iconNode$a);
+const SkipBack = createLucideIcon("skip-back", __iconNode$a);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14672,10 +14859,16 @@ const Repeat = createLucideIcon("repeat", __iconNode$a);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$9 = [
-  ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
-  ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
+  ["path", { d: "M21 4v16", key: "7j8fe9" }],
+  [
+    "path",
+    {
+      d: "M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z",
+      key: "zs4d6"
+    }
+  ]
 ];
-const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$9);
+const SkipForward = createLucideIcon("skip-forward", __iconNode$9);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14683,17 +14876,6 @@ const RotateCcw = createLucideIcon("rotate-ccw", __iconNode$9);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$8 = [
-  ["path", { d: "m21 21-4.34-4.34", key: "14j7rj" }],
-  ["circle", { cx: "11", cy: "11", r: "8", key: "4ej97u" }]
-];
-const Search = createLucideIcon("search", __iconNode$8);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$7 = [
   ["path", { d: "M10 8h4", key: "1sr2af" }],
   ["path", { d: "M12 21v-9", key: "17s77i" }],
   ["path", { d: "M12 8V3", key: "13r4qs" }],
@@ -14704,7 +14886,21 @@ const __iconNode$7 = [
   ["path", { d: "M5 10V3", key: "cb8scm" }],
   ["path", { d: "M5 21v-7", key: "1w1uti" }]
 ];
-const SlidersVertical = createLucideIcon("sliders-vertical", __iconNode$7);
+const SlidersVertical = createLucideIcon("sliders-vertical", __iconNode$8);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  ["path", { d: "M10 11v6", key: "nco0om" }],
+  ["path", { d: "M14 11v6", key: "outv1u" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
+  ["path", { d: "M3 6h18", key: "d0wm0j" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+];
+const Trash2 = createLucideIcon("trash-2", __iconNode$7);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14712,13 +14908,11 @@ const SlidersVertical = createLucideIcon("sliders-vertical", __iconNode$7);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$6 = [
-  ["path", { d: "M10 11v6", key: "nco0om" }],
-  ["path", { d: "M14 11v6", key: "outv1u" }],
-  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
-  ["path", { d: "M3 6h18", key: "d0wm0j" }],
-  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+  ["path", { d: "M12 3v12", key: "1x0j5s" }],
+  ["path", { d: "m17 8-5-5-5 5", key: "7q97r8" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }]
 ];
-const Trash2 = createLucideIcon("trash-2", __iconNode$6);
+const Upload = createLucideIcon("upload", __iconNode$6);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14726,11 +14920,16 @@ const Trash2 = createLucideIcon("trash-2", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
-  ["path", { d: "M12 3v12", key: "1x0j5s" }],
-  ["path", { d: "m17 8-5-5-5 5", key: "7q97r8" }],
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }]
+  [
+    "path",
+    {
+      d: "m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5",
+      key: "ftymec"
+    }
+  ],
+  ["rect", { x: "2", y: "6", width: "14", height: "12", rx: "2", key: "158x01" }]
 ];
-const Upload = createLucideIcon("upload", __iconNode$5);
+const Video = createLucideIcon("video", __iconNode$5);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -14805,19 +15004,30 @@ const __iconNode = [
 const ZoomOut = createLucideIcon("zoom-out", __iconNode);
 const Header = ({
   activeTab,
-  setActiveTab
+  setActiveTab,
+  activeSection = "home",
+  onSelectHome
 }) => {
+  const isHomeMenuOpen = activeSection === "home" && activeTab === "menu";
+  const statusLabel = activeSection === "audio" ? "Audio Player" : activeSection === "video" ? "Video Player" : activeTab === "menu" ? "Menu Page" : activeTab === "history" ? "History View" : "BPM Analyzer";
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { className: "flex items-center justify-between gap-4 px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
-          onClick: () => setActiveTab(activeTab === "menu" ? "analyzer" : "menu"),
-          className: `p-2.5 rounded-xl border transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center ${activeTab === "menu" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-200"}`,
+          onClick: () => {
+            onSelectHome == null ? void 0 : onSelectHome();
+            if (activeSection !== "home") {
+              setActiveTab("menu");
+            } else {
+              setActiveTab(activeTab === "menu" ? "analyzer" : "menu");
+            }
+          },
+          className: `p-2.5 rounded-xl border transition-all cursor-pointer shadow-sm active:scale-95 flex items-center justify-center ${isHomeMenuOpen ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-200"}`,
           "aria-label": "Toggle Menu Page",
-          title: activeTab === "menu" ? "Close Menu" : "Open Menu Page",
-          children: activeTab === "menu" ? /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-5 h-5 text-emerald-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Menu, { className: "w-5 h-5 text-emerald-400" })
+          title: isHomeMenuOpen ? "Close Menu" : "Open Menu Page",
+          children: isHomeMenuOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-5 h-5 text-emerald-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Menu, { className: "w-5 h-5 text-emerald-400" })
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -14826,6 +15036,7 @@ const Header = ({
           href: "#",
           onClick: (e) => {
             e.preventDefault();
+            onSelectHome == null ? void 0 : onSelectHome();
             setActiveTab("analyzer");
           },
           className: "text-lg font-extrabold tracking-tight text-white flex items-center gap-2 whitespace-nowrap hover:opacity-90 transition-opacity",
@@ -14835,7 +15046,7 @@ const Header = ({
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs font-mono px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-2", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-400 animate-pulse" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-slate-300 font-semibold uppercase text-[10px] font-mono", children: activeTab === "menu" ? "Menu Page" : activeTab === "history" ? "History View" : "BPM Analyzer" })
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-slate-300 font-semibold uppercase text-[10px] font-mono", children: statusLabel })
     ] }) })
   ] });
 };
@@ -14858,7 +15069,7 @@ const SongUploader = ({
       }
     }
   };
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4", children: [
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 overflow-hidden min-w-0", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
@@ -14869,13 +15080,13 @@ const SongUploader = ({
         onDragLeave: () => setIsDragOver(false),
         onDrop: handleDrop,
         onClick: onTriggerUpload,
-        className: `relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 ${isDragOver ? "border-emerald-400 bg-emerald-500/10 scale-[1.005]" : "border-slate-800 hover:border-emerald-500/50 bg-slate-950/70 hover:bg-slate-950"} ${isAnalyzing ? "opacity-70 pointer-events-none" : ""}`,
+        className: `relative border-2 border-dashed rounded-xl p-5 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 overflow-hidden min-w-0 w-full ${isDragOver ? "border-emerald-400 bg-emerald-500/10 scale-[1.005]" : "border-slate-800 hover:border-emerald-500/50 bg-slate-950/70 hover:bg-slate-950"} ${isAnalyzing ? "opacity-70 pointer-events-none" : ""}`,
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 shadow-inner shrink-0", children: isAnalyzing ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-7 h-7 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Disc, { className: "w-7 h-7 text-emerald-400 animate-spin-slow" }) }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "font-bold text-slate-100 text-base sm:text-lg flex flex-wrap items-center justify-center sm:justify-start gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Drop any audio track to detect BPM instantly" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Drop any audio track to detect BPM, change key or Tempo" }),
                 /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20", children: "PulseBPM Precision" })
               ] }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400", children: [
@@ -14915,13 +15126,15 @@ const SongUploader = ({
               ] })
             }
           ) }),
-          loadedTrackName && !isAnalyzing && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pt-1 flex items-center gap-2 text-xs text-slate-400 font-mono", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(FileAudio, { className: "w-3.5 h-3.5 text-emerald-400" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-              "Currently loaded: ",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "text-slate-200", children: loadedTrackName })
+          loadedTrackName && !isAnalyzing && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "pt-1 w-full max-w-full min-w-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-400 font-mono overflow-hidden", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-1.5 min-w-0 max-w-full", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(FileAudio, { className: "w-3.5 h-3.5 text-emerald-400 shrink-0" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "min-w-0 max-w-full break-all line-clamp-2 text-center", children: [
+                "Currently loaded: ",
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "text-slate-200", children: loadedTrackName })
+              ] })
             ] }),
-            loadedBpm && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20", children: [
+            loadedBpm && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0", children: [
               loadedBpm,
               " BPM"
             ] })
@@ -15856,11 +16069,11 @@ const HistoryLogPanel = ({
               onSelectItem(item);
             }
           },
-          className: "flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer",
+          className: "flex items-center justify-between gap-2 p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900/80 active:scale-[0.99] transition-all cursor-pointer overflow-hidden",
           title: `Open ${item.name} in Analyzer`,
           children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5 min-w-0 pr-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-semibold text-slate-200 text-xs block truncate max-w-xs", children: item.name }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-0.5 flex-1 min-w-0 pr-2", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-semibold text-slate-200 text-xs block truncate", children: item.name }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-[11px] text-slate-400 font-mono", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
                   Math.floor(item.durationSec / 60),
@@ -15946,7 +16159,7 @@ function formatDuration(ms) {
   const secs = totalSec % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
-function formatSize(bytes) {
+function formatSize$2(bytes) {
   if (!bytes || bytes <= 0) return "0 MB";
   const mb = bytes / (1024 * 1024);
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -16043,9 +16256,9 @@ const PhoneAudioPickerModal = ({
         onClick: () => onSelectSong(song),
         className: "w-full px-5 py-3.5 text-left hover:bg-slate-800/70 active:bg-slate-800 transition-colors flex items-center justify-between gap-3 cursor-pointer",
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3.5 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3.5 flex-1 min-w-0", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-emerald-400 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-4 h-4" }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-100 truncate", children: song.title || song.displayName }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 truncate", children: [
                 song.artist,
@@ -16061,7 +16274,7 @@ const PhoneAudioPickerModal = ({
             ] }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-1 text-slate-500", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(HardDrive, { className: "w-3 h-3" }),
-              formatSize(song.size)
+              formatSize$2(song.size)
             ] })
           ] })
         ]
@@ -26716,6 +26929,1224 @@ async function saveExportedAudioBlob(blob, fileName, onProgress) {
   onProgress == null ? void 0 : onProgress(100);
   return { displayPath: fileName };
 }
+function formatTime$1(sec) {
+  if (!isFinite(sec) || sec < 0) return "0:00";
+  const mins = Math.floor(sec / 60);
+  const secs = Math.floor(sec % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+function formatSize$1(bytes) {
+  if (!bytes || bytes <= 0) return "";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+const StandaloneAudioPlayer = ({
+  isActiveTab,
+  pauseSignal,
+  onPlaybackStarted,
+  sharedSongs,
+  onSongsLoaded
+}) => {
+  const audioRef = reactExports.useRef(null);
+  const webFileInputRef = reactExports.useRef(null);
+  const webObjectUrlsRef = reactExports.useRef([]);
+  const hasAutoLoadedRef = reactExports.useRef(false);
+  const [songs, setSongs] = reactExports.useState(sharedSongs);
+  const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const [isLoadingLibrary, setIsLoadingLibrary] = reactExports.useState(false);
+  const [permissionDenied, setPermissionDenied] = reactExports.useState(false);
+  const [errorMessage, setErrorMessage] = reactExports.useState(null);
+  const [currentTrack, setCurrentTrack] = reactExports.useState(null);
+  const [isLoadingTrack, setIsLoadingTrack] = reactExports.useState(false);
+  const [isPlaying, setIsPlaying] = reactExports.useState(false);
+  const [currentTime, setCurrentTime] = reactExports.useState(0);
+  const [duration, setDuration] = reactExports.useState(0);
+  const [volume, setVolume] = reactExports.useState(1);
+  const [isMuted, setIsMuted] = reactExports.useState(false);
+  const [isShuffle, setIsShuffle] = reactExports.useState(false);
+  const [repeatMode, setRepeatMode] = reactExports.useState("all");
+  reactExports.useEffect(() => {
+    if (sharedSongs.length > 0 && songs.length === 0) {
+      setSongs(sharedSongs);
+    }
+  }, [sharedSongs, songs.length]);
+  reactExports.useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+      for (const url of webObjectUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      webObjectUrlsRef.current = [];
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    if (pauseSignal > 0 && audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [pauseSignal]);
+  const loadDeviceAudios = async () => {
+    if (!isNativeAndroid()) return;
+    setIsLoadingLibrary(true);
+    setErrorMessage(null);
+    try {
+      const res = await AudioLibrary.getAllAudioFiles();
+      if (res.granted) {
+        setPermissionDenied(false);
+        const list = res.songs || [];
+        setSongs(list);
+        onSongsLoaded(list);
+      } else {
+        setPermissionDenied(true);
+      }
+    } catch (err) {
+      console.error("Failed to load phone audio library:", err);
+      setErrorMessage("Could not read audio files from your phone.");
+    } finally {
+      setIsLoadingLibrary(false);
+    }
+  };
+  reactExports.useEffect(() => {
+    if (isActiveTab && isNativeAndroid() && !hasAutoLoadedRef.current) {
+      hasAutoLoadedRef.current = true;
+      void loadDeviceAudios();
+    }
+  }, [isActiveTab]);
+  const filteredSongs = reactExports.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return songs;
+    return songs.filter(
+      (s) => s.title.toLowerCase().includes(q) || s.displayName.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
+    );
+  }, [songs, searchQuery]);
+  const playTrack = async (track) => {
+    setErrorMessage(null);
+    setIsLoadingTrack(true);
+    onPlaybackStarted();
+    try {
+      let playableUrl = track.webUrl || "";
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: track.uri,
+          displayName: track.displayName || track.title,
+          mediaKind: "audio"
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) {
+        throw new Error("Audio source unavailable");
+      }
+      const audioEl = audioRef.current;
+      if (!audioEl) return;
+      setCurrentTrack(track);
+      setCurrentTime(0);
+      setDuration(track.durationMs > 0 ? track.durationMs / 1e3 : 0);
+      audioEl.src = playableUrl;
+      audioEl.volume = isMuted ? 0 : volume;
+      audioEl.load();
+      await audioEl.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error("Audio playback failed:", err);
+      setErrorMessage(`Could not play "${track.title || track.displayName}".`);
+      setIsPlaying(false);
+    } finally {
+      setIsLoadingTrack(false);
+    }
+  };
+  const handleTogglePlayPause = async () => {
+    const audioEl = audioRef.current;
+    if (!audioEl) return;
+    if (!currentTrack) {
+      if (filteredSongs.length > 0) {
+        await playTrack(filteredSongs[0]);
+      }
+      return;
+    }
+    if (audioEl.paused) {
+      onPlaybackStarted();
+      try {
+        await audioEl.play();
+        setIsPlaying(true);
+      } catch (err) {
+        console.error("Resume failed:", err);
+      }
+    } else {
+      audioEl.pause();
+      setIsPlaying(false);
+    }
+  };
+  const handleStepTrack = (direction) => {
+    const pool = filteredSongs.length > 0 ? filteredSongs : songs;
+    if (pool.length === 0) return;
+    if (!currentTrack) {
+      void playTrack(pool[0]);
+      return;
+    }
+    if (isShuffle && pool.length > 1) {
+      const candidates = pool.filter((s) => s.id !== currentTrack.id);
+      const next = candidates[Math.floor(Math.random() * candidates.length)];
+      if (next) void playTrack(next);
+      return;
+    }
+    const idx = pool.findIndex((s) => s.id === currentTrack.id);
+    const baseIdx = idx >= 0 ? idx : 0;
+    const nextIdx = (baseIdx + direction + pool.length) % pool.length;
+    void playTrack(pool[nextIdx]);
+  };
+  const handleTrackEnded = () => {
+    const audioEl = audioRef.current;
+    if (repeatMode === "one" && audioEl) {
+      audioEl.currentTime = 0;
+      void audioEl.play();
+      return;
+    }
+    const pool = filteredSongs.length > 0 ? filteredSongs : songs;
+    if (pool.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
+    if (isShuffle && pool.length > 1) {
+      handleStepTrack(1);
+      return;
+    }
+    const idx = currentTrack ? pool.findIndex((s) => s.id === currentTrack.id) : -1;
+    if (idx >= 0 && idx < pool.length - 1) {
+      void playTrack(pool[idx + 1]);
+    } else if (repeatMode === "all") {
+      void playTrack(pool[0]);
+    } else {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    }
+  };
+  const handleWebFilesSelected = (files) => {
+    if (!files || files.length === 0) return;
+    const added = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const url = URL.createObjectURL(file);
+      webObjectUrlsRef.current.push(url);
+      added.push({
+        id: `web-audio-${Date.now()}-${i}`,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        displayName: file.name,
+        artist: "Local File",
+        album: "",
+        durationMs: 0,
+        size: file.size,
+        mimeType: file.type || "audio/*",
+        uri: url,
+        webUrl: url
+      });
+    }
+    const merged = [...added, ...songs];
+    setSongs(merged);
+    if (!currentTrack && added[0]) {
+      void playTrack(added[0]);
+    }
+  };
+  const cycleRepeat = () => {
+    setRepeatMode((prev) => prev === "off" ? "all" : prev === "all" ? "one" : "off");
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-5 min-w-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "audio",
+      {
+        ref: audioRef,
+        preload: "metadata",
+        onTimeUpdate: () => {
+          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+        },
+        onLoadedMetadata: () => {
+          if (audioRef.current && isFinite(audioRef.current.duration)) {
+            setDuration(audioRef.current.duration);
+          }
+        },
+        onEnded: handleTrackEnded,
+        onPlay: () => setIsPlaying(true),
+        onPause: () => setIsPlaying(false)
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        ref: webFileInputRef,
+        type: "file",
+        accept: "audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg",
+        multiple: true,
+        className: "hidden",
+        onChange: (e) => {
+          handleWebFilesSelected(e.target.files);
+          e.target.value = "";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-5 overflow-hidden min-w-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 min-w-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3.5 min-w-0 flex-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0", children: isLoadingTrack ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-6 h-6" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base sm:text-lg font-bold text-slate-100 truncate", children: currentTrack ? currentTrack.title || currentTrack.displayName : "Audio Player" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 truncate", children: currentTrack ? `${currentTrack.artist}${currentTrack.album ? ` · ${currentTrack.album}` : ""}` : songs.length > 0 ? `Select any song below · ${songs.length} tracks` : "Play songs from your phone library" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-2 shrink-0", children: isNativeAndroid() ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => void loadDeviceAudios(),
+            disabled: isLoadingLibrary,
+            className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60",
+            title: "Refresh Phone Audio List",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: `w-4 h-4 text-emerald-400 ${isLoadingLibrary ? "animate-spin" : ""}` }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden sm:inline", children: "Refresh" })
+            ]
+          }
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => {
+              var _a2;
+              return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+            },
+            className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Audio" })
+            ]
+          }
+        ) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1.5", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "range",
+            min: 0,
+            max: duration > 0 ? duration : 100,
+            step: 0.1,
+            value: Math.min(currentTime, duration > 0 ? duration : 100),
+            disabled: !currentTrack || duration <= 0,
+            onChange: (e) => {
+              const next = parseFloat(e.target.value);
+              setCurrentTime(next);
+              if (audioRef.current) {
+                audioRef.current.currentTime = next;
+              }
+            },
+            "aria-label": "Audio playback progress",
+            className: "w-full h-2 accent-emerald-400 cursor-pointer disabled:opacity-40"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-mono tabular-nums text-slate-400", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime$1(currentTime) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime$1(duration) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center justify-between gap-4 pt-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-2 sm:gap-3 flex-1 sm:flex-initial", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setIsShuffle((prev) => !prev),
+              className: `min-w-[44px] min-h-[44px] rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${isShuffle ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"}`,
+              title: isShuffle ? "Shuffle On" : "Shuffle Off",
+              "aria-label": "Toggle Shuffle",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(Shuffle, { className: "w-4 h-4" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => handleStepTrack(-1),
+              disabled: songs.length === 0,
+              className: "min-w-[44px] min-h-[44px] rounded-xl bg-slate-950 hover:bg-slate-800 disabled:opacity-40 border border-slate-800 text-slate-200 flex items-center justify-center transition-colors cursor-pointer",
+              title: "Previous Track",
+              "aria-label": "Previous Track",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipBack, { className: "w-5 h-5" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => void handleTogglePlayPause(),
+              disabled: songs.length === 0 && !currentTrack,
+              className: "w-14 h-14 rounded-2xl bg-emerald-400 hover:bg-emerald-300 disabled:opacity-40 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer shrink-0",
+              title: isPlaying ? "Pause" : "Play",
+              "aria-label": isPlaying ? "Pause Audio" : "Play Audio",
+              children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-6 h-6 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-6 h-6 fill-current ml-0.5" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => handleStepTrack(1),
+              disabled: songs.length === 0,
+              className: "min-w-[44px] min-h-[44px] rounded-xl bg-slate-950 hover:bg-slate-800 disabled:opacity-40 border border-slate-800 text-slate-200 flex items-center justify-center transition-colors cursor-pointer",
+              title: "Next Track",
+              "aria-label": "Next Track",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipForward, { className: "w-5 h-5" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: cycleRepeat,
+              className: `min-w-[44px] min-h-[44px] rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${repeatMode !== "off" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"}`,
+              title: `Repeat: ${repeatMode}`,
+              "aria-label": "Cycle Repeat Mode",
+              children: repeatMode === "one" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Repeat1, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Repeat, { className: "w-4 h-4" })
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 mx-auto sm:mx-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                const nextMuted = !isMuted;
+                setIsMuted(nextMuted);
+                if (audioRef.current) {
+                  audioRef.current.volume = nextMuted ? 0 : volume;
+                }
+              },
+              className: "text-slate-300 hover:text-white cursor-pointer p-1",
+              "aria-label": isMuted ? "Unmute" : "Mute",
+              children: isMuted || volume === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "w-4 h-4 text-red-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "w-4 h-4 text-slate-300" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "range",
+              min: 0,
+              max: 1,
+              step: 0.05,
+              value: isMuted ? 0 : volume,
+              onChange: (e) => {
+                const next = parseFloat(e.target.value);
+                setVolume(next);
+                setIsMuted(next === 0);
+                if (audioRef.current) {
+                  audioRef.current.volume = next;
+                }
+              },
+              "aria-label": "Audio volume",
+              className: "w-24 accent-emerald-400 cursor-pointer"
+            }
+          )
+        ] })
+      ] }),
+      errorMessage && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-xs", children: errorMessage })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl min-w-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-bold text-slate-100", children: "Phone Audio Library" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 font-mono tabular-nums", children: [
+            filteredSongs.length,
+            " ",
+            filteredSongs.length === 1 ? "audio file" : "audio files"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative flex-1 sm:max-w-xs", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              value: searchQuery,
+              onChange: (e) => setSearchQuery(e.target.value),
+              placeholder: "Search songs...",
+              className: "w-full min-h-[42px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-8 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+            }
+          ),
+          searchQuery && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setSearchQuery(""),
+              className: "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-1",
+              "aria-label": "Clear audio search",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-3.5 h-3.5" })
+            }
+          )
+        ] })
+      ] }),
+      permissionDenied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "w-10 h-10 text-amber-400 mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-200", children: "Audio Permission Required" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 max-w-sm mx-auto", children: "Allow audio access so BeatPulse can list and play all songs stored on your phone." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => void loadDeviceAudios(),
+            className: "min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold cursor-pointer transition-colors",
+            children: "Allow Audio Access"
+          }
+        )
+      ] }) : isLoadingLibrary ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 font-mono", children: "Scanning phone audio files..." })
+      ] }) : filteredSongs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-10 h-10 text-slate-700 mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-300", children: songs.length === 0 ? "No audio files loaded yet" : "No matching audio files" }),
+        !isNativeAndroid() && songs.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => {
+              var _a2;
+              return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+            },
+            className: "min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Choose Audio Files" })
+            ]
+          }
+        )
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-slate-800/70 max-h-[420px] overflow-y-auto", children: filteredSongs.map((song) => {
+        const isSelected = (currentTrack == null ? void 0 : currentTrack.id) === song.id;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => void playTrack(song),
+            className: `w-full min-h-[58px] px-4 py-3 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${isSelected ? "bg-emerald-500/10" : "hover:bg-slate-800/60"}`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: `w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isSelected ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-400"}`,
+                    children: isSelected && isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-4 h-4 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 fill-current ml-0.5" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "p",
+                    {
+                      className: `text-sm font-semibold truncate ${isSelected ? "text-emerald-300" : "text-slate-100"}`,
+                      children: song.title || song.displayName
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 truncate", children: [
+                    song.artist,
+                    " · ",
+                    song.displayName
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right shrink-0 font-mono tabular-nums text-[11px] text-slate-400 space-y-0.5", children: [
+                song.durationMs > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-emerald-400 font-semibold", children: formatTime$1(song.durationMs / 1e3) }),
+                song.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: formatSize$1(song.size) })
+              ] })
+            ]
+          },
+          song.id
+        );
+      }) })
+    ] })
+  ] });
+};
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) return "0:00";
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor(sec % 3600 / 60);
+  const secs = Math.floor(sec % 60);
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+function formatSize(bytes) {
+  if (!bytes || bytes <= 0) return "";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
+const StandaloneVideoPlayer = ({
+  isActiveTab,
+  pauseSignal,
+  onPlaybackStarted
+}) => {
+  const playerContainerRef = reactExports.useRef(null);
+  const videoRef = reactExports.useRef(null);
+  const webFileInputRef = reactExports.useRef(null);
+  const webObjectUrlsRef = reactExports.useRef([]);
+  const hasAutoLoadedRef = reactExports.useRef(false);
+  const hideControlsTimerRef = reactExports.useRef(null);
+  const [videos, setVideos] = reactExports.useState([]);
+  const [searchQuery, setSearchQuery] = reactExports.useState("");
+  const [isLoadingLibrary, setIsLoadingLibrary] = reactExports.useState(false);
+  const [permissionDenied, setPermissionDenied] = reactExports.useState(false);
+  const [errorMessage, setErrorMessage] = reactExports.useState(null);
+  const [currentVideo, setCurrentVideo] = reactExports.useState(null);
+  const [isPlayerOpen, setIsPlayerOpen] = reactExports.useState(false);
+  const [isLoadingVideo, setIsLoadingVideo] = reactExports.useState(false);
+  const [isPlaying, setIsPlaying] = reactExports.useState(false);
+  const [currentTime, setCurrentTime] = reactExports.useState(0);
+  const [duration, setDuration] = reactExports.useState(0);
+  const [isMuted, setIsMuted] = reactExports.useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = reactExports.useState(1);
+  const [fitMode, setFitMode] = reactExports.useState("contain");
+  const [showControls, setShowControls] = reactExports.useState(true);
+  const [isOsFullscreen, setIsOsFullscreen] = reactExports.useState(false);
+  const clearHideTimer = () => {
+    if (hideControlsTimerRef.current !== null) {
+      window.clearTimeout(hideControlsTimerRef.current);
+      hideControlsTimerRef.current = null;
+    }
+  };
+  const scheduleHideControls = () => {
+    clearHideTimer();
+    hideControlsTimerRef.current = window.setTimeout(() => {
+      setShowControls(false);
+    }, 3500);
+  };
+  reactExports.useEffect(() => {
+    const onFsChange = () => {
+      setIsOsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      clearHideTimer();
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute("src");
+        videoRef.current.load();
+      }
+      for (const url of webObjectUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      webObjectUrlsRef.current = [];
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    if (!isPlayerOpen) return;
+    if (isPlaying && showControls) {
+      scheduleHideControls();
+    } else if (!isPlaying) {
+      clearHideTimer();
+      setShowControls(true);
+    }
+    return () => clearHideTimer();
+  }, [isPlayerOpen, isPlaying, showControls]);
+  reactExports.useEffect(() => {
+    if (pauseSignal > 0 && videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  }, [pauseSignal]);
+  const loadDeviceVideos = async () => {
+    if (!isNativeAndroid()) return;
+    setIsLoadingLibrary(true);
+    setErrorMessage(null);
+    try {
+      const res = await AudioLibrary.getAllVideoFiles();
+      if (res.granted) {
+        setPermissionDenied(false);
+        setVideos(res.videos || []);
+      } else {
+        setPermissionDenied(true);
+      }
+    } catch (err) {
+      console.error("Failed to load phone video library:", err);
+      setErrorMessage("Could not read video files from your phone.");
+    } finally {
+      setIsLoadingLibrary(false);
+    }
+  };
+  reactExports.useEffect(() => {
+    if (isActiveTab && isNativeAndroid() && !hasAutoLoadedRef.current) {
+      hasAutoLoadedRef.current = true;
+      void loadDeviceVideos();
+    }
+  }, [isActiveTab]);
+  const filteredVideos = reactExports.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return videos;
+    return videos.filter(
+      (v) => v.title.toLowerCase().includes(q) || v.displayName.toLowerCase().includes(q)
+    );
+  }, [videos, searchQuery]);
+  const closePlayer = async () => {
+    clearHideTimer();
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+      }
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    setIsPlaying(false);
+    setIsPlayerOpen(false);
+  };
+  reactExports.useEffect(() => {
+    if (!isPlayerOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" && !document.fullscreenElement) {
+        void closePlayer();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isPlayerOpen]);
+  const playVideoItem = async (item) => {
+    setErrorMessage(null);
+    setCurrentVideo(item);
+    setIsPlayerOpen(true);
+    setIsLoadingVideo(true);
+    setShowControls(true);
+    setCurrentTime(0);
+    setDuration(item.durationMs > 0 ? item.durationMs / 1e3 : 0);
+    onPlaybackStarted();
+    try {
+      let playableUrl = item.webUrl || "";
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: item.uri,
+          displayName: item.displayName || item.title,
+          mediaKind: "video"
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) {
+        throw new Error("Video source unavailable");
+      }
+      const videoEl = videoRef.current;
+      if (!videoEl) return;
+      videoEl.src = playableUrl;
+      videoEl.muted = isMuted;
+      videoEl.playbackRate = playbackSpeed;
+      videoEl.load();
+      await videoEl.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error("Video playback failed:", err);
+      setErrorMessage(`Could not play "${item.title || item.displayName}".`);
+      setIsPlaying(false);
+    } finally {
+      setIsLoadingVideo(false);
+    }
+  };
+  const handleTogglePlayPause = async () => {
+    const videoEl = videoRef.current;
+    if (!videoEl || !currentVideo) return;
+    setShowControls(true);
+    if (videoEl.paused) {
+      onPlaybackStarted();
+      try {
+        await videoEl.play();
+        setIsPlaying(true);
+      } catch (err) {
+        console.error("Video resume failed:", err);
+      }
+    } else {
+      videoEl.pause();
+      setIsPlaying(false);
+    }
+  };
+  const handleSeekRelative = (deltaSec) => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+    setShowControls(true);
+    const maxDur = isFinite(videoEl.duration) ? videoEl.duration : duration;
+    const next = Math.max(0, Math.min(maxDur || 0, videoEl.currentTime + deltaSec));
+    videoEl.currentTime = next;
+    setCurrentTime(next);
+  };
+  const handleStepVideo = (direction) => {
+    const pool = filteredVideos.length > 0 ? filteredVideos : videos;
+    if (pool.length === 0) return;
+    if (!currentVideo) {
+      void playVideoItem(pool[0]);
+      return;
+    }
+    const idx = pool.findIndex((v) => v.id === currentVideo.id);
+    const baseIdx = idx >= 0 ? idx : 0;
+    const nextIdx = (baseIdx + direction + pool.length) % pool.length;
+    void playVideoItem(pool[nextIdx]);
+  };
+  const cycleSpeed = () => {
+    setShowControls(true);
+    const currentIdx = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
+    const nextSpeed = PLAYBACK_SPEEDS[(currentIdx + 1) % PLAYBACK_SPEEDS.length];
+    setPlaybackSpeed(nextSpeed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = nextSpeed;
+    }
+  };
+  const handleFullscreen = async () => {
+    setShowControls(true);
+    const containerEl = playerContainerRef.current;
+    const videoEl = videoRef.current;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (containerEl == null ? void 0 : containerEl.requestFullscreen) {
+        await containerEl.requestFullscreen();
+      } else if (videoEl == null ? void 0 : videoEl.requestFullscreen) {
+        await videoEl.requestFullscreen();
+      } else if (videoEl == null ? void 0 : videoEl.webkitEnterFullscreen) {
+        videoEl.webkitEnterFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen toggle failed:", err);
+    }
+  };
+  const handleWebFilesSelected = (files) => {
+    if (!files || files.length === 0) return;
+    const added = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const url = URL.createObjectURL(file);
+      webObjectUrlsRef.current.push(url);
+      added.push({
+        id: `web-video-${Date.now()}-${i}`,
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        displayName: file.name,
+        durationMs: 0,
+        size: file.size,
+        mimeType: file.type || "video/*",
+        resolution: "",
+        uri: url,
+        webUrl: url
+      });
+    }
+    setVideos((prev) => [...added, ...prev]);
+    if (added[0]) {
+      void playVideoItem(added[0]);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-5 min-w-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "input",
+      {
+        ref: webFileInputRef,
+        type: "file",
+        accept: "video/*,.mp4,.webm,.mov,.mkv,.m4v",
+        multiple: true,
+        className: "hidden",
+        onChange: (e) => {
+          handleWebFilesSelected(e.target.files);
+          e.target.value = "";
+        }
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
+      {
+        ref: playerContainerRef,
+        className: isPlayerOpen ? "fixed inset-0 z-50 bg-black flex flex-col w-full h-full overflow-hidden select-none" : "hidden",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "relative flex-1 min-h-0 w-full flex items-center justify-center bg-black overflow-hidden",
+            onClick: () => setShowControls((prev) => !prev),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "video",
+                {
+                  ref: videoRef,
+                  playsInline: true,
+                  onTimeUpdate: () => {
+                    if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+                  },
+                  onLoadedMetadata: () => {
+                    const el = videoRef.current;
+                    if (!el) return;
+                    if (isFinite(el.duration)) {
+                      setDuration(el.duration);
+                    }
+                  },
+                  onPlay: () => {
+                    onPlaybackStarted();
+                    setIsPlaying(true);
+                  },
+                  onPause: () => setIsPlaying(false),
+                  onEnded: () => {
+                    setIsPlaying(false);
+                    setShowControls(true);
+                  },
+                  className: `w-full h-full bg-black ${fitMode === "cover" ? "object-cover" : "object-contain"}`
+                }
+              ),
+              isLoadingVideo && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" }) }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  onClick: (e) => e.stopPropagation(),
+                  className: `absolute top-0 left-0 right-0 z-10 px-3 sm:px-5 pt-3 pb-8 bg-gradient-to-b from-black/90 via-black/55 to-transparent flex items-center justify-between gap-2 transition-opacity duration-200 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`,
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2.5 flex-1 min-w-0", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => void closePlayer(),
+                          className: "min-w-[44px] min-h-[44px] rounded-xl bg-black/50 hover:bg-white/15 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0",
+                          title: "Back to Videos",
+                          "aria-label": "Back to Video List",
+                          children: /* @__PURE__ */ jsxRuntimeExports.jsx(ArrowLeft, { className: "w-5 h-5" })
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0 flex-1", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-sm sm:text-base font-bold text-white truncate", children: (currentVideo == null ? void 0 : currentVideo.title) || (currentVideo == null ? void 0 : currentVideo.displayName) || "Video Player" }),
+                        (currentVideo == null ? void 0 : currentVideo.resolution) && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-[11px] font-mono text-slate-300 truncate", children: currentVideo.resolution })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-1.5 shrink-0", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: cycleSpeed,
+                          className: "min-w-[44px] min-h-[40px] px-2.5 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white text-xs font-mono font-bold cursor-pointer transition-colors",
+                          title: "Playback Speed",
+                          children: [
+                            playbackSpeed,
+                            "x"
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => {
+                            setShowControls(true);
+                            setFitMode((prev) => prev === "contain" ? "cover" : "contain");
+                          },
+                          className: "min-w-[44px] min-h-[40px] px-2.5 rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center gap-1 text-xs font-semibold cursor-pointer transition-colors",
+                          title: fitMode === "contain" ? "Fill Screen" : "Fit Whole Video",
+                          "aria-label": "Toggle Video Fit or Fill",
+                          children: fitMode === "contain" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Expand, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Shrink, { className: "w-4 h-4" })
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => void handleFullscreen(),
+                          className: "min-w-[44px] min-h-[40px] rounded-lg bg-black/55 hover:bg-white/15 border border-white/15 text-white flex items-center justify-center cursor-pointer transition-colors",
+                          title: isOsFullscreen ? "Exit Fullscreen" : "Fullscreen",
+                          "aria-label": "Toggle Fullscreen",
+                          children: isOsFullscreen ? /* @__PURE__ */ jsxRuntimeExports.jsx(Minimize, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Maximize, { className: "w-4 h-4" })
+                        }
+                      )
+                    ] })
+                  ]
+                }
+              ),
+              !isLoadingVideo && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    void handleTogglePlayPause();
+                  },
+                  "aria-label": isPlaying ? "Pause Video" : "Play Video",
+                  className: `absolute z-10 w-16 h-16 rounded-full bg-black/65 hover:bg-emerald-500 text-white hover:text-slate-950 border border-white/25 flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer active:scale-95 ${showControls ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"}`,
+                  children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-7 h-7 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-7 h-7 fill-current ml-0.5" })
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  onClick: (e) => e.stopPropagation(),
+                  className: `absolute bottom-0 left-0 right-0 z-10 px-4 sm:px-6 pt-10 pb-5 bg-gradient-to-t from-black/95 via-black/75 to-transparent space-y-3 transition-opacity duration-200 ${showControls ? "opacity-100" : "opacity-0 pointer-events-none"}`,
+                  children: [
+                    errorMessage && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs text-center", children: errorMessage }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "input",
+                        {
+                          type: "range",
+                          min: 0,
+                          max: duration > 0 ? duration : 100,
+                          step: 0.1,
+                          value: Math.min(currentTime, duration > 0 ? duration : 100),
+                          disabled: duration <= 0,
+                          onChange: (e) => {
+                            setShowControls(true);
+                            const next = parseFloat(e.target.value);
+                            setCurrentTime(next);
+                            if (videoRef.current) {
+                              videoRef.current.currentTime = next;
+                            }
+                          },
+                          "aria-label": "Video timeline",
+                          className: "w-full h-2 accent-emerald-400 cursor-pointer disabled:opacity-40"
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between text-xs font-mono tabular-nums text-slate-200", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(currentTime) }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: formatTime(duration) })
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2", children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => {
+                            setShowControls(true);
+                            const next = !isMuted;
+                            setIsMuted(next);
+                            if (videoRef.current) {
+                              videoRef.current.muted = next;
+                            }
+                          },
+                          className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                          title: isMuted ? "Unmute" : "Mute",
+                          "aria-label": isMuted ? "Unmute Video" : "Mute Video",
+                          children: isMuted ? /* @__PURE__ */ jsxRuntimeExports.jsx(VolumeX, { className: "w-5 h-5 text-red-400" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { className: "w-5 h-5" })
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 sm:gap-3", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => handleStepVideo(-1),
+                            disabled: videos.length === 0,
+                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
+                            title: "Previous Video",
+                            "aria-label": "Previous Video",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipBack, { className: "w-5 h-5" })
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => handleSeekRelative(-10),
+                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                            title: "Rewind 10s",
+                            "aria-label": "Rewind 10 seconds",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCcw, { className: "w-5 h-5" })
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => void handleTogglePlayPause(),
+                            className: "w-13 h-13 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer shrink-0",
+                            title: isPlaying ? "Pause" : "Play",
+                            "aria-label": isPlaying ? "Pause Video" : "Play Video",
+                            children: isPlaying ? /* @__PURE__ */ jsxRuntimeExports.jsx(Pause, { className: "w-6 h-6 fill-current" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-6 h-6 fill-current ml-0.5" })
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => handleSeekRelative(10),
+                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors",
+                            title: "Forward 10s",
+                            "aria-label": "Forward 10 seconds",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(RotateCw, { className: "w-5 h-5" })
+                          }
+                        ),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          "button",
+                          {
+                            type: "button",
+                            onClick: () => handleStepVideo(1),
+                            disabled: videos.length === 0,
+                            className: "min-w-[44px] min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white flex items-center justify-center cursor-pointer transition-colors",
+                            title: "Next Video",
+                            "aria-label": "Next Video",
+                            children: /* @__PURE__ */ jsxRuntimeExports.jsx(SkipForward, { className: "w-5 h-5" })
+                          }
+                        )
+                      ] }),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: () => void closePlayer(),
+                          className: "min-w-[44px] min-h-[44px] px-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center cursor-pointer transition-colors",
+                          title: "Close Player",
+                          "aria-label": "Close Video Player",
+                          children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-5 h-5" })
+                        }
+                      )
+                    ] })
+                  ]
+                }
+              )
+            ]
+          }
+        )
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl min-w-0", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-4 sm:p-5 border-b border-slate-800 space-y-4", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Video, { className: "w-5 h-5" }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-base sm:text-lg font-bold text-slate-100 truncate", children: "Phone Videos" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 font-mono tabular-nums", children: [
+                filteredVideos.length,
+                " ",
+                filteredVideos.length === 1 ? "video" : "videos",
+                " · Tap any video to open player"
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "shrink-0", children: isNativeAndroid() ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => void loadDeviceVideos(),
+              disabled: isLoadingLibrary,
+              className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60",
+              title: "Refresh Phone Video List",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(RefreshCw, { className: `w-4 h-4 text-emerald-400 ${isLoadingLibrary ? "animate-spin" : ""}` }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "hidden sm:inline", children: "Refresh" })
+              ]
+            }
+          ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                var _a2;
+                return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+              },
+              className: "min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors",
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Add Video" })
+              ]
+            }
+          ) })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Search, { className: "w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              type: "text",
+              value: searchQuery,
+              onChange: (e) => setSearchQuery(e.target.value),
+              placeholder: "Search videos on your phone...",
+              className: "w-full min-h-[44px] bg-slate-950 border border-slate-800 focus:border-emerald-500/60 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+            }
+          ),
+          searchQuery && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setSearchQuery(""),
+              className: "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-1",
+              "aria-label": "Clear video search",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+            }
+          )
+        ] })
+      ] }),
+      permissionDenied ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(ShieldAlert, { className: "w-10 h-10 text-amber-400 mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-200", children: "Video Permission Required" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 max-w-sm mx-auto", children: "Allow video access so BeatPulse can list and play all videos stored on your phone." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => void loadDeviceVideos(),
+            className: "min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold cursor-pointer transition-colors",
+            children: "Allow Video Access"
+          }
+        )
+      ] }) : isLoadingLibrary ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-slate-400 font-mono", children: "Scanning phone videos..." })
+      ] }) : filteredVideos.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-12 px-6 text-center space-y-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(Video, { className: "w-10 h-10 text-slate-700 mx-auto" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-semibold text-slate-300", children: videos.length === 0 ? "No videos loaded yet" : "No matching videos" }),
+        !isNativeAndroid() && videos.length === 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => {
+              var _a2;
+              return (_a2 = webFileInputRef.current) == null ? void 0 : _a2.click();
+            },
+            className: "min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(FolderPlus, { className: "w-4 h-4" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Choose Video Files" })
+            ]
+          }
+        )
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "divide-y divide-slate-800/70", children: filteredVideos.map((vid) => {
+        const isSelected = (currentVideo == null ? void 0 : currentVideo.id) === vid.id;
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "button",
+          {
+            type: "button",
+            onClick: () => void playVideoItem(vid),
+            className: `w-full min-h-[60px] px-4 py-3 text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${isSelected ? "bg-emerald-500/10" : "hover:bg-slate-800/60"}`,
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3 flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "div",
+                  {
+                    className: `w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${isSelected ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-400"}`,
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx(Play, { className: "w-4 h-4 fill-current ml-0.5" })
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 min-w-0", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "p",
+                    {
+                      className: `text-sm font-semibold truncate ${isSelected ? "text-emerald-300" : "text-slate-100"}`,
+                      children: vid.title || vid.displayName
+                    }
+                  ),
+                  /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-xs text-slate-400 truncate", children: [
+                    vid.resolution ? `${vid.resolution} · ` : "",
+                    vid.displayName
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-right shrink-0 font-mono tabular-nums text-[11px] text-slate-400 space-y-0.5", children: [
+                vid.durationMs > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-emerald-400 font-semibold", children: formatTime(vid.durationMs / 1e3) }),
+                vid.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { children: formatSize(vid.size) })
+              ] })
+            ]
+          },
+          vid.id
+        );
+      }) })
+    ] })
+  ] });
+};
 var startThreshold = 0.95;
 var minValidThreshold = 0.2;
 var minPeaks = 15;
@@ -29744,7 +31175,10 @@ async function clearAudioCache() {
   }
 }
 function App() {
+  const [activeSection, setActiveSection] = reactExports.useState("home");
   const [activeTab, setActiveTab] = reactExports.useState("analyzer");
+  const [audioPauseSignal, setAudioPauseSignal] = reactExports.useState(0);
+  const [videoPauseSignal, setVideoPauseSignal] = reactExports.useState(0);
   const fileInputRef = reactExports.useRef(null);
   const [trackName, setTrackName] = reactExports.useState("");
   const [audioBuffer, setAudioBuffer] = reactExports.useState(null);
@@ -29870,6 +31304,8 @@ function App() {
   const playAudio = (startSec = currentTime, overrideSemitones) => {
     if (!audioBuffer && !audioElementRef.current) return;
     const activeSemitones = overrideSemitones !== void 0 ? overrideSemitones : keySemitonesRef.current;
+    setAudioPauseSignal((n) => n + 1);
+    setVideoPauseSignal((n) => n + 1);
     stopAudio();
     if (activeSemitones !== 0 && audioBuffer) {
       const ctx2 = getAudioContext();
@@ -30439,162 +31875,256 @@ Duration: ${Math.floor(duration / 60)}:${Math.floor(duration % 60).toString().pa
       Header,
       {
         activeTab,
-        setActiveTab
+        setActiveTab,
+        activeSection,
+        onSelectHome: () => setActiveSection("home")
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6", children: [
-      activeTab === "analyzer" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          SongUploader,
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 pb-24 space-y-6 overflow-x-hidden", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: activeSection === "home" ? "block space-y-6 min-w-0" : "hidden", children: [
+        activeTab === "analyzer" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-6 min-w-0", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            SongUploader,
+            {
+              onFileSelected: handleFileSelected,
+              onTriggerUpload: handleOpenUpload,
+              isAnalyzing,
+              error: analysisError,
+              loadedTrackName: trackName,
+              loadedBpm: bpmResult == null ? void 0 : bpmResult.bpm
+            }
+          ),
+          bpmResult && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center overflow-hidden min-w-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-800 text-xs min-w-0", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center sm:justify-start gap-2 w-full sm:w-auto sm:flex-1 min-w-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: "font-bold text-slate-200 text-sm min-w-0 max-w-full break-all line-clamp-2 text-center sm:text-left",
+                    title: trackName || "Audio Track",
+                    children: trackName || "Audio Track"
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center sm:justify-end gap-2 text-slate-400 font-mono text-xs shrink-0", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+                  Math.floor(duration / 60),
+                  ":",
+                  Math.floor(duration % 60).toString().padStart(2, "0")
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "·" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-emerald-400 font-semibold", children: bpmResult.source })
+              ] })
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-2 space-y-3", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-mono uppercase tracking-widest text-slate-400 font-bold block", children: "DETECTED SONG BPM" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-2.5 sm:gap-6", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: handleHalfBpm,
+                    className: "px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0",
+                    title: "Halve BPM (/ 2)",
+                    children: "/ 2"
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-center gap-1.5 sm:gap-2 min-w-0", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-5xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all", children: liveBpm > 0 ? liveBpm.toFixed(2) : bpmResult.bpmFormatted }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-base sm:text-2xl font-bold font-mono text-emerald-400 shrink-0", children: "BPM" })
+                ] }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    onClick: handleDoubleBpm,
+                    className: "px-3 sm:px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0",
+                    title: "Double BPM (x 2)",
+                    children: "x 2"
+                  }
+                )
+              ] }),
+              pitchPercent !== 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs font-mono text-cyan-400 font-bold", children: [
+                "Original Tempo: ",
+                bpmResult.bpmFormatted,
+                " BPM (",
+                pitchPercent > 0 ? `+${pitchPercent.toFixed(1)}%` : `${pitchPercent.toFixed(1)}%`,
+                " pitch shift)"
+              ] })
+            ] }),
+            audioBuffer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-2 text-left", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              WaveformVisualizer,
+              {
+                audioBuffer,
+                bpm: liveBpm,
+                firstBeatOffset: bpmResult.firstBeatOffset,
+                currentTime,
+                duration,
+                isPlaying,
+                playbackRate,
+                cuePoint,
+                onSeek: handleSeek,
+                onOffsetChange: (newOffset) => {
+                  setBpmResult((prev) => prev ? { ...prev, firstBeatOffset: newOffset } : null);
+                },
+                loopRegion,
+                onLoopChange: setLoopRegion
+              }
+            ) }),
+            audioBuffer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-left", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              AudioPlayerControls,
+              {
+                isPlaying,
+                onPlayPause: handlePlayPause,
+                onCue: handleCue,
+                onRestart: () => handleSeek(0),
+                volume,
+                onVolumeChange: handleVolumeChange,
+                pitchPercent,
+                onPitchChange: handlePitchChange,
+                onPitchBend: handlePitchBend,
+                onExportTempoAudio: () => {
+                  if (audioBuffer && !isExportingTempo) {
+                    setExportPickerTarget("tempo");
+                  }
+                },
+                isExportingTempo,
+                tempoExportProgress,
+                tempoExportStatusMessage,
+                tempoExportErrorMessage,
+                keySemitones,
+                onKeySemitonesChange: handleKeySemitonesChange,
+                onResetKeyShift: handleResetKeyShift,
+                onExportAudio: () => {
+                  if (audioBuffer && !isExporting) {
+                    setExportPickerTarget("key");
+                  }
+                },
+                isExporting,
+                exportProgress,
+                exportStatusMessage,
+                exportErrorMessage,
+                loopBarCount,
+                onSetLoopBarCount: handleSetLoopBarCount,
+                bpm: bpmResult.bpm,
+                liveBpm,
+                onCopyInfo: handleCopyInfo,
+                copied,
+                onHalfBpm: handleHalfBpm,
+                onDoubleBpm: handleDoubleBpm
+              }
+            ) })
+          ] })
+        ] }),
+        activeTab === "menu" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          MenuPanel,
           {
-            onFileSelected: handleFileSelected,
-            onTriggerUpload: handleOpenUpload,
-            isAnalyzing,
-            error: analysisError,
-            loadedTrackName: trackName,
-            loadedBpm: bpmResult == null ? void 0 : bpmResult.bpm
+            onNavigate: setActiveTab,
+            historyCount: history.length
           }
         ),
-        bpmResult && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 sm:p-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col sm:flex-row items-center justify-between gap-2 pb-4 border-b border-slate-800 text-xs", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-4 h-4 text-emerald-400 shrink-0" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-slate-200 text-sm truncate max-w-md", children: trackName || "Audio Track" })
-            ] }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-slate-400 font-mono text-xs", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-                Math.floor(duration / 60),
-                ":",
-                Math.floor(duration % 60).toString().padStart(2, "0")
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "·" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-emerald-400 font-semibold", children: bpmResult.source })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "py-2 space-y-3", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-mono uppercase tracking-widest text-slate-400 font-bold block", children: "DETECTED SONG BPM" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-4 sm:gap-6", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleHalfBpm,
-                  className: "px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer",
-                  title: "Halve BPM (/ 2)",
-                  children: "/ 2"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline justify-center gap-2", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-6xl sm:text-8xl md:text-9xl font-black font-mono tracking-tight text-white drop-shadow-[0_0_30px_rgba(16,185,129,0.35)] select-all", children: liveBpm > 0 ? liveBpm.toFixed(2) : bpmResult.bpmFormatted }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-lg sm:text-2xl font-bold font-mono text-emerald-400", children: "BPM" })
-              ] }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  onClick: handleDoubleBpm,
-                  className: "px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-emerald-400 text-xs sm:text-sm font-mono font-bold transition-colors cursor-pointer",
-                  title: "Double BPM (x 2)",
-                  children: "x 2"
-                }
-              )
-            ] }),
-            pitchPercent !== 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-xs font-mono text-cyan-400 font-bold", children: [
-              "Original Tempo: ",
-              bpmResult.bpmFormatted,
-              " BPM (",
-              pitchPercent > 0 ? `+${pitchPercent.toFixed(1)}%` : `${pitchPercent.toFixed(1)}%`,
-              " pitch shift)"
-            ] })
-          ] }),
-          audioBuffer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pt-2 text-left", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            WaveformVisualizer,
-            {
-              audioBuffer,
-              bpm: liveBpm,
-              firstBeatOffset: bpmResult.firstBeatOffset,
-              currentTime,
-              duration,
-              isPlaying,
-              playbackRate,
-              cuePoint,
-              onSeek: handleSeek,
-              onOffsetChange: (newOffset) => {
-                setBpmResult((prev) => prev ? { ...prev, firstBeatOffset: newOffset } : null);
-              },
-              loopRegion,
-              onLoopChange: setLoopRegion
-            }
-          ) }),
-          audioBuffer && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-left", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-            AudioPlayerControls,
-            {
-              isPlaying,
-              onPlayPause: handlePlayPause,
-              onCue: handleCue,
-              onRestart: () => handleSeek(0),
-              volume,
-              onVolumeChange: handleVolumeChange,
-              pitchPercent,
-              onPitchChange: handlePitchChange,
-              onPitchBend: handlePitchBend,
-              onExportTempoAudio: () => {
-                if (audioBuffer && !isExportingTempo) {
-                  setExportPickerTarget("tempo");
-                }
-              },
-              isExportingTempo,
-              tempoExportProgress,
-              tempoExportStatusMessage,
-              tempoExportErrorMessage,
-              keySemitones,
-              onKeySemitonesChange: handleKeySemitonesChange,
-              onResetKeyShift: handleResetKeyShift,
-              onExportAudio: () => {
-                if (audioBuffer && !isExporting) {
-                  setExportPickerTarget("key");
-                }
-              },
-              isExporting,
-              exportProgress,
-              exportStatusMessage,
-              exportErrorMessage,
-              loopBarCount,
-              onSetLoopBarCount: handleSetLoopBarCount,
-              bpm: bpmResult.bpm,
-              liveBpm,
-              onCopyInfo: handleCopyInfo,
-              copied,
-              onHalfBpm: handleHalfBpm,
-              onDoubleBpm: handleDoubleBpm
-            }
-          ) })
-        ] })
+        activeTab === "history" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-w-3xl mx-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          HistoryLogPanel,
+          {
+            history,
+            onClearHistory: () => {
+              setHistory([]);
+              void clearAudioCache();
+            },
+            onRemoveItem: (id) => {
+              setHistory((prev) => prev.filter((item) => item.id !== id));
+              void removeAudioFromCache(id);
+            },
+            onSelectItem: handleSelectHistorySong,
+            loadingItemId: loadingHistoryId,
+            onBackToAnalyzer: () => setActiveTab("analyzer")
+          }
+        ) })
       ] }),
-      activeTab === "menu" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        MenuPanel,
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: activeSection === "audio" ? "block min-w-0" : "hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        StandaloneAudioPlayer,
         {
-          onNavigate: setActiveTab,
-          historyCount: history.length
+          isActiveTab: activeSection === "audio",
+          pauseSignal: audioPauseSignal,
+          onPlaybackStarted: () => {
+            stopAudio();
+            setVideoPauseSignal((n) => n + 1);
+          },
+          sharedSongs: phoneSongs,
+          onSongsLoaded: setPhoneSongs
         }
-      ),
-      activeTab === "history" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "max-w-3xl mx-auto", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        HistoryLogPanel,
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: activeSection === "video" ? "block min-w-0" : "hidden", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        StandaloneVideoPlayer,
         {
-          history,
-          onClearHistory: () => {
-            setHistory([]);
-            void clearAudioCache();
-          },
-          onRemoveItem: (id) => {
-            setHistory((prev) => prev.filter((item) => item.id !== id));
-            void removeAudioFromCache(id);
-          },
-          onSelectItem: handleSelectHistorySong,
-          loadingItemId: loadingHistoryId,
-          onBackToAnalyzer: () => setActiveTab("analyzer")
+          isActiveTab: activeSection === "video",
+          pauseSignal: videoPauseSignal,
+          onPlaybackStarted: () => {
+            stopAudio();
+            setAudioPauseSignal((n) => n + 1);
+          }
         }
       ) })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("footer", { className: "border-t border-slate-900 py-4 px-6 text-center text-xs text-slate-500 font-mono", children: /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "PulseBPM — High Precision Beat Induction & Exact Tempo Detection" }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("footer", { className: "fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "nav",
+      {
+        "aria-label": "Main Sections",
+        className: "max-w-5xl mx-auto grid grid-cols-3 h-16",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                if (activeSection === "video") {
+                  setVideoPauseSignal((n) => n + 1);
+                }
+                setActiveSection("home");
+              },
+              className: `relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${activeSection === "home" ? "text-emerald-400" : "text-slate-400 hover:text-slate-200"}`,
+              children: [
+                activeSection === "home" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(House, { className: "w-5 h-5" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-semibold tracking-tight leading-none", children: "Home" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                if (activeSection === "video") {
+                  setVideoPauseSignal((n) => n + 1);
+                }
+                setActiveSection("audio");
+              },
+              className: `relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${activeSection === "audio" ? "text-emerald-400" : "text-slate-400 hover:text-slate-200"}`,
+              children: [
+                activeSection === "audio" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Music, { className: "w-5 h-5" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-semibold tracking-tight leading-none", children: "Audio" })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                setActiveSection("video");
+              },
+              className: `relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${activeSection === "video" ? "text-emerald-400" : "text-slate-400 hover:text-slate-200"}`,
+              children: [
+                activeSection === "video" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-400" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Video, { className: "w-5 h-5" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[11px] font-semibold tracking-tight leading-none", children: "Video" })
+              ]
+            }
+          )
+        ]
+      }
+    ) }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       PhoneAudioPickerModal,
       {
