@@ -311,14 +311,32 @@ public class AudioLibraryPlugin extends Plugin {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ContentResolver resolver = getContext().getContentResolver();
+                    String resolvedMime = mimeType != null ? mimeType : "audio/wav";
                     ContentValues values = new ContentValues();
                     values.put(MediaStore.Audio.Media.DISPLAY_NAME, finalFileName);
-                    values.put(MediaStore.Audio.Media.MIME_TYPE, mimeType != null ? mimeType : "audio/wav");
+                    values.put(MediaStore.Audio.Media.MIME_TYPE, resolvedMime);
                     values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/BeatPulse");
                     values.put(MediaStore.Audio.Media.IS_MUSIC, 1);
                     values.put(MediaStore.Audio.Media.IS_PENDING, 1);
 
-                    Uri itemUri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                    Uri itemUri = null;
+                    boolean savedToDownloads = false;
+                    try {
+                        itemUri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                    } catch (IllegalArgumentException ignored) {
+                        itemUri = null;
+                    }
+
+                    if (itemUri == null) {
+                        ContentValues dlValues = new ContentValues();
+                        dlValues.put(MediaStore.Downloads.DISPLAY_NAME, finalFileName);
+                        dlValues.put(MediaStore.Downloads.MIME_TYPE, resolvedMime);
+                        dlValues.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/BeatPulse");
+                        dlValues.put(MediaStore.Downloads.IS_PENDING, 1);
+                        itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, dlValues);
+                        savedToDownloads = true;
+                    }
+
                     if (itemUri == null) {
                         throw new IllegalStateException("MediaStore could not create destination file");
                     }
@@ -337,11 +355,11 @@ public class AudioLibraryPlugin extends Plugin {
                     }
 
                     ContentValues completed = new ContentValues();
-                    completed.put(MediaStore.Audio.Media.IS_PENDING, 0);
+                    completed.put(MediaStore.MediaColumns.IS_PENDING, 0);
                     resolver.update(itemUri, completed, null, null);
 
                     savedUri = itemUri.toString();
-                    savedDisplayPath = "Music/BeatPulse/" + finalFileName;
+                    savedDisplayPath = (savedToDownloads ? "Download/BeatPulse/" : "Music/BeatPulse/") + finalFileName;
                 } else {
                     boolean hasWritePerm = ContextCompat.checkSelfPermission(
                         getContext(),

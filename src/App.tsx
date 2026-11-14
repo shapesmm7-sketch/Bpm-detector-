@@ -6,6 +6,7 @@ import { AudioPlayerControls } from './components/AudioPlayerControls';
 import { HistoryLogPanel, HistoryItem } from './components/HistoryLogPanel';
 import { MenuPanel } from './components/MenuPanel';
 import { PhoneAudioPickerModal } from './components/PhoneAudioPickerModal';
+import { ExportFormatModal } from './components/ExportFormatModal';
 import { AudioLibrary, AudioTrackItem, isNativeAndroid, resolvePlayableAudioUrl, saveExportedAudioBlob } from './plugins/audioLibrary';
 
 import {
@@ -16,7 +17,8 @@ import {
   detectBPM,
   BpmAnalysisResult,
 } from './utils/audioAnalyzer';
-import { SoundTouchPitchPlayer, exportPitchShiftedWav, exportTempoAdjustedWav } from './utils/pitchShifterDsp';
+import { SoundTouchPitchPlayer, exportPitchShiftedAudio, exportTempoAdjustedAudio } from './utils/pitchShifterDsp';
+import { AudioExportFormat, getAudioFormatOption } from './utils/audioEncoders';
 import {
   saveAudioToCache,
   getAudioFromCache,
@@ -62,6 +64,7 @@ export default function App() {
   const [tempoExportProgress, setTempoExportProgress] = useState<number>(0);
   const [tempoExportStatusMessage, setTempoExportStatusMessage] = useState<string | null>(null);
   const [tempoExportErrorMessage, setTempoExportErrorMessage] = useState<string | null>(null);
+  const [exportPickerTarget, setExportPickerTarget] = useState<'tempo' | 'key' | null>(null);
   const [loadingHistoryId, setLoadingHistoryId] = useState<string | null>(null);
 
   // History State
@@ -377,7 +380,7 @@ export default function App() {
     handlePitchChange(Number((pitchPercent + delta).toFixed(1)));
   };
 
-  const handleExportTempoAudio = async () => {
+  const handleExportTempoAudio = async (format: AudioExportFormat) => {
     if (!audioBuffer || isExportingTempo) return;
 
     if (tempoExportAbortRef.current) {
@@ -393,10 +396,11 @@ export default function App() {
 
     try {
       const rate = 1 + pitchPercent / 100;
-      const wavBlob = await exportTempoAdjustedWav(
+      const exportedBlob = await exportTempoAdjustedAudio(
         audioBuffer,
         rate,
         keySemitones,
+        format,
         (dspPct) => {
           setTempoExportProgress(Math.round(dspPct * (isNativeAndroid() ? 0.75 : 0.98)));
         },
@@ -411,9 +415,10 @@ export default function App() {
         keySemitones !== 0
           ? `_${keySemitones > 0 ? `+${keySemitones}st` : `${keySemitones}st`}`
           : '';
-      const fileName = `${safeBase}_${targetBpm}BPM${semitoneSuffix}.wav`;
+      const fmtOption = getAudioFormatOption(format);
+      const fileName = `${safeBase}_${targetBpm}BPM${semitoneSuffix}.${fmtOption.extension}`;
 
-      const { displayPath } = await saveExportedAudioBlob(wavBlob, fileName, (savePct) => {
+      const { displayPath } = await saveExportedAudioBlob(exportedBlob, fileName, (savePct) => {
         if (isNativeAndroid()) {
           setTempoExportProgress(75 + Math.round(savePct * 0.25));
         } else {
@@ -423,7 +428,7 @@ export default function App() {
 
       setTempoExportStatusMessage(
         isNativeAndroid()
-          ? `Saved to ${displayPath}`
+          ? `Saved ${fmtOption.label} (${fmtOption.qualityTag}) to ${displayPath}`
           : `Downloaded ${displayPath}`
       );
     } catch (err) {
@@ -465,7 +470,7 @@ export default function App() {
     handleKeySemitonesChange(0);
   };
 
-  const handleExportAudio = async () => {
+  const handleExportAudio = async (format: AudioExportFormat) => {
     if (!audioBuffer || isExporting) return;
 
     if (exportAbortRef.current) {
@@ -480,9 +485,10 @@ export default function App() {
     setExportErrorMessage(null);
 
     try {
-      const wavBlob = await exportPitchShiftedWav(
+      const exportedBlob = await exportPitchShiftedAudio(
         audioBuffer,
         keySemitones,
+        format,
         (dspPct) => {
           setExportProgress(Math.round(dspPct * (isNativeAndroid() ? 0.75 : 0.98)));
         },
@@ -493,9 +499,10 @@ export default function App() {
         .replace(/[\\/:*?"<>|]/g, '_')
         .trim();
       const semitoneTag = keySemitones > 0 ? `+${keySemitones}st` : `${keySemitones}st`;
-      const fileName = `${safeBase}_${semitoneTag}.wav`;
+      const fmtOption = getAudioFormatOption(format);
+      const fileName = `${safeBase}_${semitoneTag}.${fmtOption.extension}`;
 
-      const { displayPath } = await saveExportedAudioBlob(wavBlob, fileName, (savePct) => {
+      const { displayPath } = await saveExportedAudioBlob(exportedBlob, fileName, (savePct) => {
         if (isNativeAndroid()) {
           setExportProgress(75 + Math.round(savePct * 0.25));
         } else {
@@ -505,7 +512,7 @@ export default function App() {
 
       setExportStatusMessage(
         isNativeAndroid()
-          ? `Saved to ${displayPath}`
+          ? `Saved ${fmtOption.label} (${fmtOption.qualityTag}) to ${displayPath}`
           : `Downloaded ${displayPath}`
       );
     } catch (err) {
@@ -613,6 +620,7 @@ export default function App() {
     setTempoExportProgress(0);
     setTempoExportStatusMessage(null);
     setTempoExportErrorMessage(null);
+    setExportPickerTarget(null);
     setLoopBarCount(0);
     setLoopRegion(null);
 
@@ -982,7 +990,11 @@ export default function App() {
                       pitchPercent={pitchPercent}
                       onPitchChange={handlePitchChange}
                       onPitchBend={handlePitchBend}
-                      onExportTempoAudio={handleExportTempoAudio}
+                      onExportTempoAudio={() => {
+                        if (audioBuffer && !isExportingTempo) {
+                          setExportPickerTarget('tempo');
+                        }
+                      }}
                       isExportingTempo={isExportingTempo}
                       tempoExportProgress={tempoExportProgress}
                       tempoExportStatusMessage={tempoExportStatusMessage}
@@ -990,7 +1002,11 @@ export default function App() {
                       keySemitones={keySemitones}
                       onKeySemitonesChange={handleKeySemitonesChange}
                       onResetKeyShift={handleResetKeyShift}
-                      onExportAudio={handleExportAudio}
+                      onExportAudio={() => {
+                        if (audioBuffer && !isExporting) {
+                          setExportPickerTarget('key');
+                        }
+                      }}
                       isExporting={isExporting}
                       exportProgress={exportProgress}
                       exportStatusMessage={exportStatusMessage}
@@ -1052,6 +1068,33 @@ export default function App() {
         onClose={() => setIsPhonePickerOpen(false)}
         onSelectSong={handleSelectPhoneSong}
         onBrowseFiles={triggerSystemFilePicker}
+      />
+
+      {/* Choose Audio Format Modal before Downloading */}
+      <ExportFormatModal
+        isOpen={exportPickerTarget !== null}
+        title="Choose Audio Format"
+        subtitle={
+          exportPickerTarget === 'tempo'
+            ? `Tempo/Bpm Changer · ${(liveBpm > 0 ? liveBpm : bpmResult?.bpm || 0).toFixed(2)} BPM`
+            : `Song Key Changer · ${keySemitones > 0 ? `+${keySemitones}` : keySemitones} st`
+        }
+        durationSec={
+          exportPickerTarget === 'tempo' && playbackRate > 0
+            ? duration / playbackRate
+            : duration
+        }
+        sampleRate={audioBuffer?.sampleRate || 44100}
+        onClose={() => setExportPickerTarget(null)}
+        onSelectFormat={(format) => {
+          const target = exportPickerTarget;
+          setExportPickerTarget(null);
+          if (target === 'tempo') {
+            void handleExportTempoAudio(format);
+          } else if (target === 'key') {
+            void handleExportAudio(format);
+          }
+        }}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { SoundTouch, SimpleFilter, SampleSource } from 'soundtouchjs';
+import { AudioExportFormat, encodeAudioFormatBlob } from './audioEncoders';
 
 /**
  * Bounds-safe stereo sample source wrapping a Web Audio AudioBuffer.
@@ -252,59 +253,13 @@ export class SoundTouchPitchPlayer {
 }
 
 /**
- * Encodes stereo/mono PCM sample arrays into a standard 16-bit PCM WAV Blob.
- */
-function encodeWavBlob(left: Float32Array, right: Float32Array, numFrames: number, sampleRate: number, numChannels: number): Blob {
-  const bytesPerSample = 2;
-  const blockAlign = numChannels * bytesPerSample;
-  const dataByteLength = numFrames * blockAlign;
-  const wavBuffer = new ArrayBuffer(44 + dataByteLength);
-  const view = new DataView(wavBuffer);
-
-  const writeAscii = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeAscii(0, 'RIFF');
-  view.setUint32(4, 36 + dataByteLength, true);
-  writeAscii(8, 'WAVE');
-  writeAscii(12, 'fmt ');
-  view.setUint32(16, 16, true); // PCM chunk size
-  view.setUint16(20, 1, true); // PCM format
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true); // Bits per sample
-  writeAscii(36, 'data');
-  view.setUint32(40, dataByteLength, true);
-
-  let writeOffset = 44;
-  for (let i = 0; i < numFrames; i++) {
-    const sampleL = Math.max(-1, Math.min(1, left[i]));
-    view.setInt16(writeOffset, sampleL < 0 ? sampleL * 0x8000 : sampleL * 0x7fff, true);
-    writeOffset += 2;
-
-    if (numChannels > 1) {
-      const sampleR = Math.max(-1, Math.min(1, right[i]));
-      view.setInt16(writeOffset, sampleR < 0 ? sampleR * 0x8000 : sampleR * 0x7fff, true);
-      writeOffset += 2;
-    }
-  }
-
-  return new Blob([wavBuffer], { type: 'audio/wav' });
-}
-
-/**
- * Offline SoundTouch DSP render & 16-bit PCM WAV export.
+ * Offline SoundTouch DSP render & multi-format audio export (MP3, WAV, FLAC, AIFF).
  * Preserves exact original BPM and track duration while shifting pitch by semitones.
- * Processes asynchronously in blocks to keep the UI responsive on mobile & desktop.
  */
-export async function exportPitchShiftedWav(
+export async function exportPitchShiftedAudio(
   audioBuffer: AudioBuffer,
   semitones: number,
+  format: AudioExportFormat = 'wav',
   onProgress?: (percent: number) => void,
   signal?: AbortSignal
 ): Promise<Blob> {
@@ -312,23 +267,32 @@ export async function exportPitchShiftedWav(
   const targetFrames = audioBuffer.length;
   const numChannels = Math.min(2, Math.max(1, audioBuffer.numberOfChannels));
 
+  const mapEncodePct = (encPct: number, dspBase: number) => {
+    onProgress?.(dspBase + Math.round((encPct / 100) * (100 - dspBase)));
+  };
+
   if (semitones === 0) {
-    onProgress?.(50);
+    onProgress?.(20);
     const left = audioBuffer.getChannelData(0);
     const right = numChannels > 1 ? audioBuffer.getChannelData(1) : left;
-    const blob = encodeWavBlob(left, right, targetFrames, sampleRate, numChannels);
-    onProgress?.(100);
-    return blob;
+    return await encodeAudioFormatBlob(
+      left,
+      right,
+      targetFrames,
+      sampleRate,
+      numChannels,
+      format,
+      (encPct) => mapEncodePct(encPct, 20),
+      signal
+    );
   }
 
   const soundtouch = new SoundTouch();
   soundtouch.stretch.setParameters(sampleRate, 0, 0, 8);
-  // Full cross-correlation search for offline export maximizes audio fidelity
   soundtouch.stretch.quickSeek = false;
   soundtouch.tempo = 1.0;
   soundtouch.pitch = Math.pow(2, semitones / 12);
 
-  // Pad trailing zeros so SimpleFilter flushes every real audio sample through the pipeline
   const source = new SafeAudioBufferSource(audioBuffer, 24576);
   const filter = new SimpleFilter(source, soundtouch);
 
@@ -337,6 +301,9 @@ export async function exportPitchShiftedWav(
 
   const blockFrames = 4096;
   const interleaved = new Float32Array(blockFrames * 2);
+
+  const needsHeavyEncode = format === 'mp3-320' || format === 'mp3-192' || format === 'flac';
+  const dspWeight = needsHeavyEncode ? 60 : 95;
 
   let writtenFrames = 0;
   let peakAbs = 0;
@@ -370,13 +337,12 @@ export async function exportPitchShiftedWav(
 
     if (blocksSinceYield >= 8) {
       blocksSinceYield = 0;
-      const pct = Math.min(95, Math.round((writtenFrames / targetFrames) * 95));
+      const pct = Math.min(dspWeight, Math.round((writtenFrames / targetFrames) * dspWeight));
       onProgress?.(pct);
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
 
-  // Soft peak protection if WSOLA overlap slightly exceeds 0 dBFS so export never hard-clips
   if (peakAbs > 0.99) {
     const scale = 0.98 / peakAbs;
     for (let i = 0; i < writtenFrames; i++) {
@@ -385,24 +351,29 @@ export async function exportPitchShiftedWav(
     }
   }
 
-  onProgress?.(98);
+  onProgress?.(dspWeight);
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  const wavBlob = encodeWavBlob(outLeft, outRight, targetFrames, sampleRate, numChannels);
-  onProgress?.(100);
-  return wavBlob;
+  return await encodeAudioFormatBlob(
+    outLeft,
+    outRight,
+    targetFrames,
+    sampleRate,
+    numChannels,
+    format,
+    (encPct) => mapEncodePct(encPct, dspWeight),
+    signal
+  );
 }
 
 /**
- * Offline render & 16-bit PCM WAV export for Tempo Pitch Fader.
- * Matches live preview exactly:
- * - When semitones === 0: renders with OfflineAudioContext playbackRate resampling (preservesPitch = false).
- * - When semitones !== 0: renders through SoundTouch DSP combining both tempo and semitone shift.
+ * Offline render & multi-format audio export for Tempo/Bpm Changer.
  */
-export async function exportTempoAdjustedWav(
+export async function exportTempoAdjustedAudio(
   audioBuffer: AudioBuffer,
   playbackRate: number,
   semitones: number = 0,
+  format: AudioExportFormat = 'wav',
   onProgress?: (percent: number) => void,
   signal?: AbortSignal
 ): Promise<Blob> {
@@ -411,20 +382,32 @@ export async function exportTempoAdjustedWav(
   const numChannels = Math.min(2, Math.max(1, audioBuffer.numberOfChannels));
   const targetFrames = Math.max(1, Math.round(audioBuffer.length / safeRate));
 
+  const needsHeavyEncode = format === 'mp3-320' || format === 'mp3-192' || format === 'flac';
+  const mapEncodePct = (encPct: number, dspBase: number) => {
+    onProgress?.(dspBase + Math.round((encPct / 100) * (100 - dspBase)));
+  };
+
   if (Math.abs(safeRate - 1.0) < 0.0005 && semitones === 0) {
-    onProgress?.(50);
+    onProgress?.(20);
     const left = audioBuffer.getChannelData(0);
     const right = numChannels > 1 ? audioBuffer.getChannelData(1) : left;
-    const blob = encodeWavBlob(left, right, audioBuffer.length, sampleRate, numChannels);
-    onProgress?.(100);
-    return blob;
+    return await encodeAudioFormatBlob(
+      left,
+      right,
+      audioBuffer.length,
+      sampleRate,
+      numChannels,
+      format,
+      (encPct) => mapEncodePct(encPct, 20),
+      signal
+    );
   }
 
   if (semitones === 0) {
     if (signal?.aborted) {
       throw new DOMException('Export cancelled', 'AbortError');
     }
-    onProgress?.(20);
+    onProgress?.(15);
     const offlineCtx = new OfflineAudioContext(numChannels, targetFrames, sampleRate);
     const src = offlineCtx.createBufferSource();
     src.buffer = audioBuffer;
@@ -436,12 +419,20 @@ export async function exportTempoAdjustedWav(
     if (signal?.aborted) {
       throw new DOMException('Export cancelled', 'AbortError');
     }
-    onProgress?.(85);
+    const dspBase = needsHeavyEncode ? 45 : 85;
+    onProgress?.(dspBase);
     const left = rendered.getChannelData(0);
     const right = numChannels > 1 ? rendered.getChannelData(1) : left;
-    const blob = encodeWavBlob(left, right, rendered.length, sampleRate, numChannels);
-    onProgress?.(100);
-    return blob;
+    return await encodeAudioFormatBlob(
+      left,
+      right,
+      rendered.length,
+      sampleRate,
+      numChannels,
+      format,
+      (encPct) => mapEncodePct(encPct, dspBase),
+      signal
+    );
   }
 
   const soundtouch = new SoundTouch();
@@ -457,6 +448,7 @@ export async function exportTempoAdjustedWav(
   const outRight = new Float32Array(targetFrames);
   const blockFrames = 4096;
   const interleaved = new Float32Array(blockFrames * 2);
+  const dspWeight = needsHeavyEncode ? 60 : 95;
 
   let writtenFrames = 0;
   let peakAbs = 0;
@@ -490,7 +482,7 @@ export async function exportTempoAdjustedWav(
 
     if (blocksSinceYield >= 8) {
       blocksSinceYield = 0;
-      const pct = Math.min(95, Math.round((writtenFrames / targetFrames) * 95));
+      const pct = Math.min(dspWeight, Math.round((writtenFrames / targetFrames) * dspWeight));
       onProgress?.(pct);
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
@@ -504,10 +496,17 @@ export async function exportTempoAdjustedWav(
     }
   }
 
-  onProgress?.(98);
+  onProgress?.(dspWeight);
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  const wavBlob = encodeWavBlob(outLeft, outRight, writtenFrames || targetFrames, sampleRate, numChannels);
-  onProgress?.(100);
-  return wavBlob;
+  return await encodeAudioFormatBlob(
+    outLeft,
+    outRight,
+    writtenFrames || targetFrames,
+    sampleRate,
+    numChannels,
+    format,
+    (encPct) => mapEncodePct(encPct, dspWeight),
+    signal
+  );
 }

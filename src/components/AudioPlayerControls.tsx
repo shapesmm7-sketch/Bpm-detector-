@@ -125,9 +125,10 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
 
   // Handle direct text editing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setBpmInputVal(val);
-    const parsed = parseFloat(val);
+    const raw = e.target.value.replace(',', '.');
+    if (raw !== '' && !/^\d*\.?\d*$/.test(raw)) return;
+    setBpmInputVal(raw);
+    const parsed = parseFloat(raw);
     if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
       applyTargetBpm(parsed);
     }
@@ -144,7 +145,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
       {/* Top DJ Deck Transport Controls: CUE, PLAY/PAUSE, SYNC */}
       <div className="flex items-center justify-center gap-3.5 pb-2 border-b border-slate-800/80">
         {/* CUE Button */}
@@ -199,7 +200,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
       {/* Main DJ Deck Controls: Tempo Pitch Fader, Song Key Changer, Loop Roll */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
         {/* 1. Tempo/Bpm Changer */}
-        <div className="order-1 xl:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+        <div className="order-1 xl:col-span-8 bg-slate-950 p-3.5 sm:p-4 rounded-xl border border-slate-800 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400 font-medium flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-cyan-400" />
@@ -213,29 +214,27 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
           </div>
 
           {/* Direct BPM Controls: (-) Button, Editable Target Input, (+) Button */}
-          <div className="flex items-center justify-between gap-2 bg-slate-900/90 p-2 rounded-xl border border-slate-800 shadow-inner">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase font-mono pl-1 shrink-0">
-              Set Tempo:
+          <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 shadow-inner space-y-1.5 sm:space-y-0 sm:flex sm:items-center sm:justify-between sm:gap-3">
+            <span className="block text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase font-mono tracking-wider shrink-0">
+              Set Tempo (BPM)
             </span>
 
-            <div className="flex items-center gap-1.5 flex-1 max-w-[200px]">
+            <div className="flex items-center gap-2 flex-1 sm:max-w-[230px]">
               {/* - Button */}
               <button
                 type="button"
                 onClick={() => handleStepBpm(-1)}
-                className="w-8 h-8 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-200 font-mono font-black text-base flex items-center justify-center border border-slate-800 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
+                className="w-9 h-9 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-200 font-mono font-black text-base flex items-center justify-center border border-slate-800 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
                 title="Decrease Tempo (-1 BPM)"
               >
                 <Minus className="w-4 h-4 text-slate-300" />
               </button>
 
               {/* Clean Editable Target BPM Input */}
-              <div className="flex-1 flex items-center bg-slate-950 px-3 py-1 rounded-lg border border-emerald-500/40 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400 shadow-inner">
+              <div className="flex-1 min-w-[96px] flex items-center justify-center bg-slate-950 px-2 py-1 rounded-lg border border-emerald-500/40 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400 shadow-inner">
                 <input
-                  type="number"
-                  step="0.1"
-                  min="30"
-                  max="300"
+                  type="text"
+                  inputMode="decimal"
                   value={bpmInputVal}
                   onFocus={() => setIsFocused(true)}
                   onChange={handleInputChange}
@@ -245,9 +244,9 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="w-full bg-transparent text-emerald-400 font-mono tabular-nums font-black text-center text-sm py-0.5 border-none focus:outline-none"
+                  className="w-full min-w-0 bg-transparent text-emerald-400 font-mono tabular-nums font-black text-center text-base sm:text-sm py-0.5 border-none focus:outline-none"
                   placeholder="120.00"
-                  title="Click to type exact target BPM"
+                  title="Tap to type exact target BPM"
                 />
               </div>
 
@@ -255,7 +254,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               <button
                 type="button"
                 onClick={() => handleStepBpm(1)}
-                className="w-8 h-8 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-mono font-black text-base flex items-center justify-center border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
+                className="w-9 h-9 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-mono font-black text-base flex items-center justify-center border border-emerald-500/40 transition-all cursor-pointer active:scale-95 shrink-0 shadow-sm"
                 title="Increase Tempo (+1 BPM)"
               >
                 <Plus className="w-4 h-4 text-emerald-400" />
