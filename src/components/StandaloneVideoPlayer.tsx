@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
+  ChevronRight,
   Search,
   RefreshCw,
   FolderPlus,
@@ -39,9 +40,11 @@ import {
   X,
   Plus,
   Music,
+  Type,
   Image as ImageIcon,
   Film,
   Upload,
+  Layers,
 } from 'lucide-react';
 import {
   exportVideoSegmentsBlobLossless,
@@ -49,7 +52,178 @@ import {
   trimVideoBlobLossless,
   triggerWebVideoDownload,
 } from '../utils/losslessVideoTrim';
-import { composeSplitTimelineBlob } from '../utils/timelineComposer';
+import {
+  composeSplitTimelineBlob,
+  computeTextAnimationState,
+  resolveOverlayFontCss,
+  TextAnimationType,
+  TextEffectStyle,
+  TextFontKey,
+  TimelineOverlayComposeClip,
+  TimelineTextOverlay,
+} from '../utils/timelineComposer';
+
+const TEXT_ANIMATION_OPTIONS: Array<{ id: TextAnimationType; label: string }> = [
+  { id: 'none', label: 'None' },
+  { id: 'fade', label: 'Fade In' },
+  { id: 'pop', label: 'Pop' },
+  { id: 'slide-up', label: 'Slide Up' },
+  { id: 'slide-left', label: 'Slide In' },
+  { id: 'bounce', label: 'Bounce' },
+  { id: 'typewriter', label: 'Typewriter' },
+  { id: 'pulse', label: 'Pulse' },
+];
+
+const TEXT_COLOR_PALETTE = [
+  '#ffffff',
+  '#111827',
+  '#fde047',
+  '#fb923c',
+  '#ef4444',
+  '#ec4899',
+  '#a855f7',
+  '#38bdf8',
+  '#34d399',
+  '#84cc16',
+] as const;
+
+const TEXT_BG_PALETTE = [
+  '#ffffff',
+  '#111827',
+  '#fde047',
+  '#ef4444',
+  '#ec4899',
+  '#7c3aed',
+  '#2563eb',
+  '#10b981',
+] as const;
+
+const TEXT_FONT_OPTIONS: Array<{ id: TextFontKey; label: string }> = [
+  { id: 'sans', label: 'Modern' },
+  { id: 'serif', label: 'Editorial' },
+  { id: 'mono', label: 'Typewriter' },
+  { id: 'display', label: 'Impact' },
+  { id: 'handwriting', label: 'Script' },
+  { id: 'condensed', label: 'Classic' },
+];
+
+const TEXT_STYLE_OPTIONS: Array<{ id: TextEffectStyle; label: string }> = [
+  { id: 'clean', label: 'Clean' },
+  { id: 'outline', label: 'Outline' },
+  { id: 'shadow', label: 'Shadow' },
+  { id: 'glow', label: 'Glow' },
+  { id: 'uppercase', label: 'ALL CAPS' },
+];
+
+const TEXT_TEMPLATE_OPTIONS: Array<{
+  id: string;
+  label: string;
+  color: string;
+  bgStyle: 'none' | 'solid' | 'dark';
+  bgColor?: string;
+  fontFamily: TextFontKey;
+  textStyle: TextEffectStyle;
+  fontSize: 20 | 26 | 34;
+}> = [
+  {
+    id: 'classic-bold',
+    label: 'Classic',
+    color: '#ffffff',
+    bgStyle: 'none',
+    fontFamily: 'sans',
+    textStyle: 'outline',
+    fontSize: 26,
+  },
+  {
+    id: 'subtitle-box',
+    label: 'Subtitle',
+    color: '#ffffff',
+    bgStyle: 'dark',
+    bgColor: '#111827',
+    fontFamily: 'sans',
+    textStyle: 'clean',
+    fontSize: 20,
+  },
+  {
+    id: 'headline-pill',
+    label: 'Headline',
+    color: '#111827',
+    bgStyle: 'solid',
+    bgColor: '#ffffff',
+    fontFamily: 'display',
+    textStyle: 'uppercase',
+    fontSize: 34,
+  },
+  {
+    id: 'yellow-cinema',
+    label: 'Cinema',
+    color: '#fde047',
+    bgStyle: 'none',
+    fontFamily: 'serif',
+    textStyle: 'shadow',
+    fontSize: 26,
+  },
+  {
+    id: 'neon-pulse',
+    label: 'Neon',
+    color: '#38bdf8',
+    bgStyle: 'none',
+    fontFamily: 'sans',
+    textStyle: 'glow',
+    fontSize: 34,
+  },
+  {
+    id: 'rose-lyric',
+    label: 'Lyric',
+    color: '#ffffff',
+    bgStyle: 'dark',
+    bgColor: '#ec4899',
+    fontFamily: 'handwriting',
+    textStyle: 'shadow',
+    fontSize: 26,
+  },
+  {
+    id: 'mono-tag',
+    label: 'Caption',
+    color: '#34d399',
+    bgStyle: 'dark',
+    bgColor: '#111827',
+    fontFamily: 'mono',
+    textStyle: 'clean',
+    fontSize: 20,
+  },
+  {
+    id: 'alert-banner',
+    label: 'Highlight',
+    color: '#ffffff',
+    bgStyle: 'dark',
+    bgColor: '#ef4444',
+    fontFamily: 'display',
+    textStyle: 'uppercase',
+    fontSize: 26,
+  },
+];
+
+function resolveTextEffectShadow(
+  effect: TextEffectStyle | undefined,
+  textColor: string,
+  hasBg: boolean
+): string {
+  switch (effect) {
+    case 'outline':
+      return 'rgb(0, 0, 0) -1.5px -1.5px 0px, rgb(0, 0, 0) 1.5px -1.5px 0px, rgb(0, 0, 0) -1.5px 1.5px 0px, rgb(0, 0, 0) 1.5px 1.5px 0px, 0 2px 5px rgba(0, 0, 0, 0.85)';
+    case 'glow':
+      return `0 0 10px ${textColor}, 0 0 22px ${textColor}`;
+    case 'shadow':
+      return '0 4px 10px rgba(0, 0, 0, 0.92), 0 1px 3px rgba(0, 0, 0, 0.9)';
+    case 'uppercase':
+    case 'clean':
+    default:
+      return hasBg
+        ? 'none'
+        : '0 2px 6px rgba(0, 0, 0, 0.92), 0 0 2px rgba(0, 0, 0, 0.9)';
+  }
+}
 
 interface StandaloneVideoPlayerProps {
   isActiveTab: boolean;
@@ -459,6 +633,32 @@ function readVideoDurationFromUrl(srcUrl: string): Promise<number> {
   });
 }
 
+function readAudioDurationFromUrl(srcUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    const el = document.createElement('audio');
+    el.preload = 'metadata';
+    const timer = window.setTimeout(() => {
+      el.removeAttribute('src');
+      el.load();
+      resolve(30);
+    }, 5000);
+    el.onloadedmetadata = () => {
+      window.clearTimeout(timer);
+      const dur = isFinite(el.duration) && el.duration > 0 ? el.duration : 30;
+      el.removeAttribute('src');
+      el.load();
+      resolve(Math.max(0.5, Number(dur.toFixed(2))));
+    };
+    el.onerror = () => {
+      window.clearTimeout(timer);
+      el.removeAttribute('src');
+      el.load();
+      resolve(30);
+    };
+    el.src = srcUrl;
+  });
+}
+
 const PLAYBACK_SPEEDS = [0.5, 1, 1.25, 1.5, 2];
 
 export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
@@ -504,6 +704,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     thumbnailUrl?: string;
     sourceStart: number;
     sourceEnd: number;
+    maxSourceDuration: number;
     removed: boolean;
   }
 
@@ -523,30 +724,138 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   const splitAudioUploadInputRef = useRef<HTMLInputElement | null>(null);
   const splitAddVideoInputRef = useRef<HTMLInputElement | null>(null);
   const splitAddImageInputRef = useRef<HTMLInputElement | null>(null);
+  const splitOverlayVideoInputRef = useRef<HTMLInputElement | null>(null);
+  const splitOverlayImageInputRef = useRef<HTMLInputElement | null>(null);
+  const overlayVideoElsRef = useRef<Record<string, HTMLVideoElement | null>>({});
+  const mediaFrameRef = useRef<HTMLDivElement | null>(null);
+  const standbyVideoRef = useRef<HTMLVideoElement | null>(null);
   const mainVideoUrlRef = useRef<string>('');
-  const activeSplitVideoUrlRef = useRef<string>('');
-  const pendingSplitSeekRef = useRef<{ sourceUrl: string; sourceTime: number; autoPlay: boolean } | null>(null);
+  const activeSplitDeckRef = useRef<'A' | 'B'>('A');
+  const [activeSplitDeck, setActiveSplitDeck] = useState<'A' | 'B'>('A');
+  const deckUrlsRef = useRef<{ A: string; B: string }>({ A: '', B: '' });
+  const pendingDeckSeekRef = useRef<{
+    A: { sourceUrl: string; sourceTime: number; autoPlay: boolean } | null;
+    B: { sourceUrl: string; sourceTime: number; autoPlay: boolean } | null;
+  }>({ A: null, B: null });
+  const standbyPreloadRef = useRef<{
+    deck: 'A' | 'B';
+    sourceUrl: string;
+    sourceTime: number;
+    ready: boolean;
+  } | null>(null);
+  const lastProgrammaticScrollLeftRef = useRef<number>(-1);
   const splitLastRafMsRef = useRef<number>(0);
+
+  interface TimelineAudioSegment {
+    id: string;
+    title: string;
+    displayName: string;
+    sourceUrl: string;
+    sourceStart: number;
+    sourceEnd: number;
+    maxSourceDuration: number;
+  }
+
+  interface MappedAudioSegment extends TimelineAudioSegment {
+    globalStart: number;
+    globalEnd: number;
+  }
+
+  interface TimelineOverlayItem extends TimelineOverlayComposeClip {
+    title: string;
+    sourceUri?: string;
+    thumbnailUrl?: string;
+    maxSourceDuration: number;
+  }
+
+  interface SplitHistorySnapshot {
+    video: TimelineClipSegment[];
+    audio: TimelineAudioSegment[];
+    text: TimelineTextOverlay[];
+    overlays: TimelineOverlayItem[];
+  }
 
   const [editMode, setEditMode] = useState<'none' | 'trim' | 'split'>('none');
   const [trimStart, setTrimStart] = useState<number>(0);
   const [trimEnd, setTrimEnd] = useState<number>(0);
   const [splitSegments, setSplitSegments] = useState<TimelineClipSegment[]>([]);
   const [selectedSplitSegId, setSelectedSplitSegId] = useState<string | null>(null);
-  const [splitUndoStack, setSplitUndoStack] = useState<TimelineClipSegment[][]>([]);
-  const [splitRedoStack, setSplitRedoStack] = useState<TimelineClipSegment[][]>([]);
+  const [splitAudioSegments, setSplitAudioSegments] = useState<TimelineAudioSegment[]>([]);
+  const [selectedAudioSegId, setSelectedAudioSegId] = useState<string | null>(null);
+  const [splitOverlays, setSplitOverlays] = useState<TimelineOverlayItem[]>([]);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+  const [selectedTrackType, setSelectedTrackType] = useState<'video' | 'audio' | 'text' | 'overlay'>('video');
+  const [splitUndoStack, setSplitUndoStack] = useState<SplitHistorySnapshot[]>([]);
+  const [splitRedoStack, setSplitRedoStack] = useState<SplitHistorySnapshot[]>([]);
   const [splitFramesBySource, setSplitFramesBySource] = useState<
     Record<string, Array<{ time: number; url: string }>>
   >({});
   const [extractingSources, setExtractingSources] = useState<Record<string, boolean>>({});
+  const [activeTrimDrag, setActiveTrimDrag] = useState<{
+    segId: string;
+    side: 'left' | 'right';
+    initialSourceStart: number;
+    initialSourceEnd: number;
+    liveSourceStart: number;
+    liveSourceEnd: number;
+    frozenPxPerSec: number;
+  } | null>(null);
+  const [activeAudioTrimDrag, setActiveAudioTrimDrag] = useState<{
+    segId: string;
+    side: 'left' | 'right';
+    initialSourceStart: number;
+    initialSourceEnd: number;
+    liveSourceStart: number;
+    liveSourceEnd: number;
+    frozenPxPerSec: number;
+  } | null>(null);
+  const [activeTextTrimDrag, setActiveTextTrimDrag] = useState<{
+    id: string;
+    side: 'left' | 'right';
+    initialStart: number;
+    initialEnd: number;
+    liveStart: number;
+    liveEnd: number;
+    frozenPxPerSec: number;
+  } | null>(null);
+  const [activeOverlayTrimDrag, setActiveOverlayTrimDrag] = useState<{
+    id: string;
+    side: 'left' | 'right';
+    initialTimelineStart: number;
+    initialSourceStart: number;
+    initialSourceEnd: number;
+    liveTimelineStart: number;
+    liveSourceStart: number;
+    liveSourceEnd: number;
+    frozenPxPerSec: number;
+  } | null>(null);
+  const lastActiveAudioSegIdRef = useRef<string | null>(null);
   const splitTimelineRef = useRef<HTMLDivElement | null>(null);
   const isSyncingTimelineScrollRef = useRef<boolean>(false);
   const isUserScrubbingTimelineRef = useRef<boolean>(false);
 
-  // Replacement audio + Add Video/Add Image picker states in Split studio
+  // Replacement audio + Add Video/Add Image + Text Overlay states in Split studio
   const [splitCustomAudio, setSplitCustomAudio] = useState<SplitCustomAudio | null>(null);
+  const [splitTextOverlays, setSplitTextOverlays] = useState<TimelineTextOverlay[]>([]);
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [isTextEditorOpen, setIsTextEditorOpen] = useState<boolean>(false);
+  const [draftTextValue, setDraftTextValue] = useState<string>('');
+  const [draftTextColor, setDraftTextColor] = useState<string>('#ffffff');
+  const [draftTextBgStyle, setDraftTextBgStyle] = useState<'none' | 'solid' | 'dark'>('none');
+  const [draftTextBgColor, setDraftTextBgColor] = useState<string | undefined>(undefined);
+  const [draftTextFont, setDraftTextFont] = useState<TextFontKey>('sans');
+  const [draftTextStyleEffect, setDraftTextStyleEffect] = useState<TextEffectStyle>('clean');
+  const [draftTextAnimation, setDraftTextAnimation] = useState<TextAnimationType>('none');
+  const [draftTextSize, setDraftTextSize] = useState<20 | 26 | 34>(26);
+  const [draftTextTiming, setDraftTextTiming] = useState<'all' | '4s' | 'custom'>('all');
+  const [activeTextSection, setActiveTextSection] = useState<
+    'none' | 'color' | 'bg' | 'fonts' | 'styles' | 'templates' | 'animations'
+  >('none');
+  const [animPreviewElapsed, setAnimPreviewElapsed] = useState<number>(2);
+  const [animPreviewTrigger, setAnimPreviewTrigger] = useState<number>(0);
   const [showAddMediaMenu, setShowAddMediaMenu] = useState<boolean>(false);
-  const [activeSplitPicker, setActiveSplitPicker] = useState<'none' | 'audio' | 'video' | 'image'>('none');
+  const [activeSplitPicker, setActiveSplitPicker] = useState<'none' | 'audio' | 'video' | 'image' | 'overlay'>('none');
+  const [overlayPickerTab, setOverlayPickerTab] = useState<'video' | 'image'>('video');
   const [deviceSongs, setDeviceSongs] = useState<AudioTrackItem[]>([]);
   const [isLoadingAudioPicker, setIsLoadingAudioPicker] = useState<boolean>(false);
   const [audioPermissionDenied, setAudioPermissionDenied] = useState<boolean>(false);
@@ -581,6 +890,35 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return { mappedSplitSegments: mapped, totalSplitDuration: cursor };
   }, [splitSegments]);
 
+  const { mappedAudioSegments, totalAudioDuration } = useMemo(() => {
+    let cursor = 0;
+    const mapped: MappedAudioSegment[] = splitAudioSegments.map((seg) => {
+      const len = Math.max(0.1, seg.sourceEnd - seg.sourceStart);
+      const item: MappedAudioSegment = {
+        ...seg,
+        globalStart: cursor,
+        globalEnd: cursor + len,
+      };
+      cursor += len;
+      return item;
+    });
+    return { mappedAudioSegments: mapped, totalAudioDuration: cursor };
+  }, [splitAudioSegments]);
+
+  const maxOverlayDuration = useMemo(
+    () =>
+      splitOverlays.reduce(
+        (mx, ov) => Math.max(mx, ov.timelineStart + Math.max(0.1, ov.sourceEnd - ov.sourceStart)),
+        0
+      ),
+    [splitOverlays]
+  );
+
+  const maxSplitTimelineDuration = Math.max(
+    totalSplitDuration,
+    totalAudioDuration,
+    maxOverlayDuration
+  );
   const activeSplitDuration = editMode === 'split' ? totalSplitDuration : duration;
 
   const activeSplitSegAtPlayhead = useMemo(() => {
@@ -594,13 +932,31 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   const canExportSplitLossless = useMemo(() => {
     if (!currentVideo || editMode !== 'split') return true;
     const kept = splitSegments.filter((s) => !s.removed && s.sourceEnd - s.sourceStart > 0.1);
-    if (kept.length === 0 || splitCustomAudio || isMuted) return false;
+    if (
+      kept.length === 0 ||
+      splitCustomAudio ||
+      splitAudioSegments.length > 0 ||
+      isMuted ||
+      splitTextOverlays.length > 0 ||
+      splitOverlays.length > 0
+    ) {
+      return false;
+    }
     return kept.every(
       (s) =>
         s.mediaType === 'video' &&
         (s.sourceUri === currentVideo.uri || s.sourceUrl === mainVideoUrlRef.current)
     );
-  }, [currentVideo, editMode, splitSegments, splitCustomAudio, isMuted]);
+  }, [
+    currentVideo,
+    editMode,
+    splitSegments,
+    splitCustomAudio,
+    splitAudioSegments,
+    isMuted,
+    splitTextOverlays,
+    splitOverlays,
+  ]);
 
   const trimBoundsRef = useRef({
     editMode,
@@ -609,6 +965,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     isPreviewingTrim,
     mappedSplitSegments,
     totalSplitDuration,
+    mappedAudioSegments,
+    totalAudioDuration,
+    splitOverlays,
+    maxOverlayDuration,
+    selectedTrackType,
     currentTime,
     playbackSpeed,
     isMuted,
@@ -621,6 +982,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     isPreviewingTrim,
     mappedSplitSegments,
     totalSplitDuration,
+    mappedAudioSegments,
+    totalAudioDuration,
+    splitOverlays,
+    maxOverlayDuration,
+    selectedTrackType,
     currentTime,
     playbackSpeed,
     isMuted,
@@ -651,17 +1017,99 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }, 3500);
   };
 
-  const syncCustomAudioToTime = (globalSec: number, shouldPlay: boolean) => {
-    const audioEl = splitAudioRef.current;
-    if (!audioEl || !trimBoundsRef.current.splitCustomAudio) return;
-    const dur = isFinite(audioEl.duration) && audioEl.duration > 0 ? audioEl.duration : 0;
-    if (dur > 0) {
-      const targetOffset = ((globalSec % dur) + dur) % dur;
-      if (Math.abs(audioEl.currentTime - targetOffset) > 0.18) {
-        audioEl.currentTime = targetOffset;
+  const getDeckEl = (deck: 'A' | 'B'): HTMLVideoElement | null =>
+    deck === 'A' ? videoRef.current : standbyVideoRef.current;
+
+  const getActiveSplitVideoEl = (): HTMLVideoElement | null =>
+    getDeckEl(activeSplitDeckRef.current);
+
+  const pauseAllSplitVideos = () => {
+    if (videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    if (standbyVideoRef.current && !standbyVideoRef.current.paused) {
+      standbyVideoRef.current.pause();
+    }
+    if (splitAudioRef.current && !splitAudioRef.current.paused) {
+      splitAudioRef.current.pause();
+    }
+    for (const ovEl of Object.values(overlayVideoElsRef.current)) {
+      if (ovEl && !ovEl.paused) {
+        ovEl.pause();
       }
     }
-    audioEl.playbackRate = trimBoundsRef.current.playbackSpeed;
+  };
+
+  const syncOverlaysToTime = (globalSec: number, shouldPlay: boolean) => {
+    const { splitOverlays: overlays, playbackSpeed: spd } = trimBoundsRef.current;
+    if (!overlays || overlays.length === 0) return;
+
+    for (const ov of overlays) {
+      if (ov.mediaType !== 'video') continue;
+      const el = overlayVideoElsRef.current[ov.id];
+      if (!el) continue;
+
+      const ovDur = Math.max(0.1, ov.sourceEnd - ov.sourceStart);
+      const ovEnd = ov.timelineStart + ovDur;
+      const isVisible = globalSec >= ov.timelineStart - 0.02 && globalSec < ovEnd - 0.01;
+      if (!isVisible) {
+        if (!el.paused) el.pause();
+        continue;
+      }
+
+      const targetOffset = Math.max(
+        ov.sourceStart,
+        Math.min(ov.sourceEnd, ov.sourceStart + Math.max(0, globalSec - ov.timelineStart))
+      );
+      if (el.readyState >= 1 && Math.abs(el.currentTime - targetOffset) > (shouldPlay ? 0.2 : 0.05)) {
+        el.currentTime = targetOffset;
+      }
+      el.muted = Boolean(ov.muted);
+      el.playbackRate = spd;
+      if (shouldPlay && el.paused && el.readyState >= 2) {
+        void el.play().catch(() => {
+          el.muted = true;
+          void el.play().catch(() => {});
+        });
+      } else if (!shouldPlay && !el.paused) {
+        el.pause();
+      }
+    }
+  };
+
+  const syncCustomAudioToTime = (globalSec: number, shouldPlay: boolean) => {
+    const audioEl = splitAudioRef.current;
+    const {
+      mappedAudioSegments: audioSegs,
+      splitCustomAudio: customAudio,
+      playbackSpeed: spd,
+    } = trimBoundsRef.current;
+    if (!audioEl || !customAudio || audioSegs.length === 0) {
+      lastActiveAudioSegIdRef.current = null;
+      if (audioEl && !audioEl.paused) audioEl.pause();
+      return;
+    }
+
+    const aSeg =
+      audioSegs.find((s) => globalSec >= s.globalStart - 0.01 && globalSec < s.globalEnd - 0.01) ||
+      null;
+    if (!aSeg) {
+      lastActiveAudioSegIdRef.current = null;
+      if (!audioEl.paused) audioEl.pause();
+      return;
+    }
+
+    const targetOffset = Math.max(
+      aSeg.sourceStart,
+      Math.min(aSeg.sourceEnd, aSeg.sourceStart + (globalSec - aSeg.globalStart))
+    );
+    const crossedCut = lastActiveAudioSegIdRef.current !== aSeg.id;
+    lastActiveAudioSegIdRef.current = aSeg.id;
+
+    if (crossedCut || Math.abs(audioEl.currentTime - targetOffset) > 0.16) {
+      audioEl.currentTime = targetOffset;
+    }
+    audioEl.playbackRate = spd;
     audioEl.muted = false;
     if (shouldPlay && audioEl.paused) {
       void audioEl.play().catch(() => {
@@ -672,53 +1120,193 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
   };
 
+  // Pre-buffer and pre-seek the next non-contiguous video clip onto the standby deck
+  // so crossing a trimmed or cut boundary swaps decks in 0ms with no decode stall.
+  const preloadUpcomingClip = (
+    currentSeg: MappedSplitSegment | null,
+    kept: MappedSplitSegment[]
+  ) => {
+    if (!currentSeg || kept.length === 0) return;
+    const curIdx = kept.findIndex((s) => s.id === currentSeg.id);
+    if (curIdx < 0) return;
+
+    let targetSeg: MappedSplitSegment | null = null;
+    let prevSeg: MappedSplitSegment = currentSeg;
+    for (let i = curIdx + 1; i < kept.length; i++) {
+      const cand = kept[i];
+      if (cand.mediaType === 'video') {
+        const isContiguousFromPrev =
+          prevSeg.mediaType === 'video' &&
+          cand.sourceUrl === prevSeg.sourceUrl &&
+          Math.abs(cand.sourceStart - prevSeg.sourceEnd) < 0.06 &&
+          Math.abs(cand.globalStart - prevSeg.globalEnd) < 0.06;
+        if (!isContiguousFromPrev) {
+          targetSeg = cand;
+          break;
+        }
+      }
+      prevSeg = cand;
+    }
+
+    if (!targetSeg) return;
+
+    const standbyDeck: 'A' | 'B' = activeSplitDeckRef.current === 'A' ? 'B' : 'A';
+    const sb = getDeckEl(standbyDeck);
+    if (!sb) return;
+
+    const existing = standbyPreloadRef.current;
+    if (
+      existing &&
+      existing.deck === standbyDeck &&
+      existing.sourceUrl === targetSeg.sourceUrl &&
+      Math.abs(existing.sourceTime - targetSeg.sourceStart) < 0.03
+    ) {
+      return;
+    }
+
+    sb.muted = true;
+    sb.playbackRate = trimBoundsRef.current.playbackSpeed;
+    if (!sb.paused) {
+      sb.pause();
+    }
+
+    if (deckUrlsRef.current[standbyDeck] !== targetSeg.sourceUrl) {
+      deckUrlsRef.current[standbyDeck] = targetSeg.sourceUrl;
+      pendingDeckSeekRef.current[standbyDeck] = {
+        sourceUrl: targetSeg.sourceUrl,
+        sourceTime: targetSeg.sourceStart,
+        autoPlay: false,
+      };
+      standbyPreloadRef.current = {
+        deck: standbyDeck,
+        sourceUrl: targetSeg.sourceUrl,
+        sourceTime: targetSeg.sourceStart,
+        ready: false,
+      };
+      sb.src = targetSeg.sourceUrl;
+      sb.load();
+    } else {
+      pendingDeckSeekRef.current[standbyDeck] = null;
+      const alreadyAtTarget =
+        sb.readyState >= 2 && Math.abs(sb.currentTime - targetSeg.sourceStart) <= 0.03;
+      standbyPreloadRef.current = {
+        deck: standbyDeck,
+        sourceUrl: targetSeg.sourceUrl,
+        sourceTime: targetSeg.sourceStart,
+        ready: alreadyAtTarget,
+      };
+      if (!alreadyAtTarget && sb.readyState >= 1) {
+        sb.currentTime = targetSeg.sourceStart;
+      } else if (!alreadyAtTarget && sb.readyState === 0) {
+        pendingDeckSeekRef.current[standbyDeck] = {
+          sourceUrl: targetSeg.sourceUrl,
+          sourceTime: targetSeg.sourceStart,
+          autoPlay: false,
+        };
+      }
+    }
+  };
+
   const seekSplitTimelineTo = (globalTimeSec: number, autoPlay?: boolean) => {
-    const { mappedSplitSegments: mapped, totalSplitDuration: totalDur, isMuted: mutedNow, playbackSpeed: spd } =
-      trimBoundsRef.current;
+    const {
+      mappedSplitSegments: mapped,
+      totalSplitDuration: totalDur,
+      totalAudioDuration: totalAudDur,
+      maxOverlayDuration: totalOvDur,
+      isMuted: mutedNow,
+      playbackSpeed: spd,
+    } = trimBoundsRef.current;
     if (mapped.length === 0) return;
 
-    const clamped = Math.max(0, Math.min(totalDur, globalTimeSec));
+    const maxBound = Math.max(totalDur, totalAudDur, totalOvDur);
+    const clamped = Math.max(0, Math.min(maxBound, globalTimeSec));
     setCurrentTime(clamped);
     trimBoundsRef.current.currentTime = clamped;
 
+    const videoClamped = Math.max(0, Math.min(totalDur, clamped));
     const seg =
-      mapped.find((s) => clamped >= s.globalStart - 0.005 && clamped < s.globalEnd) ||
+      mapped.find((s) => videoClamped >= s.globalStart - 0.005 && videoClamped < s.globalEnd) ||
       mapped[mapped.length - 1];
+    const kept = mapped.filter((s) => !s.removed);
 
-    const videoEl = videoRef.current;
-    if (seg.mediaType === 'image') {
-      if (videoEl && !videoEl.paused) {
-        videoEl.pause();
-      }
-    } else if (videoEl) {
+    const activeDeck = activeSplitDeckRef.current;
+    const otherDeck: 'A' | 'B' = activeDeck === 'A' ? 'B' : 'A';
+    const activeEl = getDeckEl(activeDeck);
+    const otherEl = getDeckEl(otherDeck);
+
+    if (clamped >= totalDur && totalAudDur > totalDur) {
+      if (activeEl && !activeEl.paused) activeEl.pause();
+      if (otherEl && !otherEl.paused) otherEl.pause();
+    } else if (seg.mediaType === 'image') {
+      if (activeEl && !activeEl.paused) activeEl.pause();
+      if (otherEl && !otherEl.paused) otherEl.pause();
+      preloadUpcomingClip(seg, kept);
+    } else {
       const localSec = Math.max(
         seg.sourceStart,
-        Math.min(seg.sourceEnd, seg.sourceStart + (clamped - seg.globalStart))
+        Math.min(seg.sourceEnd, seg.sourceStart + (videoClamped - seg.globalStart))
       );
-      if (activeSplitVideoUrlRef.current !== seg.sourceUrl) {
-        pendingSplitSeekRef.current = {
-          sourceUrl: seg.sourceUrl,
-          sourceTime: localSec,
-          autoPlay: Boolean(autoPlay),
-        };
-        activeSplitVideoUrlRef.current = seg.sourceUrl;
-        videoEl.src = seg.sourceUrl;
-        videoEl.muted = mutedNow;
-        videoEl.playbackRate = spd;
-        videoEl.load();
-      } else {
-        if (Math.abs(videoEl.currentTime - localSec) > 0.04) {
-          videoEl.currentTime = localSec;
+
+      // If the standby deck already has this exact clip pre-seeked & decoded, swap to it cleanly!
+      if (
+        otherEl &&
+        deckUrlsRef.current[otherDeck] === seg.sourceUrl &&
+        otherEl.readyState >= 2 &&
+        Math.abs(otherEl.currentTime - localSec) <= 0.12 &&
+        (deckUrlsRef.current[activeDeck] !== seg.sourceUrl ||
+          !activeEl ||
+          Math.abs(activeEl.currentTime - localSec) > 0.12)
+      ) {
+        otherEl.muted = mutedNow;
+        otherEl.playbackRate = spd;
+        if (autoPlay) {
+          void otherEl.play().catch(() => {});
+        } else if (!otherEl.paused) {
+          otherEl.pause();
         }
-        videoEl.muted = mutedNow;
-        videoEl.playbackRate = spd;
-        if (autoPlay && videoEl.paused) {
-          void videoEl.play().catch(() => {});
+        if (activeEl) {
+          activeEl.muted = true;
+          if (!activeEl.paused) activeEl.pause();
         }
+        activeSplitDeckRef.current = otherDeck;
+        setActiveSplitDeck(otherDeck);
+        standbyPreloadRef.current = null;
+        preloadUpcomingClip(seg, kept);
+      } else if (activeEl) {
+        if (otherEl) {
+          otherEl.muted = true;
+          if (!otherEl.paused) otherEl.pause();
+        }
+        if (deckUrlsRef.current[activeDeck] !== seg.sourceUrl) {
+          pendingDeckSeekRef.current[activeDeck] = {
+            sourceUrl: seg.sourceUrl,
+            sourceTime: localSec,
+            autoPlay: Boolean(autoPlay),
+          };
+          deckUrlsRef.current[activeDeck] = seg.sourceUrl;
+          activeEl.src = seg.sourceUrl;
+          activeEl.muted = mutedNow;
+          activeEl.playbackRate = spd;
+          activeEl.load();
+        } else {
+          pendingDeckSeekRef.current[activeDeck] = null;
+          if (Math.abs(activeEl.currentTime - localSec) > 0.04) {
+            activeEl.currentTime = localSec;
+          }
+          activeEl.muted = mutedNow;
+          activeEl.playbackRate = spd;
+          if (autoPlay && activeEl.paused) {
+            void activeEl.play().catch(() => {});
+          } else if (!autoPlay && !activeEl.paused) {
+            activeEl.pause();
+          }
+        }
+        preloadUpcomingClip(seg, kept);
       }
     }
 
     syncCustomAudioToTime(clamped, Boolean(autoPlay));
+    syncOverlaysToTime(clamped, Boolean(autoPlay));
   };
 
   useEffect(() => {
@@ -733,6 +1321,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         videoRef.current.pause();
         videoRef.current.removeAttribute('src');
         videoRef.current.load();
+      }
+      if (standbyVideoRef.current) {
+        standbyVideoRef.current.pause();
+        standbyVideoRef.current.removeAttribute('src');
+        standbyVideoRef.current.load();
       }
       if (splitAudioRef.current) {
         splitAudioRef.current.pause();
@@ -761,28 +1354,64 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return () => clearHideTimer();
   }, [isPlayerOpen, isPlaying, showControls, editMode]);
 
-  // High-precision rAF guard for Trim selection bounds AND TikTok Multi-Clip Split playback
+  // Paused Split timeline scroll sync (isolated from rAF playback loop so ticking never restarts rAF)
   useEffect(() => {
-    if (!isPlayerOpen || editMode === 'none') return;
-
-    if (editMode === 'split' && !isPlaying && splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
-      isSyncingTimelineScrollRef.current = true;
-      splitTimelineRef.current.scrollLeft = currentTime * splitPxPerSec;
-      const resetId = window.requestAnimationFrame(() => {
-        isSyncingTimelineScrollRef.current = false;
-      });
-      return () => window.cancelAnimationFrame(resetId);
+    if (
+      !isPlayerOpen ||
+      editMode !== 'split' ||
+      isPlaying ||
+      activeTrimDrag ||
+      activeAudioTrimDrag ||
+      activeTextTrimDrag ||
+      activeOverlayTrimDrag ||
+      !splitTimelineRef.current ||
+      isUserScrubbingTimelineRef.current
+    ) {
+      return;
     }
+    const targetLeft = currentTime * splitPxPerSec;
+    lastProgrammaticScrollLeftRef.current = targetLeft;
+    isSyncingTimelineScrollRef.current = true;
+    splitTimelineRef.current.scrollLeft = targetLeft;
+    const resetId = window.requestAnimationFrame(() => {
+      isSyncingTimelineScrollRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(resetId);
+  }, [
+    isPlayerOpen,
+    isPlaying,
+    editMode,
+    currentTime,
+    splitPxPerSec,
+    activeTrimDrag,
+    activeAudioTrimDrag,
+    activeTextTrimDrag,
+    activeOverlayTrimDrag,
+  ]);
 
-    if (!isPlaying) return;
+  // High-precision rAF guard for Trim selection bounds AND seamless Dual-Deck Multi-Clip Split playback
+  useEffect(() => {
+    if (!isPlayerOpen || editMode === 'none' || !isPlaying) return;
+
     let rafId = 0;
     splitLastRafMsRef.current = performance.now();
+
+    const syncTimelineScrollDuringPlayback = (globalSec: number) => {
+      if (splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
+        const targetLeft = globalSec * splitPxPerSec;
+        lastProgrammaticScrollLeftRef.current = targetLeft;
+        isSyncingTimelineScrollRef.current = true;
+        splitTimelineRef.current.scrollLeft = targetLeft;
+        window.requestAnimationFrame(() => {
+          isSyncingTimelineScrollRef.current = false;
+        });
+      }
+    };
 
     const tick = (nowMs: number) => {
       const dtSec = Math.min(0.1, Math.max(0, (nowMs - splitLastRafMsRef.current) / 1000));
       splitLastRafMsRef.current = nowMs;
 
-      const el = videoRef.current;
       const {
         editMode: mode,
         trimStart: start,
@@ -794,6 +1423,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       } = trimBoundsRef.current;
 
       if (mode === 'trim' && end > start) {
+        const el = videoRef.current;
         if (!el || el.paused) return;
         if (el.currentTime < start - 0.08) {
           el.currentTime = start;
@@ -810,9 +1440,47 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       } else if (mode === 'split' && segs.length > 0) {
         const kept = segs.filter((s) => !s.removed);
         if (kept.length === 0) {
-          if (el && !el.paused) el.pause();
-          if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+          pauseAllSplitVideos();
           setIsPlaying(false);
+          return;
+        }
+
+        // Allow auditioning long uploaded audio or overlays past the end of the main video
+        const {
+          totalSplitDuration: videoTotalDur,
+          totalAudioDuration: audTotalDur,
+          maxOverlayDuration: ovTotalDur,
+          selectedTrackType: selTrack,
+        } = trimBoundsRef.current;
+        const tailMaxDur =
+          selTrack === 'audio'
+            ? audTotalDur
+            : selTrack === 'overlay'
+            ? ovTotalDur
+            : videoTotalDur;
+        if (
+          (selTrack === 'audio' || selTrack === 'overlay') &&
+          tailMaxDur > videoTotalDur &&
+          curGlobal >= videoTotalDur - 0.01
+        ) {
+          const activeDeck = activeSplitDeckRef.current;
+          const activeEl = getDeckEl(activeDeck);
+          if (activeEl && !activeEl.paused) activeEl.pause();
+          const nextGlobal = curGlobal + dtSec * spd;
+          if (nextGlobal >= tailMaxDur - 0.02) {
+            pauseAllSplitVideos();
+            setCurrentTime(tailMaxDur);
+            trimBoundsRef.current.currentTime = tailMaxDur;
+            setIsPlaying(false);
+            syncTimelineScrollDuringPlayback(tailMaxDur);
+            return;
+          }
+          setCurrentTime(nextGlobal);
+          trimBoundsRef.current.currentTime = nextGlobal;
+          syncCustomAudioToTime(nextGlobal, true);
+          syncOverlaysToTime(nextGlobal, true);
+          syncTimelineScrollDuringPlayback(nextGlobal);
+          rafId = window.requestAnimationFrame(tick);
           return;
         }
 
@@ -827,21 +1495,21 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             return;
           } else {
             const lastEnd = kept[kept.length - 1].globalEnd;
-            if (el && !el.paused) el.pause();
-            if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+            pauseAllSplitVideos();
             setCurrentTime(lastEnd);
             trimBoundsRef.current.currentTime = lastEnd;
             setIsPlaying(false);
-            if (splitTimelineRef.current) {
-              isSyncingTimelineScrollRef.current = true;
-              splitTimelineRef.current.scrollLeft = lastEnd * splitPxPerSec;
-              window.requestAnimationFrame(() => {
-                isSyncingTimelineScrollRef.current = false;
-              });
-            }
+            syncTimelineScrollDuringPlayback(lastEnd);
             return;
           }
         }
+
+        // Keep standby deck pre-seeked and pre-decoded for the next non-contiguous video cut
+        preloadUpcomingClip(currentSeg, kept);
+
+        const activeDeck = activeSplitDeckRef.current;
+        const standbyDeck: 'A' | 'B' = activeDeck === 'A' ? 'B' : 'A';
+        const el = getDeckEl(activeDeck);
 
         if (currentSeg.mediaType === 'image') {
           if (el && !el.paused) el.pause();
@@ -851,7 +1519,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             if (nextKept) {
               seekSplitTimelineTo(nextKept.globalStart, true);
             } else {
-              if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+              pauseAllSplitVideos();
               setCurrentTime(currentSeg.globalEnd);
               trimBoundsRef.current.currentTime = currentSeg.globalEnd;
               setIsPlaying(false);
@@ -861,27 +1529,24 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             setCurrentTime(nextGlobal);
             trimBoundsRef.current.currentTime = nextGlobal;
             syncCustomAudioToTime(nextGlobal, true);
-            if (splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
-              isSyncingTimelineScrollRef.current = true;
-              splitTimelineRef.current.scrollLeft = nextGlobal * splitPxPerSec;
-              window.requestAnimationFrame(() => {
-                isSyncingTimelineScrollRef.current = false;
-              });
-            }
+            syncOverlaysToTime(nextGlobal, true);
+            syncTimelineScrollDuringPlayback(nextGlobal);
           }
         } else if (el) {
-          if (activeSplitVideoUrlRef.current !== currentSeg.sourceUrl) {
+          if (deckUrlsRef.current[activeDeck] !== currentSeg.sourceUrl) {
             seekSplitTimelineTo(curGlobal, true);
             rafId = window.requestAnimationFrame(tick);
             return;
           }
+
           el.muted = mutedNow;
           el.playbackRate = spd;
-          if (el.paused && !pendingSplitSeekRef.current && el.readyState >= 2) {
+          const pendingForActive = pendingDeckSeekRef.current[activeDeck];
+          if (el.paused && !pendingForActive && el.readyState >= 2) {
             void el.play().catch(() => {});
           }
 
-          if (!pendingSplitSeekRef.current && el.readyState >= 2) {
+          if (!pendingForActive && el.readyState >= 2) {
             const mappedNow = Math.max(
               currentSeg.globalStart,
               Math.min(
@@ -889,39 +1554,68 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 currentSeg.globalStart + (el.currentTime - currentSeg.sourceStart)
               )
             );
-            if (el.currentTime >= currentSeg.sourceEnd - 0.025 || el.ended) {
+            if (el.currentTime >= currentSeg.sourceEnd - 0.035 || el.ended) {
               const nextKept = kept.find((s) => s.globalStart >= currentSeg.globalEnd - 0.02);
               if (nextKept) {
                 const isSeamlessSameSource =
                   nextKept.mediaType === 'video' &&
                   nextKept.sourceUrl === currentSeg.sourceUrl &&
-                  Math.abs(nextKept.sourceStart - currentSeg.sourceEnd) < 0.05 &&
-                  Math.abs(nextKept.globalStart - currentSeg.globalEnd) < 0.05;
+                  Math.abs(nextKept.sourceStart - currentSeg.sourceEnd) < 0.06 &&
+                  Math.abs(nextKept.globalStart - currentSeg.globalEnd) < 0.06;
+
                 if (isSeamlessSameSource) {
                   setCurrentTime(nextKept.globalStart);
                   trimBoundsRef.current.currentTime = nextKept.globalStart;
+                  syncCustomAudioToTime(nextKept.globalStart, true);
+                  syncOverlaysToTime(nextKept.globalStart, true);
+                  syncTimelineScrollDuringPlayback(nextKept.globalStart);
+                } else if (nextKept.mediaType === 'video') {
+                  const sb = getDeckEl(standbyDeck);
+                  const sbReadyForCut =
+                    sb &&
+                    deckUrlsRef.current[standbyDeck] === nextKept.sourceUrl &&
+                    sb.readyState >= 2 &&
+                    Math.abs(sb.currentTime - nextKept.sourceStart) <= 0.25;
+
+                  if (sbReadyForCut && sb) {
+                    // Instant zero-stall dual-deck cut!
+                    sb.muted = mutedNow;
+                    sb.playbackRate = spd;
+                    if (Math.abs(sb.currentTime - nextKept.sourceStart) > 0.08) {
+                      sb.currentTime = nextKept.sourceStart;
+                    }
+                    void sb.play().catch(() => {});
+                    activeSplitDeckRef.current = standbyDeck;
+                    setActiveSplitDeck(standbyDeck);
+                    el.muted = true;
+                    if (!el.paused) el.pause();
+                    standbyPreloadRef.current = null;
+                    setCurrentTime(nextKept.globalStart);
+                    trimBoundsRef.current.currentTime = nextKept.globalStart;
+                    syncCustomAudioToTime(nextKept.globalStart, true);
+                    syncOverlaysToTime(nextKept.globalStart, true);
+                    syncTimelineScrollDuringPlayback(nextKept.globalStart);
+                    preloadUpcomingClip(nextKept, kept);
+                  } else {
+                    seekSplitTimelineTo(nextKept.globalStart, true);
+                  }
                 } else {
                   seekSplitTimelineTo(nextKept.globalStart, true);
                 }
               } else {
-                el.pause();
-                if (splitAudioRef.current && !splitAudioRef.current.paused) splitAudioRef.current.pause();
+                pauseAllSplitVideos();
                 setCurrentTime(currentSeg.globalEnd);
                 trimBoundsRef.current.currentTime = currentSeg.globalEnd;
                 setIsPlaying(false);
+                syncTimelineScrollDuringPlayback(currentSeg.globalEnd);
                 return;
               }
             } else {
               setCurrentTime(mappedNow);
               trimBoundsRef.current.currentTime = mappedNow;
               syncCustomAudioToTime(mappedNow, true);
-              if (splitTimelineRef.current && !isUserScrubbingTimelineRef.current) {
-                isSyncingTimelineScrollRef.current = true;
-                splitTimelineRef.current.scrollLeft = mappedNow * splitPxPerSec;
-                window.requestAnimationFrame(() => {
-                  isSyncingTimelineScrollRef.current = false;
-                });
-              }
+              syncOverlaysToTime(mappedNow, true);
+              syncTimelineScrollDuringPlayback(mappedNow);
             }
           }
         }
@@ -934,19 +1628,22 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return () => {
       if (rafId) window.cancelAnimationFrame(rafId);
     };
-  }, [isPlayerOpen, isPlaying, editMode, currentTime, splitPxPerSec]);
+  }, [isPlayerOpen, isPlaying, editMode, splitPxPerSec]);
 
-  // Extract filmstrip frames per unique video source on the Split timeline
+  // Extract filmstrip frames per unique video source on the Split timeline & video overlays
   const splitVideoSourcesKey = useMemo(() => {
     const urls = Array.from(
-      new Set(
-        splitSegments
+      new Set([
+        ...splitSegments
           .filter((s) => s.mediaType === 'video' && s.sourceUrl)
-          .map((s) => s.sourceUrl)
-      )
+          .map((s) => s.sourceUrl),
+        ...splitOverlays
+          .filter((o) => o.mediaType === 'video' && o.sourceUrl)
+          .map((o) => o.sourceUrl),
+      ])
     );
     return urls.join('|');
-  }, [splitSegments]);
+  }, [splitSegments, splitOverlays]);
 
   useEffect(() => {
     if (!isPlayerOpen || editMode !== 'split' || !splitVideoSourcesKey) {
@@ -1047,8 +1744,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
   // Pause video player if Home BPM Analyzer or Standalone Audio Player starts playing
   useEffect(() => {
-    if (pauseSignal > 0 && videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
+    if (pauseSignal > 0) {
+      pauseAllSplitVideos();
       setIsPlaying(false);
     }
   }, [pauseSignal]);
@@ -1099,18 +1796,34 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         // ignore fullscreen exit error
       }
     }
-    if (videoRef.current) {
-      videoRef.current.pause();
+    pauseAllSplitVideos();
+    if (standbyVideoRef.current) {
+      standbyVideoRef.current.removeAttribute('src');
+      standbyVideoRef.current.load();
     }
-    if (splitAudioRef.current) {
-      splitAudioRef.current.pause();
-    }
+    deckUrlsRef.current.B = '';
+    pendingDeckSeekRef.current = { A: null, B: null };
+    standbyPreloadRef.current = null;
+    activeSplitDeckRef.current = 'A';
+    setActiveSplitDeck('A');
     setIsPlaying(false);
     setIsPreviewingTrim(false);
     setEditMode('none');
     setShowAddMediaMenu(false);
     setActiveSplitPicker('none');
+    setIsTextEditorOpen(false);
+    setSelectedTextId(null);
+    setSplitTextOverlays([]);
+    setSplitOverlays([]);
+    setSelectedOverlayId(null);
+    setActiveOverlayTrimDrag(null);
+    setActiveTrimDrag(null);
+    setActiveAudioTrimDrag(null);
     setSplitCustomAudio(null);
+    setSplitAudioSegments([]);
+    setSelectedAudioSegId(null);
+    setSelectedTrackType('video');
+    lastActiveAudioSegIdRef.current = null;
     setEditStatusMessage(null);
     setEditErrorMessage(null);
     setLastSavedClip(null);
@@ -1122,7 +1835,9 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     if (!isPlayerOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.fullscreenElement) {
-        if (activeSplitPicker !== 'none') {
+        if (isTextEditorOpen) {
+          setIsTextEditorOpen(false);
+        } else if (activeSplitPicker !== 'none') {
           setActiveSplitPicker('none');
         } else if (showAddMediaMenu) {
           setShowAddMediaMenu(false);
@@ -1142,14 +1857,26 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isPlayerOpen, editMode, isPreviewingTrim, activeSplitPicker, showAddMediaMenu]);
+  }, [isPlayerOpen, editMode, isPreviewingTrim, activeSplitPicker, showAddMediaMenu, isTextEditorOpen]);
 
   const playVideoItem = async (item: VideoTrackItem) => {
     setErrorMessage(null);
     setEditMode('none');
     setShowAddMediaMenu(false);
     setActiveSplitPicker('none');
+    setIsTextEditorOpen(false);
+    setSelectedTextId(null);
+    setSplitTextOverlays([]);
+    setSplitOverlays([]);
+    setSelectedOverlayId(null);
+    setActiveOverlayTrimDrag(null);
+    setActiveTrimDrag(null);
+    setActiveAudioTrimDrag(null);
     setSplitCustomAudio(null);
+    setSplitAudioSegments([]);
+    setSelectedAudioSegId(null);
+    setSelectedTrackType('video');
+    lastActiveAudioSegIdRef.current = null;
     setIsPreviewingTrim(false);
     setEditStatusMessage(null);
     setEditErrorMessage(null);
@@ -1178,7 +1905,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       }
 
       mainVideoUrlRef.current = playableUrl;
-      activeSplitVideoUrlRef.current = playableUrl;
+      deckUrlsRef.current = { A: playableUrl, B: '' };
+      pendingDeckSeekRef.current = { A: null, B: null };
+      standbyPreloadRef.current = null;
+      activeSplitDeckRef.current = 'A';
+      setActiveSplitDeck('A');
 
       const videoEl = videoRef.current;
       if (!videoEl) return;
@@ -1219,15 +1950,31 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     setShowControls(true);
     if (editMode === 'split') {
       if (isPlaying) {
-        videoEl.pause();
-        if (splitAudioRef.current && !splitAudioRef.current.paused) {
-          splitAudioRef.current.pause();
-        }
+        pauseAllSplitVideos();
         setIsPlaying(false);
       } else {
         onPlaybackStarted();
         const kept = mappedSplitSegments.filter((s) => !s.removed);
         if (kept.length === 0) return;
+
+        // If user scrolled out into the audio or overlay tail, play from there
+        const activeTailMax =
+          selectedTrackType === 'audio'
+            ? totalAudioDuration
+            : selectedTrackType === 'overlay'
+            ? maxOverlayDuration
+            : totalSplitDuration;
+        if (
+          (selectedTrackType === 'audio' || selectedTrackType === 'overlay') &&
+          activeTailMax > totalSplitDuration &&
+          currentTime >= totalSplitDuration - 0.02 &&
+          currentTime < activeTailMax - 0.05
+        ) {
+          setIsPlaying(true);
+          syncCustomAudioToTime(currentTime, true);
+          syncOverlaysToTime(currentTime, true);
+          return;
+        }
 
         let targetTime = currentTime;
         const inKept = kept.find(
@@ -1364,19 +2111,35 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   };
 
   const exitSplitToPlayer = () => {
-    if (videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
+    pauseAllSplitVideos();
+    if (standbyVideoRef.current) {
+      standbyVideoRef.current.removeAttribute('src');
+      standbyVideoRef.current.load();
     }
-    if (splitAudioRef.current && !splitAudioRef.current.paused) {
-      splitAudioRef.current.pause();
-    }
+    pendingDeckSeekRef.current = { A: null, B: null };
+    standbyPreloadRef.current = null;
+    activeSplitDeckRef.current = 'A';
+    setActiveSplitDeck('A');
+    deckUrlsRef.current.B = '';
     setIsPlaying(false);
     setShowAddMediaMenu(false);
     setActiveSplitPicker('none');
+    setIsTextEditorOpen(false);
+    setSelectedTextId(null);
+    setSplitTextOverlays([]);
+    setSplitOverlays([]);
+    setSelectedOverlayId(null);
+    setActiveOverlayTrimDrag(null);
+    setActiveTrimDrag(null);
+    setActiveAudioTrimDrag(null);
+    setSplitAudioSegments([]);
+    setSelectedAudioSegId(null);
+    setSelectedTrackType('video');
+    lastActiveAudioSegIdRef.current = null;
     setEditMode('none');
     // Restore original main video source if multi-clip playback switched it
-    if (videoRef.current && mainVideoUrlRef.current && activeSplitVideoUrlRef.current !== mainVideoUrlRef.current) {
-      activeSplitVideoUrlRef.current = mainVideoUrlRef.current;
+    if (videoRef.current && mainVideoUrlRef.current && deckUrlsRef.current.A !== mainVideoUrlRef.current) {
+      deckUrlsRef.current.A = mainVideoUrlRef.current;
       videoRef.current.src = mainVideoUrlRef.current;
       videoRef.current.load();
       setCurrentTime(0);
@@ -1397,7 +2160,20 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     setIsMaskingTrimSeek(false);
     setShowAddMediaMenu(false);
     setActiveSplitPicker('none');
+    setIsTextEditorOpen(false);
+    setSelectedTextId(null);
+    setSplitTextOverlays([]);
+    setSplitOverlays([]);
+    setSelectedOverlayId(null);
+    setActiveTrimDrag(null);
+    setActiveAudioTrimDrag(null);
+    setActiveTextTrimDrag(null);
+    setActiveOverlayTrimDrag(null);
     setSplitCustomAudio(null);
+    setSplitAudioSegments([]);
+    setSelectedAudioSegId(null);
+    setSelectedTrackType('video');
+    lastActiveAudioSegIdRef.current = null;
     setExportProgressPct(null);
 
     if (editMode === 'split') {
@@ -1407,7 +2183,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
     const playableUrl = mainVideoUrlRef.current || currentVideo.webUrl || videoRef.current?.currentSrc || '';
     mainVideoUrlRef.current = playableUrl;
-    activeSplitVideoUrlRef.current = playableUrl;
+    deckUrlsRef.current = { A: playableUrl, B: playableUrl };
+    pendingDeckSeekRef.current = { A: null, B: null };
+    standbyPreloadRef.current = null;
+    activeSplitDeckRef.current = 'A';
+    setActiveSplitDeck('A');
 
     const initialSeg: TimelineClipSegment = {
       id: `seg-0-${Date.now()}`,
@@ -1419,6 +2199,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       thumbnailUrl: currentVideo.thumbnailUrl || videoThumbnailCache.get(currentVideo.id),
       sourceStart: 0,
       sourceEnd: total,
+      maxSourceDuration: total,
       removed: false,
     };
     setSplitSegments([initialSeg]);
@@ -1432,24 +2213,69 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       setIsPlaying(false);
     }
 
-    // Align scroll position cleanly to currentTime on next frame
+    // Align scroll position cleanly and eagerly prime Deck B with the main video source
     window.requestAnimationFrame(() => {
       if (splitTimelineRef.current && videoRef.current) {
+        const targetLeft = videoRef.current.currentTime * splitPxPerSec;
+        lastProgrammaticScrollLeftRef.current = targetLeft;
         isSyncingTimelineScrollRef.current = true;
-        splitTimelineRef.current.scrollLeft = videoRef.current.currentTime * splitPxPerSec;
+        splitTimelineRef.current.scrollLeft = targetLeft;
         window.requestAnimationFrame(() => {
           isSyncingTimelineScrollRef.current = false;
         });
       }
+      if (standbyVideoRef.current && playableUrl) {
+        standbyVideoRef.current.muted = true;
+        standbyVideoRef.current.src = playableUrl;
+        standbyVideoRef.current.load();
+      }
     });
   };
 
-  const commitSplitSegments = (next: TimelineClipSegment[], nextSelectedId?: string | null) => {
-    setSplitUndoStack((prev) => [...prev.slice(-19), splitSegments]);
+  const commitTimelineState = (
+    nextVideo: TimelineClipSegment[],
+    nextAudio: TimelineAudioSegment[],
+    nextSelectedVideoId?: string | null,
+    nextSelectedAudioId?: string | null,
+    nextTrackType?: 'video' | 'audio' | 'text' | 'overlay',
+    nextText?: TimelineTextOverlay[],
+    nextSelectedTextId?: string | null,
+    nextOverlays?: TimelineOverlayItem[],
+    nextSelectedOverlayId?: string | null
+  ) => {
+    standbyPreloadRef.current = null;
+    setSplitUndoStack((prev) => [
+      ...prev.slice(-19),
+      {
+        video: splitSegments,
+        audio: splitAudioSegments,
+        text: splitTextOverlays,
+        overlays: splitOverlays,
+      },
+    ]);
     setSplitRedoStack([]);
-    setSplitSegments(next);
-    if (nextSelectedId !== undefined) {
-      setSelectedSplitSegId(nextSelectedId);
+    setSplitSegments(nextVideo);
+    setSplitAudioSegments(nextAudio);
+    if (nextText !== undefined) {
+      setSplitTextOverlays(nextText);
+    }
+    if (nextOverlays !== undefined) {
+      setSplitOverlays(nextOverlays);
+    }
+    if (nextSelectedVideoId !== undefined) {
+      setSelectedSplitSegId(nextSelectedVideoId);
+    }
+    if (nextSelectedAudioId !== undefined) {
+      setSelectedAudioSegId(nextSelectedAudioId);
+    }
+    if (nextSelectedTextId !== undefined) {
+      setSelectedTextId(nextSelectedTextId);
+    }
+    if (nextSelectedOverlayId !== undefined) {
+      setSelectedOverlayId(nextSelectedOverlayId);
+    }
+    if (nextTrackType) {
+      setSelectedTrackType(nextTrackType);
     }
     setEditStatusMessage(null);
     setEditErrorMessage(null);
@@ -1457,29 +2283,252 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
   const handleUndoSplit = () => {
     if (splitUndoStack.length === 0) return;
+    standbyPreloadRef.current = null;
     const previous = splitUndoStack[splitUndoStack.length - 1];
     setSplitUndoStack((prev) => prev.slice(0, -1));
-    setSplitRedoStack((prev) => [...prev, splitSegments]);
-    setSplitSegments(previous);
-    if (!previous.some((s) => s.id === selectedSplitSegId)) {
-      setSelectedSplitSegId(previous[0]?.id || null);
+    setSplitRedoStack((prev) => [
+      ...prev,
+      {
+        video: splitSegments,
+        audio: splitAudioSegments,
+        text: splitTextOverlays,
+        overlays: splitOverlays,
+      },
+    ]);
+    setSplitSegments(previous.video);
+    setSplitAudioSegments(previous.audio);
+    setSplitTextOverlays(previous.text);
+    setSplitOverlays(previous.overlays);
+    if (!previous.video.some((s) => s.id === selectedSplitSegId)) {
+      setSelectedSplitSegId(previous.video[0]?.id || null);
+    }
+    if (previous.audio.length > 0) {
+      const firstAudio = previous.audio[0];
+      setSplitCustomAudio({
+        id: firstAudio.id,
+        title: firstAudio.title,
+        displayName: firstAudio.displayName,
+        url: firstAudio.sourceUrl,
+      });
+      if (!previous.audio.some((s) => s.id === selectedAudioSegId)) {
+        setSelectedAudioSegId(firstAudio.id);
+      }
+    } else {
+      if (splitAudioRef.current) splitAudioRef.current.pause();
+      setSplitCustomAudio(null);
+      setSelectedAudioSegId(null);
+    }
+    if (!previous.text.some((t) => t.id === selectedTextId)) {
+      setSelectedTextId(previous.text[0]?.id || null);
+    }
+    if (!previous.overlays.some((o) => o.id === selectedOverlayId)) {
+      setSelectedOverlayId(previous.overlays[0]?.id || null);
+    }
+    if (
+      (selectedTrackType === 'audio' && previous.audio.length === 0) ||
+      (selectedTrackType === 'text' && previous.text.length === 0) ||
+      (selectedTrackType === 'overlay' && previous.overlays.length === 0)
+    ) {
+      setSelectedTrackType('video');
     }
     setEditErrorMessage(null);
   };
 
   const handleRedoSplit = () => {
     if (splitRedoStack.length === 0) return;
+    standbyPreloadRef.current = null;
     const nextState = splitRedoStack[splitRedoStack.length - 1];
     setSplitRedoStack((prev) => prev.slice(0, -1));
-    setSplitUndoStack((prev) => [...prev, splitSegments]);
-    setSplitSegments(nextState);
-    if (!nextState.some((s) => s.id === selectedSplitSegId)) {
-      setSelectedSplitSegId(nextState[0]?.id || null);
+    setSplitUndoStack((prev) => [
+      ...prev,
+      {
+        video: splitSegments,
+        audio: splitAudioSegments,
+        text: splitTextOverlays,
+        overlays: splitOverlays,
+      },
+    ]);
+    setSplitSegments(nextState.video);
+    setSplitAudioSegments(nextState.audio);
+    setSplitTextOverlays(nextState.text);
+    setSplitOverlays(nextState.overlays);
+    if (!nextState.video.some((s) => s.id === selectedSplitSegId)) {
+      setSelectedSplitSegId(nextState.video[0]?.id || null);
+    }
+    if (nextState.audio.length > 0) {
+      const firstAudio = nextState.audio[0];
+      setSplitCustomAudio({
+        id: firstAudio.id,
+        title: firstAudio.title,
+        displayName: firstAudio.displayName,
+        url: firstAudio.sourceUrl,
+      });
+      if (!nextState.audio.some((s) => s.id === selectedAudioSegId)) {
+        setSelectedAudioSegId(firstAudio.id);
+      }
+    } else {
+      if (splitAudioRef.current) splitAudioRef.current.pause();
+      setSplitCustomAudio(null);
+      setSelectedAudioSegId(null);
+    }
+    if (!nextState.text.some((t) => t.id === selectedTextId)) {
+      setSelectedTextId(nextState.text[0]?.id || null);
+    }
+    if (!nextState.overlays.some((o) => o.id === selectedOverlayId)) {
+      setSelectedOverlayId(nextState.overlays[0]?.id || null);
+    }
+    if (
+      (selectedTrackType === 'audio' && nextState.audio.length === 0) ||
+      (selectedTrackType === 'text' && nextState.text.length === 0) ||
+      (selectedTrackType === 'overlay' && nextState.overlays.length === 0)
+    ) {
+      setSelectedTrackType('video');
     }
     setEditErrorMessage(null);
   };
 
   const handleSplitAtPlayhead = () => {
+    if (selectedTrackType === 'overlay' && splitOverlays.length > 0) {
+      const getOvEnd = (ov: TimelineOverlayItem) =>
+        ov.timelineStart + Math.max(0.3, ov.sourceEnd - ov.sourceStart);
+      const target =
+        splitOverlays.find(
+          (ov) =>
+            ov.id === selectedOverlayId &&
+            currentTime > ov.timelineStart + 0.15 &&
+            currentTime < getOvEnd(ov) - 0.15
+        ) ||
+        splitOverlays.find(
+          (ov) => currentTime > ov.timelineStart + 0.15 && currentTime < getOvEnd(ov) - 0.15
+        );
+      if (!target) {
+        setEditErrorMessage('Move playhead inside the overlay clip before splitting.');
+        return;
+      }
+      const cutTime = Number(currentTime.toFixed(2));
+      const offsetInOv = Math.max(0.15, cutTime - target.timelineStart);
+      const cutSource = Number((target.sourceStart + offsetInOv).toFixed(2));
+      const leftOv: TimelineOverlayItem = {
+        ...target,
+        id: `ov-L-${Date.now()}`,
+        sourceEnd: cutSource,
+      };
+      const rightOv: TimelineOverlayItem = {
+        ...target,
+        id: `ov-R-${Date.now()}`,
+        timelineStart: cutTime,
+        sourceStart: cutSource,
+      };
+      const idx = splitOverlays.findIndex((ov) => ov.id === target.id);
+      const nextOverlays = [
+        ...splitOverlays.slice(0, idx),
+        leftOv,
+        rightOv,
+        ...splitOverlays.slice(idx + 1),
+      ];
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'overlay',
+        undefined,
+        undefined,
+        nextOverlays,
+        rightOv.id
+      );
+      return;
+    }
+
+    if (selectedTrackType === 'text' && splitTextOverlays.length > 0) {
+      const timelineCap = Math.max(0.5, maxSplitTimelineDuration);
+      const getEffectiveEnd = (ov: TimelineTextOverlay) =>
+        ov.endTime >= 90000
+          ? timelineCap
+          : Math.max(ov.startTime + 0.3, Math.min(timelineCap, ov.endTime));
+      const target =
+        splitTextOverlays.find(
+          (ov) =>
+            ov.id === selectedTextId &&
+            currentTime > ov.startTime + 0.15 &&
+            currentTime < getEffectiveEnd(ov) - 0.15
+        ) ||
+        splitTextOverlays.find(
+          (ov) => currentTime > ov.startTime + 0.15 && currentTime < getEffectiveEnd(ov) - 0.15
+        );
+      if (!target) {
+        setEditErrorMessage('Move playhead inside the text clip before splitting.');
+        return;
+      }
+      const cutTime = Number(currentTime.toFixed(2));
+      const effectiveEnd = getEffectiveEnd(target);
+      const leftText: TimelineTextOverlay = {
+        ...target,
+        id: `txt-L-${Date.now()}`,
+        endTime: cutTime,
+      };
+      const rightText: TimelineTextOverlay = {
+        ...target,
+        id: `txt-R-${Date.now()}`,
+        startTime: cutTime,
+        endTime: effectiveEnd,
+      };
+      const idx = splitTextOverlays.findIndex((ov) => ov.id === target.id);
+      const nextText = [
+        ...splitTextOverlays.slice(0, idx),
+        leftText,
+        rightText,
+        ...splitTextOverlays.slice(idx + 1),
+      ];
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'text',
+        nextText,
+        rightText.id
+      );
+      return;
+    }
+
+    const shouldSplitAudio =
+      mappedAudioSegments.length > 0 &&
+      (selectedTrackType === 'audio' || currentTime > totalSplitDuration - 0.05);
+
+    if (shouldSplitAudio) {
+      const targetIdx = mappedAudioSegments.findIndex(
+        (s) => currentTime > s.globalStart + 0.15 && currentTime < s.globalEnd - 0.15
+      );
+      if (targetIdx < 0) {
+        setEditErrorMessage('Move playhead inside the audio clip before splitting.');
+        return;
+      }
+      const mapped = mappedAudioSegments[targetIdx];
+      const target = splitAudioSegments[targetIdx];
+      const offsetInSeg = currentTime - mapped.globalStart;
+      const snappedSourceCut = Number((target.sourceStart + offsetInSeg).toFixed(2));
+
+      const leftAudio: TimelineAudioSegment = {
+        ...target,
+        id: `aud-L-${Date.now()}`,
+        sourceEnd: snappedSourceCut,
+      };
+      const rightAudio: TimelineAudioSegment = {
+        ...target,
+        id: `aud-R-${Date.now()}`,
+        sourceStart: snappedSourceCut,
+      };
+      const nextAudio = [
+        ...splitAudioSegments.slice(0, targetIdx),
+        leftAudio,
+        rightAudio,
+        ...splitAudioSegments.slice(targetIdx + 1),
+      ];
+      commitTimelineState(splitSegments, nextAudio, undefined, rightAudio.id, 'audio');
+      return;
+    }
+
     const targetIdx = mappedSplitSegments.findIndex(
       (s) => currentTime > s.globalStart + 0.25 && currentTime < s.globalEnd - 0.25
     );
@@ -1509,10 +2558,91 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       rightSeg,
       ...splitSegments.slice(targetIdx + 1),
     ];
-    commitSplitSegments(next, rightSeg.id);
+    commitTimelineState(next, splitAudioSegments, rightSeg.id, undefined, 'video');
   };
 
   const handleToggleRemoveSelectedSegment = () => {
+    if (selectedTrackType === 'overlay' && splitOverlays.length > 0) {
+      const targetId =
+        selectedOverlayId ||
+        splitOverlays.find(
+          (ov) =>
+            currentTime >= ov.timelineStart &&
+            currentTime <= ov.timelineStart + Math.max(0.3, ov.sourceEnd - ov.sourceStart)
+        )?.id ||
+        splitOverlays[0]?.id;
+      if (!targetId) return;
+
+      const idx = splitOverlays.findIndex((ov) => ov.id === targetId);
+      if (idx < 0) return;
+
+      const nextOverlays = splitOverlays.filter((ov) => ov.id !== targetId);
+      const nextSelected =
+        nextOverlays.length > 0
+          ? nextOverlays[Math.min(idx, nextOverlays.length - 1)]?.id || null
+          : null;
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        nextOverlays.length > 0 ? 'overlay' : 'video',
+        undefined,
+        undefined,
+        nextOverlays,
+        nextSelected
+      );
+      return;
+    }
+
+    if (selectedTrackType === 'text' && splitTextOverlays.length > 0) {
+      const targetId =
+        selectedTextId ||
+        splitTextOverlays.find((ov) => currentTime >= ov.startTime && currentTime <= ov.endTime)?.id ||
+        splitTextOverlays[0]?.id;
+      if (!targetId) return;
+
+      const idx = splitTextOverlays.findIndex((ov) => ov.id === targetId);
+      if (idx < 0) return;
+
+      const nextText = splitTextOverlays.filter((ov) => ov.id !== targetId);
+      const nextSelected =
+        nextText.length > 0 ? nextText[Math.min(idx, nextText.length - 1)]?.id || null : null;
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        nextText.length > 0 ? 'text' : 'video',
+        nextText,
+        nextSelected
+      );
+      return;
+    }
+
+    if (selectedTrackType === 'audio' && splitAudioSegments.length > 0) {
+      const targetId =
+        selectedAudioSegId ||
+        mappedAudioSegments.find((s) => currentTime >= s.globalStart && currentTime <= s.globalEnd)?.id ||
+        splitAudioSegments[0]?.id;
+      if (!targetId) return;
+
+      const idx = splitAudioSegments.findIndex((s) => s.id === targetId);
+      if (idx < 0) return;
+
+      const nextAudio = splitAudioSegments.filter((s) => s.id !== targetId);
+      if (nextAudio.length === 0) {
+        if (splitAudioRef.current) splitAudioRef.current.pause();
+        setSplitCustomAudio(null);
+        commitTimelineState(splitSegments, [], undefined, null, 'video');
+        return;
+      }
+
+      const nextSelected = nextAudio[Math.min(idx, nextAudio.length - 1)]?.id || null;
+      commitTimelineState(splitSegments, nextAudio, undefined, nextSelected, 'audio');
+      return;
+    }
+
     const targetId =
       selectedSplitSegId ||
       mappedSplitSegments.find((s) => currentTime >= s.globalStart && currentTime <= s.globalEnd)?.id ||
@@ -1531,7 +2661,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     const next = splitSegments.map((s) =>
       s.id === targetId ? { ...s, removed: !s.removed } : s
     );
-    commitSplitSegments(next, targetId);
+    commitTimelineState(next, splitAudioSegments, targetId, undefined, 'video');
 
     // If we removed the clip under playhead, jump playhead cleanly to nearest kept clip
     if (!target.removed && currentTime >= target.globalStart && currentTime <= target.globalEnd) {
@@ -1568,22 +2698,177 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
   };
 
-  const handleKeepOnlySelectedSegment = () => {
-    const targetId =
-      selectedSplitSegId ||
-      mappedSplitSegments.find((s) => currentTime >= s.globalStart && currentTime <= s.globalEnd)?.id ||
-      null;
-    if (!targetId || splitSegments.length <= 1) return;
+  useEffect(() => {
+    if (!isTextEditorOpen || draftTextAnimation === 'none') {
+      setAnimPreviewElapsed(2);
+      return;
+    }
+    let rafId = 0;
+    const startMs = performance.now();
+    const maxRunMs = draftTextAnimation === 'pulse' ? 2400 : 1600;
+    const step = (now: number) => {
+      const elapsedSec = (now - startMs) / 1000;
+      setAnimPreviewElapsed(elapsedSec);
+      if (now - startMs < maxRunMs || draftTextAnimation === 'pulse') {
+        rafId = window.requestAnimationFrame(step);
+      }
+    };
+    rafId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [isTextEditorOpen, draftTextAnimation, animPreviewTrigger]);
 
-    const target = mappedSplitSegments.find((s) => s.id === targetId);
-    if (!target) return;
+  const openAddTextEditor = (existing?: TimelineTextOverlay) => {
+    pauseAllSplitVideos();
+    setIsPlaying(false);
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker('none');
+    setActiveTextSection('none');
+    if (existing) {
+      setSelectedTrackType('text');
+      setSelectedTextId(existing.id);
+      setDraftTextValue(existing.text);
+      setDraftTextColor(existing.color);
+      setDraftTextBgStyle(existing.bgStyle);
+      setDraftTextBgColor(
+        existing.bgStyle === 'none'
+          ? undefined
+          : existing.bgColor || (existing.bgStyle === 'solid' ? '#ffffff' : '#111827')
+      );
+      setDraftTextFont(existing.fontFamily || 'sans');
+      setDraftTextStyleEffect(existing.textStyle || 'clean');
+      setDraftTextAnimation(existing.animation || 'none');
+      setDraftTextSize(existing.fontSize >= 32 ? 34 : existing.fontSize <= 22 ? 20 : 26);
+      const isWhole =
+        existing.startTime <= 0.05 &&
+        (existing.endTime >= 90000 || existing.endTime >= Math.max(0.5, maxSplitTimelineDuration) - 0.1);
+      setDraftTextTiming(isWhole ? 'all' : 'custom');
+    } else {
+      setSelectedTextId(null);
+      setDraftTextValue('');
+      setDraftTextColor('#ffffff');
+      setDraftTextBgStyle('none');
+      setDraftTextBgColor(undefined);
+      setDraftTextFont('sans');
+      setDraftTextStyleEffect('clean');
+      setDraftTextAnimation('none');
+      setDraftTextSize(26);
+      setDraftTextTiming('all');
+    }
+    setIsTextEditorOpen(true);
+  };
 
-    const next = splitSegments.map((s) => ({
-      ...s,
-      removed: s.id !== targetId,
-    }));
-    commitSplitSegments(next, targetId);
-    seekSplitTimelineTo(target.globalStart, false);
+  const handleSaveTextOverlay = () => {
+    const clean = draftTextValue.trim();
+    if (!clean) {
+      if (selectedTextId) {
+        const nextText = splitTextOverlays.filter((item) => item.id !== selectedTextId);
+        commitTimelineState(
+          splitSegments,
+          splitAudioSegments,
+          undefined,
+          undefined,
+          nextText.length > 0 ? 'text' : 'video',
+          nextText,
+          nextText[0]?.id || null
+        );
+      } else {
+        setSelectedTextId(null);
+      }
+      setIsTextEditorOpen(false);
+      return;
+    }
+
+    const timelineCap = Number(Math.max(0.5, maxSplitTimelineDuration).toFixed(2));
+    const existingItem = selectedTextId
+      ? splitTextOverlays.find((item) => item.id === selectedTextId)
+      : undefined;
+
+    let startTime = 0;
+    let endTime = timelineCap;
+    if (draftTextTiming === 'custom' && existingItem) {
+      startTime = Math.max(0, Math.min(timelineCap - 0.3, existingItem.startTime));
+      endTime =
+        existingItem.endTime >= 90000
+          ? timelineCap
+          : Math.max(startTime + 0.3, Math.min(timelineCap, existingItem.endTime));
+    } else if (draftTextTiming === '4s') {
+      startTime = Number(Math.max(0, Math.min(timelineCap - 0.3, currentTime)).toFixed(2));
+      endTime = Number(Math.min(timelineCap, startTime + 4.0).toFixed(2));
+    }
+
+    if (selectedTextId && existingItem) {
+      const nextText = splitTextOverlays.map((item) =>
+        item.id === selectedTextId
+          ? {
+              ...item,
+              text: clean,
+              color: draftTextColor,
+              bgStyle: draftTextBgStyle,
+              bgColor: draftTextBgStyle === 'none' ? undefined : draftTextBgColor,
+              fontFamily: draftTextFont,
+              textStyle: draftTextStyleEffect,
+              animation: draftTextAnimation,
+              fontSize: draftTextSize,
+              startTime,
+              endTime,
+            }
+          : item
+      );
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'text',
+        nextText,
+        selectedTextId
+      );
+    } else {
+      const offsetShift = Math.min(0.24, splitTextOverlays.length * 0.06);
+      const newOverlay: TimelineTextOverlay = {
+        id: `txt-${Date.now()}`,
+        text: clean,
+        x: 0.5,
+        y: Math.min(0.82, 0.5 + offsetShift),
+        color: draftTextColor,
+        bgStyle: draftTextBgStyle,
+        bgColor: draftTextBgStyle === 'none' ? undefined : draftTextBgColor,
+        fontFamily: draftTextFont,
+        textStyle: draftTextStyleEffect,
+        animation: draftTextAnimation,
+        fontSize: draftTextSize,
+        startTime,
+        endTime,
+      };
+      const nextText = [...splitTextOverlays, newOverlay];
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'text',
+        nextText,
+        newOverlay.id
+      );
+    }
+
+    setIsTextEditorOpen(false);
+  };
+
+  const handleDeleteTextOverlay = (id: string) => {
+    const nextText = splitTextOverlays.filter((item) => item.id !== id);
+    const nextSel =
+      selectedTextId === id ? nextText[0]?.id || null : selectedTextId;
+    commitTimelineState(
+      splitSegments,
+      splitAudioSegments,
+      undefined,
+      undefined,
+      nextText.length > 0 ? 'text' : 'video',
+      nextText,
+      nextSel
+    );
+    setIsTextEditorOpen(false);
   };
 
   // Load phone audio songs when opening Add Sound modal
@@ -1642,6 +2927,176 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
   };
 
+  const openOverlayPickerModal = () => {
+    setShowAddMediaMenu(false);
+    setActiveSplitPicker('overlay');
+    if (isNativeAndroid()) {
+      if (videos.length === 0) void loadDeviceVideos();
+      if (deviceImages.length === 0) void loadDeviceImages();
+    }
+  };
+
+  const addOverlayVideoToTimeline = async (vid: VideoTrackItem) => {
+    setIsPreparingSplitMedia(true);
+    try {
+      let playableUrl = vid.webUrl || '';
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: vid.uri,
+          displayName: vid.displayName || vid.title,
+          mediaKind: 'video',
+          keepAlive: true,
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) throw new Error('Overlay video source unavailable');
+
+      const clipDur =
+        vid.durationMs > 200 ? vid.durationMs / 1000 : await readVideoDurationFromUrl(playableUrl);
+      const maxVidDur = Math.max(0.5, Number(clipDur.toFixed(2)));
+      const insertAt = Math.max(0, Number(currentTime.toFixed(2)));
+      const stagger = (splitOverlays.length % 3) * 0.06;
+
+      const newOverlay: TimelineOverlayItem = {
+        id: `ov-vid-${Date.now()}`,
+        mediaType: 'video',
+        title: vid.title || vid.displayName || 'Overlay Video',
+        sourceUrl: playableUrl,
+        sourceUri: vid.uri,
+        thumbnailUrl: vid.thumbnailUrl || videoThumbnailCache.get(vid.id),
+        sourceStart: 0,
+        sourceEnd: maxVidDur,
+        maxSourceDuration: maxVidDur,
+        timelineStart: insertAt,
+        x: Math.min(0.78, 0.5 + stagger),
+        y: Math.min(0.78, 0.5 - stagger),
+        scale: 0.42,
+        muted: false,
+      };
+      const nextOverlays = [...splitOverlays, newOverlay];
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'overlay',
+        undefined,
+        undefined,
+        nextOverlays,
+        newOverlay.id
+      );
+      setActiveSplitPicker('none');
+    } catch (err) {
+      console.error('Failed to add overlay video:', err);
+      setEditErrorMessage('Could not add selected overlay video.');
+    } finally {
+      setIsPreparingSplitMedia(false);
+    }
+  };
+
+  const handleUploadOverlayVideoFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    webObjectUrlsRef.current.push(url);
+    const title = file.name.replace(/\.[^/.]+$/, '');
+    const dur = await readVideoDurationFromUrl(url);
+    const newVideoItem: VideoTrackItem = {
+      id: `upload-ov-vid-${Date.now()}`,
+      title,
+      displayName: file.name,
+      durationMs: Math.round(dur * 1000),
+      size: file.size,
+      mimeType: file.type || 'video/mp4',
+      resolution: '',
+      uri: url,
+      webUrl: url,
+    };
+    setVideos((prev) => [newVideoItem, ...prev]);
+    await addOverlayVideoToTimeline(newVideoItem);
+  };
+
+  const addOverlayImageToTimeline = async (img: ImageTrackItem) => {
+    setIsPreparingSplitMedia(true);
+    try {
+      let playableUrl = img.webUrl || '';
+      if (!playableUrl && isNativeAndroid()) {
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: img.uri,
+          displayName: img.displayName || img.title,
+          mediaKind: 'image',
+          keepAlive: true,
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+      if (!playableUrl) throw new Error('Overlay photo source unavailable');
+
+      const insertAt = Math.max(0, Number(currentTime.toFixed(2)));
+      const stagger = (splitOverlays.length % 3) * 0.06;
+      const defaultDur = Math.max(
+        1.5,
+        Math.min(4.0, Math.max(0.5, totalSplitDuration - insertAt) || 4.0)
+      );
+
+      const newOverlay: TimelineOverlayItem = {
+        id: `ov-img-${Date.now()}`,
+        mediaType: 'image',
+        title: img.title || img.displayName || 'Overlay Photo',
+        sourceUrl: playableUrl,
+        sourceUri: img.uri,
+        thumbnailUrl: img.thumbnailUrl || imageThumbnailCache.get(img.id) || playableUrl,
+        sourceStart: 0,
+        sourceEnd: Number(defaultDur.toFixed(2)),
+        maxSourceDuration: 60,
+        timelineStart: insertAt,
+        x: Math.min(0.78, 0.5 + stagger),
+        y: Math.min(0.78, 0.5 - stagger),
+        scale: 0.4,
+        muted: true,
+      };
+      const nextOverlays = [...splitOverlays, newOverlay];
+      commitTimelineState(
+        splitSegments,
+        splitAudioSegments,
+        undefined,
+        undefined,
+        'overlay',
+        undefined,
+        undefined,
+        nextOverlays,
+        newOverlay.id
+      );
+      setActiveSplitPicker('none');
+    } catch (err) {
+      console.error('Failed to add overlay photo:', err);
+      setEditErrorMessage('Could not add selected overlay photo.');
+    } finally {
+      setIsPreparingSplitMedia(false);
+    }
+  };
+
+  const handleUploadOverlayImageFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const url = URL.createObjectURL(file);
+    webObjectUrlsRef.current.push(url);
+    const title = file.name.replace(/\.[^/.]+$/, '');
+    const newImgItem: ImageTrackItem = {
+      id: `upload-ov-img-${Date.now()}`,
+      title,
+      displayName: file.name,
+      width: 0,
+      height: 0,
+      size: file.size,
+      mimeType: file.type || 'image/*',
+      uri: url,
+      webUrl: url,
+      thumbnailUrl: url,
+    };
+    setDeviceImages((prev) => [newImgItem, ...prev]);
+    await addOverlayImageToTimeline(newImgItem);
+  };
+
   const handleSelectReplacementAudio = async (song: AudioTrackItem) => {
     setIsPreparingSplitMedia(true);
     try {
@@ -1657,15 +3112,30 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       }
       if (!playableUrl) throw new Error('Audio source unavailable');
 
+      const audioDur =
+        song.durationMs > 300
+          ? Number((song.durationMs / 1000).toFixed(2))
+          : await readAudioDurationFromUrl(playableUrl);
+
+      const title = song.title || song.displayName;
+      const initialAudioSeg: TimelineAudioSegment = {
+        id: `aud-0-${Date.now()}`,
+        title,
+        displayName: song.displayName,
+        sourceUrl: playableUrl,
+        sourceStart: 0,
+        sourceEnd: audioDur,
+        maxSourceDuration: audioDur,
+      };
       setSplitCustomAudio({
         id: song.id,
-        title: song.title || song.displayName,
+        title,
         displayName: song.displayName,
         url: playableUrl,
       });
+      lastActiveAudioSegIdRef.current = null;
+      commitTimelineState(splitSegments, [initialAudioSeg], undefined, initialAudioSeg.id, 'audio');
       setActiveSplitPicker('none');
-      setEditStatusMessage(null);
-      setEditErrorMessage(null);
     } catch (err) {
       console.error('Failed to load replacement audio:', err);
       setEditErrorMessage('Could not load selected audio file.');
@@ -1674,23 +3144,33 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
   };
 
-  const handleUploadReplacementAudioFiles = (files: FileList | null) => {
+  const handleUploadReplacementAudioFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
     const url = URL.createObjectURL(file);
     webObjectUrlsRef.current.push(url);
     const title = file.name.replace(/\.[^/.]+$/, '');
+    const audioDur = await readAudioDurationFromUrl(url);
     const uploadedTrack: AudioTrackItem = {
       id: `upload-audio-${Date.now()}`,
       title,
       displayName: file.name,
       artist: 'Uploaded Audio',
       album: '',
-      durationMs: 0,
+      durationMs: Math.round(audioDur * 1000),
       size: file.size,
       mimeType: file.type || 'audio/*',
       uri: url,
       webUrl: url,
+    };
+    const initialAudioSeg: TimelineAudioSegment = {
+      id: `aud-0-${Date.now()}`,
+      title,
+      displayName: file.name,
+      sourceUrl: url,
+      sourceStart: 0,
+      sourceEnd: audioDur,
+      maxSourceDuration: audioDur,
     };
     setDeviceSongs((prev) => [uploadedTrack, ...prev]);
     setSplitCustomAudio({
@@ -1699,9 +3179,9 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       displayName: file.name,
       url,
     });
+    lastActiveAudioSegIdRef.current = null;
+    commitTimelineState(splitSegments, [initialAudioSeg], undefined, initialAudioSeg.id, 'audio');
     setActiveSplitPicker('none');
-    setEditStatusMessage(null);
-    setEditErrorMessage(null);
   };
 
   const appendVideoToTimeline = async (vid: VideoTrackItem) => {
@@ -1722,6 +3202,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       const clipDur =
         vid.durationMs > 200 ? vid.durationMs / 1000 : await readVideoDurationFromUrl(playableUrl);
 
+      const maxVidDur = Math.max(0.5, Number(clipDur.toFixed(2)));
       const newSeg: TimelineClipSegment = {
         id: `seg-vid-${Date.now()}`,
         mediaType: 'video',
@@ -1731,12 +3212,13 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         sourceDisplayName: vid.displayName || 'video.mp4',
         thumbnailUrl: vid.thumbnailUrl || videoThumbnailCache.get(vid.id),
         sourceStart: 0,
-        sourceEnd: Math.max(0.5, Number(clipDur.toFixed(2))),
+        sourceEnd: maxVidDur,
+        maxSourceDuration: maxVidDur,
         removed: false,
       };
       const prevTotal = totalSplitDuration;
       const next = [...splitSegments, newSeg];
-      commitSplitSegments(next, newSeg.id);
+      commitTimelineState(next, splitAudioSegments, newSeg.id, undefined, 'video');
       setActiveSplitPicker('none');
       window.requestAnimationFrame(() => {
         setCurrentTime(prevTotal);
@@ -1803,11 +3285,12 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         thumbnailUrl: img.thumbnailUrl || imageThumbnailCache.get(img.id) || playableUrl,
         sourceStart: 0,
         sourceEnd: 3.0,
+        maxSourceDuration: 30,
         removed: false,
       };
       const prevTotal = totalSplitDuration;
       const next = [...splitSegments, newSeg];
-      commitSplitSegments(next, newSeg.id);
+      commitTimelineState(next, splitAudioSegments, newSeg.id, undefined, 'video');
       setActiveSplitPicker('none');
       window.requestAnimationFrame(() => {
         setCurrentTime(prevTotal);
@@ -1993,8 +3476,19 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     const hasExtraClips = splitSegments.some(
       (s) => s.mediaType === 'image' || s.sourceUri !== currentVideo.uri
     );
+    const hasTrimmedHandles = splitSegments.some(
+      (s) => s.sourceStart > 0.05 || s.sourceEnd < s.maxSourceDuration - 0.05
+    );
     const hasChanges =
-      removedCount > 0 || splitSegments.length > 1 || hasExtraClips || Boolean(splitCustomAudio) || isMuted;
+      removedCount > 0 ||
+      splitSegments.length > 1 ||
+      hasExtraClips ||
+      hasTrimmedHandles ||
+      Boolean(splitCustomAudio) ||
+      splitAudioSegments.length > 0 ||
+      isMuted ||
+      splitTextOverlays.length > 0 ||
+      splitOverlays.length > 0;
 
     if (keptSegments.length === 0) {
       setEditErrorMessage('Keep at least one clip before saving.');
@@ -2002,16 +3496,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
 
     if (!hasChanges) {
-      setEditErrorMessage('Tap Split, Add sound, or + to edit your video first.');
+      setEditErrorMessage('Pull handles, Split, Audio, Text, Overlay, or + to edit first.');
       return;
     }
 
-    if (videoRef.current && !videoRef.current.paused) {
-      videoRef.current.pause();
-    }
-    if (splitAudioRef.current && !splitAudioRef.current.paused) {
-      splitAudioRef.current.pause();
-    }
+    pauseAllSplitVideos();
     setIsPlaying(false);
 
     setIsProcessingEdit(true);
@@ -2020,9 +3509,9 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     setEditStatusMessage(null);
 
     try {
-      // Fast 100% lossless zero-re-encoding path when only original video parts are split/removed without audio/media changes
+      // Fast 100% lossless zero-re-encoding path when only original video bounds/cuts change without text/audio/extra media
       if (canExportSplitLossless) {
-        if (removedCount === 0 && keptSegments.length === 2) {
+        if (removedCount === 0 && keptSegments.length === 2 && !hasTrimmedHandles) {
           const cutSec = keptSegments[0].sourceEnd;
           if (isNativeAndroid()) {
             const res = await AudioLibrary.splitVideoLossless({
@@ -2117,7 +3606,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         return;
       }
 
-      // Composed export path (replaced/muted audio, added videos, or added images)
+      // Composed export path (text overlays, replaced/muted audio, added videos, or added images)
       setExportProgressPct(1);
       const composed = await composeSplitTimelineBlob(
         keptSegments.map((s) => ({
@@ -2130,6 +3619,27 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           baseTitle: currentVideo.title || currentVideo.displayName,
           videoMuted: isMuted,
           customAudioUrl: splitCustomAudio?.url || null,
+          customAudioClips:
+            splitAudioSegments.length > 0
+              ? splitAudioSegments.map((a) => ({
+                  sourceUrl: a.sourceUrl,
+                  sourceStart: a.sourceStart,
+                  sourceEnd: a.sourceEnd,
+                }))
+              : undefined,
+          textOverlays: splitTextOverlays,
+          overlayClips: splitOverlays.map((o) => ({
+            id: o.id,
+            mediaType: o.mediaType,
+            sourceUrl: o.sourceUrl,
+            sourceStart: o.sourceStart,
+            sourceEnd: o.sourceEnd,
+            timelineStart: o.timelineStart,
+            x: o.x,
+            y: o.y,
+            scale: o.scale,
+            muted: o.muted,
+          })),
           onProgress: (pct) => setExportProgressPct(pct),
         }
       );
@@ -2222,7 +3732,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac"
         className="hidden"
         onChange={(e) => {
-          handleUploadReplacementAudioFiles(e.target.files);
+          void handleUploadReplacementAudioFiles(e.target.files);
           e.target.value = '';
         }}
       />
@@ -2249,10 +3759,31 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         }}
       />
 
+      <input
+        ref={splitOverlayVideoInputRef}
+        type="file"
+        accept="video/*,.mp4,.webm,.mov,.mkv,.m4v"
+        className="hidden"
+        onChange={(e) => {
+          void handleUploadOverlayVideoFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+
+      <input
+        ref={splitOverlayImageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          void handleUploadOverlayImageFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+
       <audio
         ref={splitAudioRef}
         src={splitCustomAudio?.url || undefined}
-        loop
         preload="auto"
         className="hidden"
       />
@@ -2292,6 +3823,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   ? `Saving video... ${exportProgressPct}%`
                   : canExportSplitLossless
                   ? 'Original quality · No re-encoding'
+                  : splitTextOverlays.length > 0
+                  ? 'Text, audio & media mix'
                   : 'Custom audio & media mix'}
               </p>
             </div>
@@ -2329,95 +3862,473 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             }
           }}
         >
-          {/* Image clip preview when Split playhead stands on an added Image */}
-          {editMode === 'split' && activeSplitSegAtPlayhead?.mediaType === 'image' && (
-            <img
-              src={activeSplitSegAtPlayhead.sourceUrl}
-              alt={activeSplitSegAtPlayhead.title}
-              className="max-w-full max-h-full w-auto h-full rounded-xl object-contain"
-            />
-          )}
+          {/* Tight media wrapper in Split mode so WYSIWYG text coordinates match exported video */}
+          <div
+            ref={mediaFrameRef}
+            className={
+              editMode === 'split'
+                ? 'relative inline-flex items-center justify-center max-w-full max-h-full overflow-hidden rounded-xl'
+                : 'w-full h-full flex items-center justify-center'
+            }
+          >
+            {/* Image clip preview when Split playhead stands on an added Image */}
+            {editMode === 'split' && activeSplitSegAtPlayhead?.mediaType === 'image' && (
+              <img
+                src={activeSplitSegAtPlayhead.sourceUrl}
+                alt={activeSplitSegAtPlayhead.title}
+                className="relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain"
+              />
+            )}
 
-          <video
-            ref={videoRef}
-            playsInline
-            onTimeUpdate={() => {
-              const el = videoRef.current;
-              if (!el) return;
-              const now = el.currentTime;
-              const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
-              if (mode === 'split') {
-                return;
-              }
-              if (mode === 'trim' && end > start) {
-                if (now >= end) {
-                  el.pause();
-                  el.currentTime = end;
-                  setCurrentTime(end);
+            {/* Deck A (Primary Video Element) */}
+            <video
+              ref={videoRef}
+              playsInline
+              preload="auto"
+              onTimeUpdate={() => {
+                const el = videoRef.current;
+                if (!el) return;
+                const now = el.currentTime;
+                const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
+                if (mode === 'split') {
+                  return;
+                }
+                if (mode === 'trim' && end > start) {
+                  if (now >= end) {
+                    el.pause();
+                    el.currentTime = end;
+                    setCurrentTime(end);
+                    setIsPlaying(false);
+                    return;
+                  }
+                  if (now < start - 0.1 && !el.paused) {
+                    el.currentTime = start;
+                    setCurrentTime(start);
+                    return;
+                  }
+                }
+                setCurrentTime(now);
+              }}
+              onSeeked={() => {
+                setIsMaskingTrimSeek(false);
+                const el = videoRef.current;
+                if (
+                  el &&
+                  trimBoundsRef.current.editMode === 'split' &&
+                  activeSplitDeckRef.current !== 'A' &&
+                  standbyPreloadRef.current?.deck === 'A' &&
+                  Math.abs(el.currentTime - standbyPreloadRef.current.sourceTime) <= 0.15
+                ) {
+                  standbyPreloadRef.current.ready = true;
+                }
+              }}
+              onLoadedMetadata={() => {
+                const el = videoRef.current;
+                if (!el) return;
+                const pending = pendingDeckSeekRef.current.A;
+                if (
+                  trimBoundsRef.current.editMode === 'split' &&
+                  pending &&
+                  deckUrlsRef.current.A === pending.sourceUrl
+                ) {
+                  pendingDeckSeekRef.current.A = null;
+                  el.currentTime = pending.sourceTime;
+                  const isActive = activeSplitDeckRef.current === 'A';
+                  el.muted = isActive ? trimBoundsRef.current.isMuted : true;
+                  el.playbackRate = trimBoundsRef.current.playbackSpeed;
+                  if (pending.autoPlay && isActive) {
+                    void el.play().catch(() => {});
+                  } else if (!isActive && !el.paused) {
+                    el.pause();
+                  }
+                  return;
+                }
+                if (trimBoundsRef.current.editMode !== 'split' && isFinite(el.duration) && el.duration > 0) {
+                  setDuration(el.duration);
+                  setTrimEnd((prev) => (prev <= 0 ? el.duration : Math.min(prev, el.duration)));
+                }
+              }}
+              onPlay={() => {
+                if (trimBoundsRef.current.editMode === 'split') {
+                  if (activeSplitDeckRef.current !== 'A') return;
+                  onPlaybackStarted();
+                  setIsPlaying(true);
+                  return;
+                }
+                const el = videoRef.current;
+                const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
+                if (el && mode === 'trim' && end > start) {
+                  if (el.currentTime < start - 0.05 || el.currentTime >= end - 0.05) {
+                    el.currentTime = start;
+                    setCurrentTime(start);
+                  }
+                }
+                onPlaybackStarted();
+                setIsPlaying(true);
+              }}
+              onPause={() => {
+                if (trimBoundsRef.current.editMode !== 'split') {
                   setIsPlaying(false);
-                  return;
                 }
-                if (now < start - 0.1 && !el.paused) {
-                  el.currentTime = start;
-                  setCurrentTime(start);
-                  return;
+              }}
+              onEnded={() => {
+                if (trimBoundsRef.current.editMode !== 'split') {
+                  setIsPlaying(false);
+                  setShowControls(true);
                 }
-              }
-              setCurrentTime(now);
-            }}
-            onSeeked={() => {
-              setIsMaskingTrimSeek(false);
-            }}
-            onLoadedMetadata={() => {
-              const el = videoRef.current;
-              if (!el) return;
-              const pending = pendingSplitSeekRef.current;
-              if (trimBoundsRef.current.editMode === 'split' && pending && activeSplitVideoUrlRef.current === pending.sourceUrl) {
-                pendingSplitSeekRef.current = null;
-                el.currentTime = pending.sourceTime;
-                el.muted = trimBoundsRef.current.isMuted;
-                el.playbackRate = trimBoundsRef.current.playbackSpeed;
-                if (pending.autoPlay) {
-                  void el.play().catch(() => {});
-                }
-                return;
-              }
-              if (trimBoundsRef.current.editMode !== 'split' && isFinite(el.duration) && el.duration > 0) {
-                setDuration(el.duration);
-                setTrimEnd((prev) => (prev <= 0 ? el.duration : Math.min(prev, el.duration)));
-              }
-            }}
-            onPlay={() => {
-              const el = videoRef.current;
-              const { editMode: mode, trimStart: start, trimEnd: end } = trimBoundsRef.current;
-              if (el && mode === 'trim' && end > start) {
-                if (el.currentTime < start - 0.05 || el.currentTime >= end - 0.05) {
-                  el.currentTime = start;
-                  setCurrentTime(start);
-                }
-              }
-              onPlaybackStarted();
-              setIsPlaying(true);
-            }}
-            onPause={() => {
-              if (trimBoundsRef.current.editMode !== 'split') {
-                setIsPlaying(false);
-              }
-            }}
-            onEnded={() => {
-              if (trimBoundsRef.current.editMode !== 'split') {
-                setIsPlaying(false);
-                setShowControls(true);
-              }
-            }}
-            className={`bg-black transition-opacity duration-75 ${
-              editMode === 'split' && activeSplitSegAtPlayhead?.mediaType === 'image'
-                ? 'hidden'
-                : editMode === 'split'
-                ? 'max-w-full max-h-full w-auto h-full rounded-xl object-contain'
-                : `w-full h-full ${fitMode === 'cover' ? 'object-cover' : 'object-contain'}`
-            } ${isMaskingTrimSeek ? 'opacity-0' : 'opacity-100'}`}
-          />
+              }}
+              className={`bg-black ${
+                editMode === 'split'
+                  ? activeSplitSegAtPlayhead?.mediaType !== 'image' && activeSplitDeck === 'A'
+                    ? 'relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain opacity-100'
+                    : 'absolute inset-0 z-0 w-full h-full rounded-xl object-contain opacity-0 pointer-events-none'
+                  : `transition-opacity duration-75 w-full h-full ${
+                      fitMode === 'cover' ? 'object-cover' : 'object-contain'
+                    } ${isMaskingTrimSeek ? 'opacity-0' : 'opacity-100'}`
+              }`}
+            />
+
+            {/* Deck B (Standby Pre-Seeked Video Element for Zero-Stall Split Cuts) */}
+            {editMode === 'split' && (
+              <video
+                ref={standbyVideoRef}
+                playsInline
+                preload="auto"
+                onSeeked={() => {
+                  const el = standbyVideoRef.current;
+                  if (
+                    el &&
+                    activeSplitDeckRef.current !== 'B' &&
+                    standbyPreloadRef.current?.deck === 'B' &&
+                    Math.abs(el.currentTime - standbyPreloadRef.current.sourceTime) <= 0.15
+                  ) {
+                    standbyPreloadRef.current.ready = true;
+                  }
+                }}
+                onLoadedMetadata={() => {
+                  const el = standbyVideoRef.current;
+                  if (!el) return;
+                  const pending = pendingDeckSeekRef.current.B;
+                  if (pending && deckUrlsRef.current.B === pending.sourceUrl) {
+                    pendingDeckSeekRef.current.B = null;
+                    el.currentTime = pending.sourceTime;
+                    const isActive = activeSplitDeckRef.current === 'B';
+                    el.muted = isActive ? trimBoundsRef.current.isMuted : true;
+                    el.playbackRate = trimBoundsRef.current.playbackSpeed;
+                    if (pending.autoPlay && isActive) {
+                      void el.play().catch(() => {});
+                    } else if (!isActive && !el.paused) {
+                      el.pause();
+                    }
+                  }
+                }}
+                onPlay={() => {
+                  if (activeSplitDeckRef.current !== 'B') return;
+                  onPlaybackStarted();
+                  setIsPlaying(true);
+                }}
+                className={`bg-black ${
+                  activeSplitSegAtPlayhead?.mediaType !== 'image' && activeSplitDeck === 'B'
+                    ? 'relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain opacity-100'
+                    : 'absolute inset-0 z-0 w-full h-full rounded-xl object-contain opacity-0 pointer-events-none'
+                }`}
+              />
+            )}
+
+            {/* Interactive Picture-in-Picture Media Overlays (Videos & Photos) on Split Stage */}
+            {editMode === 'split' &&
+              splitOverlays.map((ov) => {
+                const isDraggingTrim = activeOverlayTrimDrag?.id === ov.id;
+                const liveTlStart = isDraggingTrim
+                  ? activeOverlayTrimDrag.liveTimelineStart
+                  : ov.timelineStart;
+                const liveSrcStart = isDraggingTrim
+                  ? activeOverlayTrimDrag.liveSourceStart
+                  : ov.sourceStart;
+                const liveSrcEnd = isDraggingTrim
+                  ? activeOverlayTrimDrag.liveSourceEnd
+                  : ov.sourceEnd;
+                const ovEnd = liveTlStart + Math.max(0.1, liveSrcEnd - liveSrcStart);
+                const isVisible =
+                  currentTime >= liveTlStart - 0.02 && currentTime <= ovEnd + 0.02;
+                const isSelectedOv =
+                  selectedTrackType === 'overlay' && selectedOverlayId === ov.id;
+
+                return (
+                  <div
+                    key={ov.id}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => {
+                      if ((e.target as HTMLElement).closest('[data-overlay-control="true"]')) {
+                        return;
+                      }
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const origX = ov.x;
+                      const origY = ov.y;
+                      let moved = false;
+                      setSelectedTrackType('overlay');
+                      setSelectedOverlayId(ov.id);
+
+                      const onMove = (ev: PointerEvent) => {
+                        const rect = mediaFrameRef.current?.getBoundingClientRect();
+                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+                        const dx = ev.clientX - startX;
+                        const dy = ev.clientY - startY;
+                        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+                          moved = true;
+                        }
+                        if (!moved) return;
+                        const nextX = Math.max(0.1, Math.min(0.9, origX + dx / rect.width));
+                        const nextY = Math.max(0.1, Math.min(0.9, origY + dy / rect.height));
+                        setSplitOverlays((prev) =>
+                          prev.map((item) =>
+                            item.id === ov.id ? { ...item, x: nextX, y: nextY } : item
+                          )
+                        );
+                      };
+
+                      const onUp = () => {
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onUp);
+                        window.removeEventListener('pointercancel', onUp);
+                      };
+
+                      window.addEventListener('pointermove', onMove);
+                      window.addEventListener('pointerup', onUp);
+                      window.addEventListener('pointercancel', onUp);
+                    }}
+                    style={{
+                      left: `${ov.x * 100}%`,
+                      top: `${ov.y * 100}%`,
+                      width: `${Math.round(ov.scale * 100)}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    className={`absolute z-[15] rounded-xl overflow-visible select-none touch-none cursor-grab active:cursor-grabbing transition-opacity duration-75 ${
+                      isVisible
+                        ? 'opacity-100 pointer-events-auto'
+                        : 'opacity-0 pointer-events-none'
+                    }`}
+                  >
+                    <div
+                      className={`relative w-full aspect-video rounded-xl overflow-hidden bg-black/40 shadow-2xl ${
+                        isSelectedOv
+                          ? 'ring-2 ring-violet-400'
+                          : 'ring-1 ring-white/25'
+                      }`}
+                    >
+                      {ov.mediaType === 'video' ? (
+                        <video
+                          ref={(el) => {
+                            overlayVideoElsRef.current[ov.id] = el;
+                          }}
+                          src={ov.sourceUrl}
+                          playsInline
+                          preload="auto"
+                          muted={ov.muted}
+                          className="w-full h-full object-contain pointer-events-none select-none bg-black"
+                        />
+                      ) : (
+                        <img
+                          src={ov.sourceUrl}
+                          alt={ov.title}
+                          draggable={false}
+                          className="w-full h-full object-contain pointer-events-none select-none"
+                        />
+                      )}
+                    </div>
+
+                    {isSelectedOv && isVisible && (
+                      <>
+                        {/* Top-right compact Mute/Delete actions */}
+                        <div
+                          data-overlay-control="true"
+                          className="absolute -top-3 -right-2 flex items-center gap-1 z-20"
+                        >
+                          {ov.mediaType === 'video' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const nextMuted = !ov.muted;
+                                const el = overlayVideoElsRef.current[ov.id];
+                                if (el) el.muted = nextMuted;
+                                setSplitOverlays((prev) =>
+                                  prev.map((item) =>
+                                    item.id === ov.id ? { ...item, muted: nextMuted } : item
+                                  )
+                                );
+                              }}
+                              className="w-7 h-7 rounded-full bg-slate-950/90 border border-white/25 text-white flex items-center justify-center shadow-lg cursor-pointer"
+                              title={ov.muted ? 'Unmute overlay video' : 'Mute overlay video'}
+                              aria-label={ov.muted ? 'Unmute overlay video' : 'Mute overlay video'}
+                            >
+                              {ov.muted ? (
+                                <VolumeX className="w-3.5 h-3.5 text-red-300" />
+                              ) : (
+                                <Volume2 className="w-3.5 h-3.5 text-violet-300" />
+                              )}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const nextOverlays = splitOverlays.filter((item) => item.id !== ov.id);
+                              commitTimelineState(
+                                splitSegments,
+                                splitAudioSegments,
+                                undefined,
+                                undefined,
+                                nextOverlays.length > 0 ? 'overlay' : 'video',
+                                undefined,
+                                undefined,
+                                nextOverlays,
+                                nextOverlays[0]?.id || null
+                              );
+                            }}
+                            className="w-7 h-7 rounded-full bg-red-600/95 border border-white/25 text-white flex items-center justify-center shadow-lg cursor-pointer"
+                            title="Remove overlay"
+                            aria-label="Remove overlay"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Bottom-right corner resize handle */}
+                        <div
+                          data-overlay-control="true"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const startX = e.clientX;
+                            const origScale = ov.scale;
+                            const onMove = (ev: PointerEvent) => {
+                              const rect = mediaFrameRef.current?.getBoundingClientRect();
+                              const baseW = rect?.width || 320;
+                              const dx = ev.clientX - startX;
+                              const nextScale = Math.max(
+                                0.18,
+                                Math.min(0.92, Number((origScale + (dx / baseW) * 1.4).toFixed(3)))
+                              );
+                              setSplitOverlays((prev) =>
+                                prev.map((item) =>
+                                  item.id === ov.id ? { ...item, scale: nextScale } : item
+                                )
+                              );
+                            };
+                            const onUp = () => {
+                              window.removeEventListener('pointermove', onMove);
+                              window.removeEventListener('pointerup', onUp);
+                              window.removeEventListener('pointercancel', onUp);
+                            };
+                            window.addEventListener('pointermove', onMove);
+                            window.addEventListener('pointerup', onUp);
+                            window.addEventListener('pointercancel', onUp);
+                          }}
+                          className="absolute -bottom-2.5 -right-2.5 w-7 h-7 rounded-full bg-violet-500 border-2 border-white text-white flex items-center justify-center shadow-lg cursor-nwse-resize touch-none z-20"
+                          title="Drag to resize overlay"
+                        >
+                          <Maximize className="w-3 h-3" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+
+            {/* Interactive Draggable Text Overlays on Split Stage */}
+            {editMode === 'split' &&
+              splitTextOverlays.map((ov) => {
+                const isVisible =
+                  currentTime >= ov.startTime - 0.02 && currentTime <= ov.endTime + 0.02;
+                if (!isVisible) return null;
+                const animState = computeTextAnimationState(
+                  ov.animation,
+                  Math.max(0, currentTime - ov.startTime),
+                  ov.text.length
+                );
+                const visibleText =
+                  ov.animation === 'typewriter' ? ov.text.slice(0, animState.visibleChars) : ov.text;
+                const hasBg = ov.bgStyle !== 'none';
+                const resolvedBgColor = hasBg
+                  ? ov.bgColor || (ov.bgStyle === 'solid' ? '#ffffff' : 'rgba(15, 23, 42, 0.82)')
+                  : undefined;
+                const previewTextColor =
+                  hasBg &&
+                  resolvedBgColor?.toLowerCase() === '#ffffff' &&
+                  ov.color.toLowerCase() === '#ffffff'
+                    ? '#111827'
+                    : ov.color;
+
+                return (
+                  <div
+                    key={ov.id}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const origX = ov.x;
+                      const origY = ov.y;
+                      let moved = false;
+                      setSelectedTrackType('text');
+                      setSelectedTextId(ov.id);
+
+                      const onMove = (ev: PointerEvent) => {
+                        const rect = mediaFrameRef.current?.getBoundingClientRect();
+                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+                        const dx = ev.clientX - startX;
+                        const dy = ev.clientY - startY;
+                        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                          moved = true;
+                        }
+                        if (!moved) return;
+                        const nextX = Math.max(0.08, Math.min(0.92, origX + dx / rect.width));
+                        const nextY = Math.max(0.08, Math.min(0.92, origY + dy / rect.height));
+                        setSplitTextOverlays((prev) =>
+                          prev.map((item) =>
+                            item.id === ov.id ? { ...item, x: nextX, y: nextY } : item
+                          )
+                        );
+                      };
+
+                      const onUp = () => {
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onUp);
+                        window.removeEventListener('pointercancel', onUp);
+                        if (!moved) {
+                          openAddTextEditor(ov);
+                        }
+                      };
+
+                      window.addEventListener('pointermove', onMove);
+                      window.addEventListener('pointerup', onUp);
+                      window.addEventListener('pointercancel', onUp);
+                    }}
+                    style={{
+                      left: `${ov.x * 100}%`,
+                      top: `${ov.y * 100}%`,
+                      opacity: animState.opacity,
+                      transform: `translate(-50%, -50%) translate(${animState.offsetX}px, ${animState.offsetY}px) scale(${animState.scale})`,
+                      fontSize: `${Math.round(ov.fontSize * 0.86)}px`,
+                      fontFamily: resolveOverlayFontCss(ov.fontFamily),
+                      color: previewTextColor,
+                      backgroundColor: resolvedBgColor,
+                      textTransform: ov.textStyle === 'uppercase' ? 'uppercase' : 'none',
+                      textShadow: resolveTextEffectShadow(ov.textStyle, previewTextColor, hasBg),
+                    }}
+                    className={`absolute z-20 max-w-[88%] leading-tight text-center whitespace-pre-wrap break-words select-none touch-none cursor-grab active:cursor-grabbing ${
+                      ov.fontFamily === 'display' ? 'font-black' : 'font-bold'
+                    } ${hasBg ? 'shadow-md rounded-lg px-2.5 py-1' : 'px-1'}`}
+                    title="Drag to move or tap to edit text"
+                  >
+                    {visibleText}
+                  </div>
+                );
+              })}
+          </div>
 
           {isLoadingVideo && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center pointer-events-none">
@@ -3103,20 +5014,27 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </div>
             </div>
 
-            {/* Horizontal Scrolling Frame-Strip Timeline + Pinned + Add Media Button */}
-            <div className="relative w-full h-[90px] bg-black overflow-hidden">
-              {/* Fixed Mute Button on Left Edge */}
+            {/* Horizontal Scrolling Multi-Track Timeline (Video, Audio, Text, Overlay) + Left Pinned Track Icons */}
+            <div
+              className={`relative w-full bg-black overflow-hidden transition-[height] duration-150 ${
+                splitOverlays.length > 0 ? 'h-[214px]' : 'h-[168px]'
+              }`}
+            >
+              {/* Fixed Mute Button on Left Edge (Video Row) */}
               <button
                 type="button"
                 onClick={() => {
                   const next = !isMuted;
                   setIsMuted(next);
-                  if (videoRef.current) videoRef.current.muted = next;
+                  const activeEl = getActiveSplitVideoEl();
+                  if (activeEl) activeEl.muted = next;
+                  const standbyEl = getDeckEl(activeSplitDeckRef.current === 'A' ? 'B' : 'A');
+                  if (standbyEl) standbyEl.muted = true;
                 }}
-                className={`absolute left-2 top-8 z-30 w-10 h-10 rounded-full border flex items-center justify-center cursor-pointer transition-colors ${
+                className={`absolute left-2 top-[27px] z-30 w-10 h-10 rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
                   isMuted
                     ? 'bg-red-500/20 border-red-400/50 text-red-300'
-                    : 'bg-black/80 border-white/15 text-white hover:bg-white/15'
+                    : 'bg-zinc-900/90 border-white/15 text-white hover:bg-white/15'
                 }`}
                 title={isMuted ? 'Unmute Video Sound' : 'Mute Video Sound'}
                 aria-label={isMuted ? 'Unmute Video Sound' : 'Mute Video Sound'}
@@ -3124,12 +5042,67 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
 
-              {/* Floating + Add Video / Image Button on Right Edge (TikTok style) */}
+              {/* Fixed Audio Track Icon on Left Edge (Audio Row) */}
+              {splitAudioSegments.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (splitAudioRef.current) splitAudioRef.current.pause();
+                    setSplitCustomAudio(null);
+                    commitTimelineState(splitSegments, [], undefined, null, 'video');
+                  }}
+                  className="absolute left-2 top-[78px] z-30 w-10 h-10 rounded-xl bg-zinc-900/90 border border-emerald-400/40 text-emerald-300 hover:bg-red-500/20 hover:border-red-400/50 hover:text-red-200 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Remove added audio track"
+                  aria-label="Remove added audio track"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void openAudioPickerModal()}
+                  className="absolute left-2 top-[78px] z-30 w-10 h-10 rounded-xl bg-zinc-900/90 border border-white/15 text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Add audio"
+                  aria-label="Add audio"
+                >
+                  <Music className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Fixed Text Track Icon on Left Edge (Text Row) */}
+              <button
+                type="button"
+                onClick={() => openAddTextEditor()}
+                className={`absolute left-2 top-[124px] z-30 w-10 h-[38px] rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
+                  splitTextOverlays.length > 0
+                    ? 'bg-amber-500/15 border-amber-400/45 text-amber-300 hover:bg-amber-500/25'
+                    : 'bg-zinc-900/90 border-white/15 text-slate-300 hover:text-white hover:bg-white/15'
+                }`}
+                title="Add text"
+                aria-label="Add text"
+              >
+                <Type className="w-4 h-4" />
+              </button>
+
+              {/* Fixed Overlay Track Icon on Left Edge (Overlay Row, visible when overlays added) */}
+              {splitOverlays.length > 0 && (
+                <button
+                  type="button"
+                  onClick={openOverlayPickerModal}
+                  className="absolute left-2 top-[168px] z-30 w-10 h-[40px] rounded-xl border bg-violet-500/15 border-violet-400/45 text-violet-300 hover:bg-violet-500/25 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Add overlay video or photo"
+                  aria-label="Add overlay"
+                >
+                  <Layers className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Floating + Add Video / Image Button on Right Edge (TikTok / CapCut style) */}
               <button
                 type="button"
                 onClick={() => setShowAddMediaMenu((prev) => !prev)}
                 disabled={isPreparingSplitMedia || isProcessingEdit}
-                className="absolute right-2.5 top-8 z-30 w-10 h-10 rounded-xl bg-white hover:bg-slate-200 text-slate-950 shadow-lg flex items-center justify-center cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
+                className="absolute right-2.5 top-[27px] z-30 w-10 h-10 rounded-xl bg-white hover:bg-slate-200 text-slate-950 shadow-lg flex items-center justify-center cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
                 title="Add Video or Image"
                 aria-label="Add Video or Image"
               >
@@ -3139,17 +5112,15 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               {/* Center Fixed Vertical White Playhead */}
               <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2.5px] bg-white z-30 pointer-events-none rounded-full shadow-[0_0_8px_rgba(255,255,255,0.75)]" />
 
-              {/* Scrollable Time Ruler + Multi-Clip Filmstrip Segments */}
+              {/* Scrollable Time Ruler + Video Filmstrip + Audio Line */}
               <div
                 ref={splitTimelineRef}
                 onPointerDown={(e) => {
+                  if ((e.target as HTMLElement).closest('[data-trim-handle="true"]')) {
+                    return;
+                  }
                   isUserScrubbingTimelineRef.current = true;
-                  if (videoRef.current && !videoRef.current.paused) {
-                    videoRef.current.pause();
-                  }
-                  if (splitAudioRef.current && !splitAudioRef.current.paused) {
-                    splitAudioRef.current.pause();
-                  }
+                  pauseAllSplitVideos();
                   setIsPlaying(false);
                   if (e.pointerType === 'mouse' && splitTimelineRef.current) {
                     const startX = e.clientX;
@@ -3180,7 +5151,17 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 onScroll={(e) => {
                   if (isSyncingTimelineScrollRef.current) return;
                   const target = e.currentTarget;
-                  const nextTime = Math.max(0, Math.min(totalSplitDuration, target.scrollLeft / splitPxPerSec));
+                  if (
+                    lastProgrammaticScrollLeftRef.current >= 0 &&
+                    Math.abs(target.scrollLeft - lastProgrammaticScrollLeftRef.current) < 1.5
+                  ) {
+                    return;
+                  }
+                  lastProgrammaticScrollLeftRef.current = -1;
+                  const nextTime = Math.max(
+                    0,
+                    Math.min(maxSplitTimelineDuration, target.scrollLeft / splitPxPerSec)
+                  );
                   seekSplitTimelineTo(nextTime, false);
                 }}
                 className="w-full h-full overflow-x-auto overflow-y-hidden no-scrollbar cursor-grab active:cursor-grabbing"
@@ -3189,7 +5170,48 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 <div
                   className="relative h-full box-content"
                   style={{
-                    width: `${Math.max(120, totalSplitDuration * splitPxPerSec)}px`,
+                    width: `${Math.max(
+                      120,
+                      maxSplitTimelineDuration * splitPxPerSec +
+                        (activeTrimDrag
+                          ? Math.max(
+                              0,
+                              (activeTrimDrag.initialSourceStart - activeTrimDrag.liveSourceStart) *
+                                activeTrimDrag.frozenPxPerSec
+                            ) +
+                            Math.max(
+                              0,
+                              (activeTrimDrag.liveSourceEnd - activeTrimDrag.initialSourceEnd) *
+                                activeTrimDrag.frozenPxPerSec
+                            )
+                          : 0) +
+                        (activeAudioTrimDrag
+                          ? Math.max(
+                              0,
+                              (activeAudioTrimDrag.initialSourceStart -
+                                activeAudioTrimDrag.liveSourceStart) *
+                                activeAudioTrimDrag.frozenPxPerSec
+                            ) +
+                            Math.max(
+                              0,
+                              (activeAudioTrimDrag.liveSourceEnd -
+                                activeAudioTrimDrag.initialSourceEnd) *
+                                activeAudioTrimDrag.frozenPxPerSec
+                            )
+                          : 0) +
+                        (activeOverlayTrimDrag
+                          ? Math.max(
+                              0,
+                              (activeOverlayTrimDrag.liveTimelineStart +
+                                (activeOverlayTrimDrag.liveSourceEnd -
+                                  activeOverlayTrimDrag.liveSourceStart) -
+                                (activeOverlayTrimDrag.initialTimelineStart +
+                                  (activeOverlayTrimDrag.initialSourceEnd -
+                                    activeOverlayTrimDrag.initialSourceStart))) *
+                                activeOverlayTrimDrag.frozenPxPerSec
+                            )
+                          : 0)
+                    )}px`,
                     paddingLeft: '50%',
                     paddingRight: '50%',
                   }}
@@ -3197,7 +5219,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   {/* Top Time Ruler Ticks */}
                   <div className="relative h-5 w-full">
                     {(() => {
-                      const stepSec =
+                      const baseStep =
                         totalSplitDuration <= 45
                           ? 1
                           : totalSplitDuration <= 150
@@ -3205,8 +5227,12 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                           : totalSplitDuration <= 480
                           ? 15
                           : 30;
+                      const stepSec = Math.max(
+                        baseStep,
+                        Math.ceil(maxSplitTimelineDuration / 180)
+                      );
                       const ticks: number[] = [];
-                      for (let t = 0; t <= Math.ceil(totalSplitDuration); t += stepSec) {
+                      for (let t = 0; t <= Math.ceil(maxSplitTimelineDuration); t += stepSec) {
                         ticks.push(t);
                       }
                       return ticks.map((t) => (
@@ -3223,108 +5249,1416 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     })()}
                   </div>
 
-                  {/* Multi-Clip Filmstrip Segments */}
-                  <div className="relative h-[58px] mt-1 flex items-center">
+                  {/* Multi-Clip Filmstrip Segments with TikTok White < > Touch-and-Pull Handles */}
+                  <div className="relative h-[50px] mt-0.5 flex items-center">
                     {mappedSplitSegments.map((seg, idx) => {
-                      const segWidth = Math.max(24, (seg.globalEnd - seg.globalStart) * splitPxPerSec);
-                      const isSelected = selectedSplitSegId === seg.id;
+                      const isDraggingThis = activeTrimDrag?.segId === seg.id;
+                      const pxPerSec = isDraggingThis ? activeTrimDrag.frozenPxPerSec : splitPxPerSec;
+                      const baseStart = isDraggingThis ? activeTrimDrag.initialSourceStart : seg.sourceStart;
+                      const baseEnd = isDraggingThis ? activeTrimDrag.initialSourceEnd : seg.sourceEnd;
+                      const liveStart = isDraggingThis ? activeTrimDrag.liveSourceStart : seg.sourceStart;
+                      const liveEnd = isDraggingThis ? activeTrimDrag.liveSourceEnd : seg.sourceEnd;
+
+                      const baseWidth = Math.max(24, (baseEnd - baseStart) * pxPerSec);
+                      const extraLeftPx =
+                        isDraggingThis && liveStart < baseStart ? (baseStart - liveStart) * pxPerSec : 0;
+                      const extraRightPx =
+                        isDraggingThis && liveEnd > baseEnd ? (liveEnd - baseEnd) * pxPerSec : 0;
+                      const slotWidth = Math.max(24, baseWidth + extraLeftPx + extraRightPx);
+                      const trimLeftPx =
+                        isDraggingThis && liveStart > baseStart ? (liveStart - baseStart) * pxPerSec : 0;
+                      const trimRightPx =
+                        isDraggingThis && liveEnd < baseEnd ? (baseEnd - liveEnd) * pxPerSec : 0;
+                      const activeBracketWidth = Math.max(12, slotWidth - trimLeftPx - trimRightPx);
+
+                      const isSelected =
+                        selectedTrackType === 'video' && selectedSplitSegId === seg.id;
                       const sourceFrames = seg.mediaType === 'video' ? splitFramesBySource[seg.sourceUrl] || [] : [];
                       const segThumbs =
                         sourceFrames.length > 0
                           ? sourceFrames.filter(
-                              (f) => f.time >= seg.sourceStart - 2 && f.time <= seg.sourceEnd + 2
+                              (f) => f.time >= Math.min(liveStart, baseStart) - 2 && f.time <= Math.max(liveEnd, baseEnd) + 2
                             )
                           : [];
                       const displayFrames = segThumbs.length > 0 ? segThumbs : sourceFrames.slice(0, 3);
                       const isSourceExtracting = Boolean(extractingSources[seg.sourceUrl]);
 
+                      const previewClipAt = (targetSourceSec: number) => {
+                        const activeDeck = activeSplitDeckRef.current;
+                        const videoEl = getDeckEl(activeDeck);
+                        if (!videoEl || seg.mediaType !== 'video') return;
+                        if (deckUrlsRef.current[activeDeck] !== seg.sourceUrl) {
+                          pendingDeckSeekRef.current[activeDeck] = {
+                            sourceUrl: seg.sourceUrl,
+                            sourceTime: targetSourceSec,
+                            autoPlay: false,
+                          };
+                          deckUrlsRef.current[activeDeck] = seg.sourceUrl;
+                          videoEl.src = seg.sourceUrl;
+                          videoEl.muted = trimBoundsRef.current.isMuted;
+                          videoEl.playbackRate = trimBoundsRef.current.playbackSpeed;
+                          videoEl.load();
+                        } else {
+                          pendingDeckSeekRef.current[activeDeck] = null;
+                          videoEl.currentTime = targetSourceSec;
+                        }
+                      };
+
                       return (
-                        <button
+                        <div
                           key={seg.id}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedSplitSegId(seg.id);
-                          }}
-                          style={{ width: `${segWidth}px` }}
-                          className={`relative h-full shrink-0 overflow-hidden rounded-lg transition-all cursor-pointer ${
-                            idx > 0 ? 'ml-0.5' : ''
-                          } ${
-                            seg.removed
-                              ? 'opacity-35 grayscale border border-red-400/50 bg-slate-900'
-                              : isSelected
-                              ? 'ring-2 ring-white z-10 bg-slate-900'
-                              : 'border border-white/20 bg-slate-900'
+                          style={{ width: `${slotWidth}px` }}
+                          className={`relative h-full shrink-0 ${idx > 0 ? 'ml-0.5' : ''} ${
+                            isSelected && !seg.removed ? 'z-20' : ''
                           }`}
                         >
-                          {/* Image or Video Frame Strip Background */}
-                          {seg.mediaType === 'image' ? (
-                            <div className="absolute inset-0 flex">
-                              {Array.from({ length: Math.max(2, Math.ceil(segWidth / 44)) }).map((_, tileIdx) => (
-                                <img
-                                  key={tileIdx}
-                                  src={seg.thumbnailUrl || seg.sourceUrl}
-                                  alt=""
-                                  draggable={false}
-                                  className="h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
-                                />
-                              ))}
-                            </div>
-                          ) : displayFrames.length > 0 ? (
-                            <div className="absolute inset-0 flex">
-                              {Array.from({ length: Math.max(2, Math.ceil(segWidth / 44)) }).map(
-                                (_, tileIdx) => {
-                                  const frame =
-                                    displayFrames[
-                                      Math.min(
-                                        displayFrames.length - 1,
-                                        Math.floor(
-                                          (tileIdx / Math.max(1, Math.ceil(segWidth / 44))) *
-                                            displayFrames.length
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTrackType('video');
+                              setSelectedSplitSegId(seg.id);
+                            }}
+                            className={`relative w-full h-full overflow-hidden rounded-lg cursor-pointer block ${
+                              seg.removed
+                                ? 'opacity-35 grayscale border border-red-400/50 bg-slate-900'
+                                : isSelected
+                                ? 'bg-slate-900'
+                                : 'border border-white/20 bg-slate-900'
+                            }`}
+                          >
+                            {/* Image or Video Frame Strip Background */}
+                            {seg.mediaType === 'image' ? (
+                              <div className="absolute inset-0 flex">
+                                {Array.from({ length: Math.max(2, Math.ceil(slotWidth / 44)) }).map((_, tileIdx) => (
+                                  <img
+                                    key={tileIdx}
+                                    src={seg.thumbnailUrl || seg.sourceUrl}
+                                    alt=""
+                                    draggable={false}
+                                    className="h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
+                                  />
+                                ))}
+                              </div>
+                            ) : displayFrames.length > 0 ? (
+                              <div className="absolute inset-0 flex">
+                                {Array.from({ length: Math.max(2, Math.ceil(slotWidth / 44)) }).map(
+                                  (_, tileIdx) => {
+                                    const frame =
+                                      displayFrames[
+                                        Math.min(
+                                          displayFrames.length - 1,
+                                          Math.floor(
+                                            (tileIdx / Math.max(1, Math.ceil(slotWidth / 44))) *
+                                              displayFrames.length
+                                          )
                                         )
-                                      )
-                                    ];
+                                      ];
+                                    return (
+                                      <img
+                                        key={tileIdx}
+                                        src={frame?.url}
+                                        alt=""
+                                        draggable={false}
+                                        className="h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
+                                      />
+                                    );
+                                  }
+                                )}
+                              </div>
+                            ) : (
+                              <div
+                                className={`absolute inset-0 ${
+                                  isSourceExtracting
+                                    ? 'bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 animate-pulse'
+                                    : 'bg-slate-800'
+                                }`}
+                              />
+                            )}
+
+                            {/* Dimmed Cut-Away Overlays while pulling < or > inward */}
+                            {isDraggingThis && trimLeftPx > 0 && (
+                              <div
+                                style={{ left: 0, width: `${trimLeftPx}px` }}
+                                className="absolute top-0 bottom-0 bg-black/75 pointer-events-none"
+                              />
+                            )}
+                            {isDraggingThis && trimRightPx > 0 && (
+                              <div
+                                style={{ right: 0, width: `${trimRightPx}px` }}
+                                className="absolute top-0 bottom-0 bg-black/75 pointer-events-none"
+                              />
+                            )}
+
+                            {/* Removed Overlay */}
+                            {seg.removed && (
+                              <div className="absolute inset-0 bg-red-950/60 flex items-center justify-center">
+                                <span className="px-1.5 py-0.5 rounded bg-black/80 text-red-200 text-[10px] font-bold uppercase tracking-wider">
+                                  Removed
+                                </span>
+                              </div>
+                            )}
+                          </button>
+
+                          {/* Active White Selection Bracket Frame + Live Duration Label */}
+                          {isSelected && !seg.removed && (
+                            <div
+                              style={{ left: `${trimLeftPx}px`, right: `${trimRightPx}px` }}
+                              className="absolute top-0 bottom-0 border-y-[3px] border-white pointer-events-none z-20"
+                            >
+                              {activeBracketWidth >= 52 && (
+                                <span className="absolute top-1 left-2.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono tabular-nums text-white leading-none font-semibold">
+                                  {(liveEnd - liveStart).toFixed(1)}s
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Left White Touch-and-Pull Trim Handle (<) */}
+                          {isSelected && !seg.removed && (
+                            <div
+                              role="slider"
+                              tabIndex={0}
+                              data-trim-handle="true"
+                              aria-label="Trim clip start"
+                              aria-valuemin={0}
+                              aria-valuemax={Number((liveEnd - 0.3).toFixed(1))}
+                              aria-valuenow={Number(liveStart.toFixed(1))}
+                              style={{ left: `${trimLeftPx - 16}px` }}
+                              onPointerDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                try {
+                                  e.currentTarget.setPointerCapture(e.pointerId);
+                                } catch {
+                                  // ignore capture unsupported
+                                }
+                                pauseAllSplitVideos();
+                                setIsPlaying(false);
+                                isUserScrubbingTimelineRef.current = true;
+                                standbyPreloadRef.current = null;
+
+                                const startClientX = e.clientX;
+                                const startScrollLeft = splitTimelineRef.current?.scrollLeft ?? 0;
+                                const frozenPx = splitPxPerSec;
+                                const initialSegments = splitSegments;
+                                const initialStart = seg.sourceStart;
+                                const fixedEnd = seg.sourceEnd;
+                                const segGlobalStart = seg.globalStart;
+                                let latestStart = initialStart;
+
+                                setActiveTrimDrag({
+                                  segId: seg.id,
+                                  side: 'left',
+                                  initialSourceStart: initialStart,
+                                  initialSourceEnd: fixedEnd,
+                                  liveSourceStart: initialStart,
+                                  liveSourceEnd: fixedEnd,
+                                  frozenPxPerSec: frozenPx,
+                                });
+                                previewClipAt(initialStart);
+
+                                const onMove = (ev: PointerEvent) => {
+                                  const dx = ev.clientX - startClientX;
+                                  const nextStart = Math.max(
+                                    0,
+                                    Math.min(fixedEnd - 0.3, Number((initialStart + dx / frozenPx).toFixed(2)))
+                                  );
+                                  if (nextStart === latestStart) return;
+                                  latestStart = nextStart;
+
+                                  // When pulling left outward (nextStart < initialStart), scroll right by extraPx so the right edge stays locked in place
+                                  if (splitTimelineRef.current) {
+                                    isSyncingTimelineScrollRef.current = true;
+                                    if (nextStart < initialStart) {
+                                      splitTimelineRef.current.scrollLeft =
+                                        startScrollLeft + (initialStart - nextStart) * frozenPx;
+                                    } else {
+                                      splitTimelineRef.current.scrollLeft = startScrollLeft;
+                                    }
+                                    window.requestAnimationFrame(() => {
+                                      isSyncingTimelineScrollRef.current = false;
+                                    });
+                                  }
+
+                                  setActiveTrimDrag((prev) =>
+                                    prev ? { ...prev, liveSourceStart: nextStart } : null
+                                  );
+                                  previewClipAt(nextStart);
+                                };
+
+                                const onUp = () => {
+                                  window.removeEventListener('pointermove', onMove);
+                                  window.removeEventListener('pointerup', onUp);
+                                  window.removeEventListener('pointercancel', onUp);
+                                  isUserScrubbingTimelineRef.current = false;
+                                  setActiveTrimDrag(null);
+
+                                  if (Math.abs(latestStart - initialStart) >= 0.05) {
+                                    const nextSegments = initialSegments.map((item) =>
+                                      item.id === seg.id ? { ...item, sourceStart: latestStart } : item
+                                    );
+                                    setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: initialSegments,
+                                          audio: splitAudioSegments,
+                                          text: splitTextOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                    setSplitRedoStack([]);
+                                    setSplitSegments(nextSegments);
+                                    setCurrentTime(segGlobalStart);
+                                    trimBoundsRef.current.currentTime = segGlobalStart;
+                                    setEditStatusMessage(null);
+                                    setEditErrorMessage(null);
+                                    previewClipAt(latestStart);
+                                  }
+                                };
+
+                                window.addEventListener('pointermove', onMove);
+                                window.addEventListener('pointerup', onUp);
+                                window.addEventListener('pointercancel', onUp);
+                              }}
+                              className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                              title="Touch and pull to trim clip start"
+                            >
+                              <div className="w-5 h-full rounded-l-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Right White Touch-and-Pull Trim Handle (>) */}
+                          {isSelected && !seg.removed && (
+                            <div
+                              role="slider"
+                              tabIndex={0}
+                              data-trim-handle="true"
+                              aria-label="Trim clip end"
+                              aria-valuemin={Number((liveStart + 0.3).toFixed(1))}
+                              aria-valuemax={Number(seg.maxSourceDuration.toFixed(1))}
+                              aria-valuenow={Number(liveEnd.toFixed(1))}
+                              style={{ right: `${trimRightPx - 16}px` }}
+                              onPointerDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                try {
+                                  e.currentTarget.setPointerCapture(e.pointerId);
+                                } catch {
+                                  // ignore capture unsupported
+                                }
+                                pauseAllSplitVideos();
+                                setIsPlaying(false);
+                                isUserScrubbingTimelineRef.current = true;
+                                standbyPreloadRef.current = null;
+
+                                const startClientX = e.clientX;
+                                const frozenPx = splitPxPerSec;
+                                const initialSegments = splitSegments;
+                                const initialEnd = seg.sourceEnd;
+                                const fixedStart = seg.sourceStart;
+                                const maxAllowedEnd = seg.maxSourceDuration || Math.max(initialEnd, 10);
+                                const segGlobalStart = seg.globalStart;
+                                let latestEnd = initialEnd;
+
+                                setActiveTrimDrag({
+                                  segId: seg.id,
+                                  side: 'right',
+                                  initialSourceStart: fixedStart,
+                                  initialSourceEnd: initialEnd,
+                                  liveSourceStart: fixedStart,
+                                  liveSourceEnd: initialEnd,
+                                  frozenPxPerSec: frozenPx,
+                                });
+                                previewClipAt(initialEnd);
+
+                                const onMove = (ev: PointerEvent) => {
+                                  const dx = ev.clientX - startClientX;
+                                  const nextEnd = Math.min(
+                                    maxAllowedEnd,
+                                    Math.max(fixedStart + 0.3, Number((initialEnd + dx / frozenPx).toFixed(2)))
+                                  );
+                                  if (nextEnd === latestEnd) return;
+                                  latestEnd = nextEnd;
+
+                                  setActiveTrimDrag((prev) =>
+                                    prev ? { ...prev, liveSourceEnd: nextEnd } : null
+                                  );
+                                  previewClipAt(nextEnd);
+                                };
+
+                                const onUp = () => {
+                                  window.removeEventListener('pointermove', onMove);
+                                  window.removeEventListener('pointerup', onUp);
+                                  window.removeEventListener('pointercancel', onUp);
+                                  isUserScrubbingTimelineRef.current = false;
+                                  setActiveTrimDrag(null);
+
+                                  if (Math.abs(latestEnd - initialEnd) >= 0.05) {
+                                    const nextSegments = initialSegments.map((item) =>
+                                      item.id === seg.id ? { ...item, sourceEnd: latestEnd } : item
+                                    );
+                                    const newSegEndGlobal = segGlobalStart + (latestEnd - fixedStart);
+                                    setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: initialSegments,
+                                          audio: splitAudioSegments,
+                                          text: splitTextOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                    setSplitRedoStack([]);
+                                    setSplitSegments(nextSegments);
+                                    setCurrentTime(newSegEndGlobal);
+                                    trimBoundsRef.current.currentTime = newSegEndGlobal;
+                                    setEditStatusMessage(null);
+                                    setEditErrorMessage(null);
+                                    previewClipAt(latestEnd);
+                                  }
+                                };
+
+                                window.addEventListener('pointermove', onMove);
+                                window.addEventListener('pointerup', onUp);
+                                window.addEventListener('pointercancel', onUp);
+                              }}
+                              className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                              title="Touch and pull to trim clip end"
+                            >
+                              <div className="w-5 h-full rounded-r-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                <ChevronRight className="w-4 h-4 stroke-[3]" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Row 2: Audio Track Line Directly Below Video Line (+ Add audio or interactive waveform segments) */}
+                  <div className="relative h-[40px] mt-1.5 flex items-center">
+                    {splitAudioSegments.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void openAudioPickerModal()}
+                        style={{ width: `${Math.max(140, totalSplitDuration * splitPxPerSec)}px` }}
+                        className="h-full rounded-lg bg-white/[0.06] hover:bg-white/[0.11] border border-white/10 px-3 flex items-center gap-2 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors text-left"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        <span className="truncate">Add audio</span>
+                      </button>
+                    ) : (
+                      mappedAudioSegments.map((aSeg, idx) => {
+                        const isDraggingThis = activeAudioTrimDrag?.segId === aSeg.id;
+                        const pxPerSec = isDraggingThis
+                          ? activeAudioTrimDrag.frozenPxPerSec
+                          : splitPxPerSec;
+                        const baseStart = isDraggingThis
+                          ? activeAudioTrimDrag.initialSourceStart
+                          : aSeg.sourceStart;
+                        const baseEnd = isDraggingThis
+                          ? activeAudioTrimDrag.initialSourceEnd
+                          : aSeg.sourceEnd;
+                        const liveStart = isDraggingThis
+                          ? activeAudioTrimDrag.liveSourceStart
+                          : aSeg.sourceStart;
+                        const liveEnd = isDraggingThis
+                          ? activeAudioTrimDrag.liveSourceEnd
+                          : aSeg.sourceEnd;
+
+                        const baseWidth = Math.max(24, (baseEnd - baseStart) * pxPerSec);
+                        const extraLeftPx =
+                          isDraggingThis && liveStart < baseStart
+                            ? (baseStart - liveStart) * pxPerSec
+                            : 0;
+                        const extraRightPx =
+                          isDraggingThis && liveEnd > baseEnd
+                            ? (liveEnd - baseEnd) * pxPerSec
+                            : 0;
+                        const slotWidth = Math.max(24, baseWidth + extraLeftPx + extraRightPx);
+                        const trimLeftPx =
+                          isDraggingThis && liveStart > baseStart
+                            ? (liveStart - baseStart) * pxPerSec
+                            : 0;
+                        const trimRightPx =
+                          isDraggingThis && liveEnd < baseEnd
+                            ? (baseEnd - liveEnd) * pxPerSec
+                            : 0;
+                        const activeBracketWidth = Math.max(
+                          12,
+                          slotWidth - trimLeftPx - trimRightPx
+                        );
+
+                        const isSelected =
+                          selectedTrackType === 'audio' && selectedAudioSegId === aSeg.id;
+                        const barCount = Math.min(180, Math.max(8, Math.floor(slotWidth / 6)));
+
+                        const previewAudioAt = (targetSourceSec: number) => {
+                          if (splitAudioRef.current) {
+                            splitAudioRef.current.currentTime = Math.max(
+                              0,
+                              Math.min(aSeg.maxSourceDuration, targetSourceSec)
+                            );
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={aSeg.id}
+                            style={{ width: `${slotWidth}px` }}
+                            className={`relative h-full shrink-0 ${idx > 0 ? 'ml-0.5' : ''} ${
+                              isSelected ? 'z-20' : ''
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTrackType('audio');
+                                setSelectedAudioSegId(aSeg.id);
+                              }}
+                              className={`relative w-full h-full overflow-hidden rounded-lg cursor-pointer block text-left ${
+                                isSelected
+                                  ? 'bg-emerald-900/90'
+                                  : 'bg-emerald-950/85 border border-emerald-400/35'
+                              }`}
+                            >
+                              {/* Waveform Bars */}
+                              <div className="absolute inset-0 flex items-center justify-between gap-[2px] px-1.5 opacity-45 pointer-events-none overflow-hidden">
+                                {Array.from({ length: barCount }).map((_, bIdx) => {
+                                  const hPct =
+                                    28 + (((bIdx * 37 + idx * 13) % 11) / 10) * 58;
                                   return (
+                                    <span
+                                      key={bIdx}
+                                      style={{ height: `${Math.round(hPct)}%` }}
+                                      className="w-[2px] rounded-full bg-emerald-300 shrink-0"
+                                    />
+                                  );
+                                })}
+                              </div>
+
+                              {/* Song Title & Duration Label */}
+                              {activeBracketWidth >= 68 && (
+                                <div className="relative z-10 h-full px-2.5 flex items-center gap-1.5 pointer-events-none">
+                                  <Music className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                                  <span className="text-[11px] font-semibold text-white truncate">
+                                    {aSeg.title}
+                                  </span>
+                                  <span className="text-[10px] font-mono tabular-nums text-emerald-200/90 shrink-0 ml-auto">
+                                    {(liveEnd - liveStart).toFixed(1)}s
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Dimmed Cut-Away Overlays while pulling < or > inward */}
+                              {isDraggingThis && trimLeftPx > 0 && (
+                                <div
+                                  style={{ left: 0, width: `${trimLeftPx}px` }}
+                                  className="absolute top-0 bottom-0 bg-black/75 pointer-events-none z-10"
+                                />
+                              )}
+                              {isDraggingThis && trimRightPx > 0 && (
+                                <div
+                                  style={{ right: 0, width: `${trimRightPx}px` }}
+                                  className="absolute top-0 bottom-0 bg-black/75 pointer-events-none z-10"
+                                />
+                              )}
+                            </button>
+
+                            {/* Active White Selection Bracket Frame */}
+                            {isSelected && (
+                              <div
+                                style={{ left: `${trimLeftPx}px`, right: `${trimRightPx}px` }}
+                                className="absolute top-0 bottom-0 border-y-[3px] border-white pointer-events-none z-20"
+                              />
+                            )}
+
+                            {/* Left White Touch-and-Pull Audio Trim Handle (<) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim audio start"
+                                aria-valuemin={0}
+                                aria-valuemax={Number((liveEnd - 0.3).toFixed(1))}
+                                aria-valuenow={Number(liveStart.toFixed(1))}
+                                style={{ left: `${trimLeftPx - 16}px` }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const startScrollLeft = splitTimelineRef.current?.scrollLeft ?? 0;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialAudio = splitAudioSegments;
+                                  const initialStart = aSeg.sourceStart;
+                                  const fixedEnd = aSeg.sourceEnd;
+                                  const segGlobalStart = aSeg.globalStart;
+                                  let latestStart = initialStart;
+
+                                  setActiveAudioTrimDrag({
+                                    segId: aSeg.id,
+                                    side: 'left',
+                                    initialSourceStart: initialStart,
+                                    initialSourceEnd: fixedEnd,
+                                    liveSourceStart: initialStart,
+                                    liveSourceEnd: fixedEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+                                  previewAudioAt(initialStart);
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextStart = Math.max(
+                                      0,
+                                      Math.min(
+                                        fixedEnd - 0.3,
+                                        Number((initialStart + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextStart === latestStart) return;
+                                    latestStart = nextStart;
+
+                                    if (splitTimelineRef.current) {
+                                      isSyncingTimelineScrollRef.current = true;
+                                      if (nextStart < initialStart) {
+                                        splitTimelineRef.current.scrollLeft =
+                                          startScrollLeft + (initialStart - nextStart) * frozenPx;
+                                      } else {
+                                        splitTimelineRef.current.scrollLeft = startScrollLeft;
+                                      }
+                                      window.requestAnimationFrame(() => {
+                                        isSyncingTimelineScrollRef.current = false;
+                                      });
+                                    }
+
+                                    setActiveAudioTrimDrag((prev) =>
+                                      prev ? { ...prev, liveSourceStart: nextStart } : null
+                                    );
+                                    previewAudioAt(nextStart);
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveAudioTrimDrag(null);
+
+                                    if (Math.abs(latestStart - initialStart) >= 0.05) {
+                                      const nextAudio = initialAudio.map((item) =>
+                                        item.id === aSeg.id
+                                          ? { ...item, sourceStart: latestStart }
+                                          : item
+                                      );
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: initialAudio,
+                                          text: splitTextOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitAudioSegments(nextAudio);
+                                      setCurrentTime(segGlobalStart);
+                                      trimBoundsRef.current.currentTime = segGlobalStart;
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                      previewAudioAt(latestStart);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim audio start"
+                              >
+                                <div className="w-5 h-full rounded-l-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Right White Touch-and-Pull Audio Trim Handle (>) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim audio end"
+                                aria-valuemin={Number((liveStart + 0.3).toFixed(1))}
+                                aria-valuemax={Number(aSeg.maxSourceDuration.toFixed(1))}
+                                aria-valuenow={Number(liveEnd.toFixed(1))}
+                                style={{ right: `${trimRightPx - 16}px` }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialAudio = splitAudioSegments;
+                                  const initialEnd = aSeg.sourceEnd;
+                                  const fixedStart = aSeg.sourceStart;
+                                  const maxAllowedEnd =
+                                    aSeg.maxSourceDuration || Math.max(initialEnd, 10);
+                                  const segGlobalStart = aSeg.globalStart;
+                                  let latestEnd = initialEnd;
+
+                                  setActiveAudioTrimDrag({
+                                    segId: aSeg.id,
+                                    side: 'right',
+                                    initialSourceStart: fixedStart,
+                                    initialSourceEnd: initialEnd,
+                                    liveSourceStart: fixedStart,
+                                    liveSourceEnd: initialEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+                                  previewAudioAt(initialEnd);
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextEnd = Math.min(
+                                      maxAllowedEnd,
+                                      Math.max(
+                                        fixedStart + 0.3,
+                                        Number((initialEnd + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextEnd === latestEnd) return;
+                                    latestEnd = nextEnd;
+
+                                    setActiveAudioTrimDrag((prev) =>
+                                      prev ? { ...prev, liveSourceEnd: nextEnd } : null
+                                    );
+                                    previewAudioAt(nextEnd);
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveAudioTrimDrag(null);
+
+                                    if (Math.abs(latestEnd - initialEnd) >= 0.05) {
+                                      const nextAudio = initialAudio.map((item) =>
+                                        item.id === aSeg.id
+                                          ? { ...item, sourceEnd: latestEnd }
+                                          : item
+                                      );
+                                      const newSegEndGlobal =
+                                        segGlobalStart + (latestEnd - fixedStart);
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: initialAudio,
+                                          text: splitTextOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitAudioSegments(nextAudio);
+                                      setCurrentTime(newSegEndGlobal);
+                                      trimBoundsRef.current.currentTime = newSegEndGlobal;
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                      previewAudioAt(latestEnd);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim audio end"
+                              >
+                                <div className="w-5 h-full rounded-r-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronRight className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Row 3: Text Track Line Directly Below Audio Line (+ Add text or positioned interactive text blocks) */}
+                  <div className="relative h-[38px] mt-1.5">
+                    {splitTextOverlays.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => openAddTextEditor()}
+                        style={{ width: `${Math.max(140, maxSplitTimelineDuration * splitPxPerSec)}px` }}
+                        className="h-full rounded-lg bg-white/[0.06] hover:bg-white/[0.11] border border-white/10 px-3 flex items-center gap-2 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors text-left"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                        <span className="truncate">Add text</span>
+                      </button>
+                    ) : (
+                      splitTextOverlays.map((ov) => {
+                        const timelineCap = Math.max(0.5, maxSplitTimelineDuration);
+                        const isDraggingThis = activeTextTrimDrag?.id === ov.id;
+                        const pxPerSec = isDraggingThis
+                          ? activeTextTrimDrag.frozenPxPerSec
+                          : splitPxPerSec;
+                        const storedStart = Math.max(0, Math.min(timelineCap - 0.3, ov.startTime));
+                        const storedEnd =
+                          ov.endTime >= 90000
+                            ? timelineCap
+                            : Math.max(storedStart + 0.3, Math.min(timelineCap, ov.endTime));
+                        const liveStart = isDraggingThis ? activeTextTrimDrag.liveStart : storedStart;
+                        const liveEnd = isDraggingThis ? activeTextTrimDrag.liveEnd : storedEnd;
+                        const leftPx = liveStart * pxPerSec;
+                        const barWidth = Math.max(28, (liveEnd - liveStart) * pxPerSec);
+                        const isSelected =
+                          selectedTrackType === 'text' && selectedTextId === ov.id;
+
+                        return (
+                          <div
+                            key={ov.id}
+                            style={{ left: `${leftPx}px`, width: `${barWidth}px` }}
+                            className={`absolute top-0 bottom-0 ${isSelected ? 'z-20' : 'z-10'}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isSelected) {
+                                  openAddTextEditor(ov);
+                                } else {
+                                  setSelectedTrackType('text');
+                                  setSelectedTextId(ov.id);
+                                }
+                              }}
+                              className={`relative w-full h-full overflow-hidden rounded-lg px-2.5 flex items-center gap-1.5 text-left cursor-pointer ${
+                                isSelected
+                                  ? 'bg-amber-600/90'
+                                  : 'bg-amber-900/80 border border-amber-400/40'
+                              }`}
+                              title="Tap to select & trim, tap again to edit text"
+                            >
+                              <Type className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                              {barWidth >= 60 && (
+                                <span className="text-[11px] font-semibold text-white truncate">
+                                  {ov.text}
+                                </span>
+                              )}
+                              {barWidth >= 96 && (
+                                <span className="text-[10px] font-mono tabular-nums text-amber-100/90 shrink-0 ml-auto">
+                                  {(liveEnd - liveStart).toFixed(1)}s
+                                </span>
+                              )}
+                            </button>
+
+                            {/* Active White Selection Bracket Frame */}
+                            {isSelected && (
+                              <div className="absolute inset-0 border-y-[3px] border-white pointer-events-none z-20" />
+                            )}
+
+                            {/* Left White Touch-and-Pull Text Trim Handle (<) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim text start"
+                                aria-valuemin={0}
+                                aria-valuemax={Number((liveEnd - 0.3).toFixed(1))}
+                                aria-valuenow={Number(liveStart.toFixed(1))}
+                                style={{ left: '-16px' }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialOverlays = splitTextOverlays;
+                                  const initialStart = storedStart;
+                                  const fixedEnd = storedEnd;
+                                  let latestStart = initialStart;
+
+                                  setActiveTextTrimDrag({
+                                    id: ov.id,
+                                    side: 'left',
+                                    initialStart,
+                                    initialEnd: fixedEnd,
+                                    liveStart: initialStart,
+                                    liveEnd: fixedEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextStart = Math.max(
+                                      0,
+                                      Math.min(
+                                        fixedEnd - 0.3,
+                                        Number((initialStart + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextStart === latestStart) return;
+                                    latestStart = nextStart;
+                                    setActiveTextTrimDrag((prev) =>
+                                      prev ? { ...prev, liveStart: nextStart } : null
+                                    );
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveTextTrimDrag(null);
+
+                                    if (Math.abs(latestStart - initialStart) >= 0.05) {
+                                      const nextOverlays = initialOverlays.map((item) =>
+                                        item.id === ov.id
+                                          ? { ...item, startTime: latestStart, endTime: fixedEnd }
+                                          : item
+                                      );
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: splitAudioSegments,
+                                          text: initialOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitTextOverlays(nextOverlays);
+                                      setCurrentTime(latestStart);
+                                      trimBoundsRef.current.currentTime = latestStart;
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim text start"
+                              >
+                                <div className="w-5 h-full rounded-l-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Right White Touch-and-Pull Text Trim Handle (>) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim text end"
+                                aria-valuemin={Number((liveStart + 0.3).toFixed(1))}
+                                aria-valuemax={Number(timelineCap.toFixed(1))}
+                                aria-valuenow={Number(liveEnd.toFixed(1))}
+                                style={{ right: '-16px' }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialOverlays = splitTextOverlays;
+                                  const fixedStart = storedStart;
+                                  const initialEnd = storedEnd;
+                                  const maxAllowedEnd = Math.max(timelineCap, initialEnd);
+                                  let latestEnd = initialEnd;
+
+                                  setActiveTextTrimDrag({
+                                    id: ov.id,
+                                    side: 'right',
+                                    initialStart: fixedStart,
+                                    initialEnd,
+                                    liveStart: fixedStart,
+                                    liveEnd: initialEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextEnd = Math.min(
+                                      maxAllowedEnd,
+                                      Math.max(
+                                        fixedStart + 0.3,
+                                        Number((initialEnd + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextEnd === latestEnd) return;
+                                    latestEnd = nextEnd;
+                                    setActiveTextTrimDrag((prev) =>
+                                      prev ? { ...prev, liveEnd: nextEnd } : null
+                                    );
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveTextTrimDrag(null);
+
+                                    if (Math.abs(latestEnd - initialEnd) >= 0.05) {
+                                      const nextOverlays = initialOverlays.map((item) =>
+                                        item.id === ov.id
+                                          ? { ...item, startTime: fixedStart, endTime: latestEnd }
+                                          : item
+                                      );
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: splitAudioSegments,
+                                          text: initialOverlays,
+                                          overlays: splitOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitTextOverlays(nextOverlays);
+                                      const previewTime = Math.max(fixedStart, latestEnd - 0.1);
+                                      setCurrentTime(previewTime);
+                                      trimBoundsRef.current.currentTime = previewTime;
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim text end"
+                              >
+                                <div className="w-5 h-full rounded-r-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronRight className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Row 4: Overlay Track Line (Video & Photo Overlays with Touch-and-Pull < > Trim Handles) */}
+                  {splitOverlays.length > 0 && (
+                    <div className="relative h-[40px] mt-1.5">
+                      {splitOverlays.map((ov) => {
+                        const isDraggingThis = activeOverlayTrimDrag?.id === ov.id;
+                        const pxPerSec = isDraggingThis
+                          ? activeOverlayTrimDrag.frozenPxPerSec
+                          : splitPxPerSec;
+                        const liveTimelineStart = isDraggingThis
+                          ? activeOverlayTrimDrag.liveTimelineStart
+                          : ov.timelineStart;
+                        const liveSourceStart = isDraggingThis
+                          ? activeOverlayTrimDrag.liveSourceStart
+                          : ov.sourceStart;
+                        const liveSourceEnd = isDraggingThis
+                          ? activeOverlayTrimDrag.liveSourceEnd
+                          : ov.sourceEnd;
+                        const leftPx = liveTimelineStart * pxPerSec;
+                        const barWidth = Math.max(28, (liveSourceEnd - liveSourceStart) * pxPerSec);
+                        const isSelected =
+                          selectedTrackType === 'overlay' && selectedOverlayId === ov.id;
+                        const sourceFrames =
+                          ov.mediaType === 'video' ? splitFramesBySource[ov.sourceUrl] || [] : [];
+                        const segThumbs =
+                          sourceFrames.length > 0
+                            ? sourceFrames.filter(
+                                (f) => f.time >= liveSourceStart - 2 && f.time <= liveSourceEnd + 2
+                              )
+                            : [];
+                        const displayFrames =
+                          segThumbs.length > 0 ? segThumbs : sourceFrames.slice(0, 3);
+
+                        return (
+                          <div
+                            key={ov.id}
+                            style={{ left: `${leftPx}px`, width: `${barWidth}px` }}
+                            className={`absolute top-0 bottom-0 ${isSelected ? 'z-20' : 'z-10'}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTrackType('overlay');
+                                setSelectedOverlayId(ov.id);
+                              }}
+                              className={`relative w-full h-full overflow-hidden rounded-lg flex items-center cursor-pointer ${
+                                isSelected
+                                  ? 'bg-violet-950/90'
+                                  : 'bg-violet-950/75 border border-violet-400/45'
+                              }`}
+                              title="Tap to select overlay · drag < or > handles to trim"
+                            >
+                              {ov.mediaType === 'image' ? (
+                                <div className="absolute inset-0 flex opacity-65">
+                                  {Array.from({
+                                    length: Math.max(2, Math.ceil(barWidth / 38)),
+                                  }).map((_, tileIdx) => (
                                     <img
                                       key={tileIdx}
-                                      src={frame?.url}
+                                      src={ov.thumbnailUrl || ov.sourceUrl}
                                       alt=""
                                       draggable={false}
                                       className="h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
                                     />
-                                  );
-                                }
-                              )}
-                            </div>
-                          ) : (
-                            <div
-                              className={`absolute inset-0 ${
-                                isSourceExtracting
-                                  ? 'bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 animate-pulse'
-                                  : 'bg-slate-800'
-                              }`}
-                            />
-                          )}
+                                  ))}
+                                </div>
+                              ) : displayFrames.length > 0 ? (
+                                <div className="absolute inset-0 flex opacity-65">
+                                  {Array.from({
+                                    length: Math.max(2, Math.ceil(barWidth / 38)),
+                                  }).map((_, tileIdx) => {
+                                    const frame =
+                                      displayFrames[
+                                        Math.min(
+                                          displayFrames.length - 1,
+                                          Math.floor(
+                                            (tileIdx /
+                                              Math.max(1, Math.ceil(barWidth / 38))) *
+                                              displayFrames.length
+                                          )
+                                        )
+                                      ];
+                                    return (
+                                      <img
+                                        key={tileIdx}
+                                        src={frame?.url}
+                                        alt=""
+                                        draggable={false}
+                                        className="h-full flex-1 min-w-0 object-cover pointer-events-none select-none"
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
 
-                          {/* Removed Overlay */}
-                          {seg.removed && (
-                            <div className="absolute inset-0 bg-red-950/60 flex items-center justify-center">
-                              <span className="px-1.5 py-0.5 rounded bg-black/80 text-red-200 text-[10px] font-bold uppercase tracking-wider">
-                                Removed
-                              </span>
-                            </div>
-                          )}
+                              <div className="relative z-10 w-full px-2 flex items-center gap-1.5 bg-gradient-to-r from-violet-950/75 via-violet-950/40 to-violet-950/75 h-full">
+                                <Layers className="w-3.5 h-3.5 text-violet-200 shrink-0" />
+                                {barWidth >= 60 && (
+                                  <span className="text-[11px] font-semibold text-white truncate drop-shadow">
+                                    {ov.title}
+                                  </span>
+                                )}
+                                {barWidth >= 96 && (
+                                  <span className="text-[10px] font-mono tabular-nums text-violet-100/95 shrink-0 ml-auto drop-shadow">
+                                    {(liveSourceEnd - liveSourceStart).toFixed(1)}s
+                                  </span>
+                                )}
+                              </div>
+                            </button>
 
-                          {/* Segment Duration Label */}
-                          {!seg.removed && segWidth >= 44 && (
-                            <span className="absolute bottom-1 left-1 px-1 py-0.5 rounded bg-black/75 text-[9px] font-mono tabular-nums text-white leading-none">
-                              {formatPreciseTime(seg.globalEnd - seg.globalStart)}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                            {/* Active White Selection Bracket Frame */}
+                            {isSelected && (
+                              <div className="absolute inset-0 border-y-[3px] border-white pointer-events-none z-20" />
+                            )}
+
+                            {/* Left White Touch-and-Pull Overlay Trim Handle (<) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim overlay start"
+                                aria-valuemin={0}
+                                aria-valuemax={Number(
+                                  (
+                                    liveTimelineStart +
+                                    (liveSourceEnd - liveSourceStart) -
+                                    0.3
+                                  ).toFixed(1)
+                                )}
+                                aria-valuenow={Number(liveTimelineStart.toFixed(1))}
+                                style={{ left: '-16px' }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialOverlays = splitOverlays;
+                                  const initTlStart = ov.timelineStart;
+                                  const initSrcStart = ov.sourceStart;
+                                  const fixedSrcEnd = ov.sourceEnd;
+                                  const origEndTimeline =
+                                    initTlStart + (fixedSrcEnd - initSrcStart);
+                                  const minTlStart =
+                                    ov.mediaType === 'video'
+                                      ? Math.max(0, initTlStart - initSrcStart)
+                                      : 0;
+                                  const maxTlStart = origEndTimeline - 0.3;
+
+                                  let latestTlStart = initTlStart;
+                                  let latestSrcStart = initSrcStart;
+                                  let latestSrcEnd = fixedSrcEnd;
+
+                                  setActiveOverlayTrimDrag({
+                                    id: ov.id,
+                                    side: 'left',
+                                    initialTimelineStart: initTlStart,
+                                    initialSourceStart: initSrcStart,
+                                    initialSourceEnd: fixedSrcEnd,
+                                    liveTimelineStart: initTlStart,
+                                    liveSourceStart: initSrcStart,
+                                    liveSourceEnd: fixedSrcEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextTlStart = Math.max(
+                                      minTlStart,
+                                      Math.min(
+                                        maxTlStart,
+                                        Number((initTlStart + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextTlStart === latestTlStart) return;
+                                    latestTlStart = nextTlStart;
+                                    if (ov.mediaType === 'video') {
+                                      const delta = nextTlStart - initTlStart;
+                                      latestSrcStart = Number((initSrcStart + delta).toFixed(2));
+                                      latestSrcEnd = fixedSrcEnd;
+                                    } else {
+                                      const nextDur = Math.max(0.3, origEndTimeline - nextTlStart);
+                                      latestSrcStart = initSrcStart;
+                                      latestSrcEnd = Number((initSrcStart + nextDur).toFixed(2));
+                                    }
+                                    setActiveOverlayTrimDrag((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            liveTimelineStart: latestTlStart,
+                                            liveSourceStart: latestSrcStart,
+                                            liveSourceEnd: latestSrcEnd,
+                                          }
+                                        : null
+                                    );
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveOverlayTrimDrag(null);
+
+                                    if (Math.abs(latestTlStart - initTlStart) >= 0.05) {
+                                      const nextOverlays = initialOverlays.map((item) =>
+                                        item.id === ov.id
+                                          ? {
+                                              ...item,
+                                              timelineStart: latestTlStart,
+                                              sourceStart: latestSrcStart,
+                                              sourceEnd: latestSrcEnd,
+                                            }
+                                          : item
+                                      );
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: splitAudioSegments,
+                                          text: splitTextOverlays,
+                                          overlays: initialOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitOverlays(nextOverlays);
+                                      setCurrentTime(latestTlStart);
+                                      trimBoundsRef.current.currentTime = latestTlStart;
+                                      syncOverlaysToTime(latestTlStart, false);
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim overlay start"
+                              >
+                                <div className="w-5 h-full rounded-l-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronLeft className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Right White Touch-and-Pull Overlay Trim Handle (>) */}
+                            {isSelected && (
+                              <div
+                                role="slider"
+                                tabIndex={0}
+                                data-trim-handle="true"
+                                aria-label="Trim overlay end"
+                                aria-valuemin={Number((liveSourceStart + 0.3).toFixed(1))}
+                                aria-valuemax={Number(ov.maxSourceDuration.toFixed(1))}
+                                aria-valuenow={Number(liveSourceEnd.toFixed(1))}
+                                style={{ right: '-16px' }}
+                                onPointerDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  try {
+                                    e.currentTarget.setPointerCapture(e.pointerId);
+                                  } catch {
+                                    // ignore capture unsupported
+                                  }
+                                  pauseAllSplitVideos();
+                                  setIsPlaying(false);
+                                  isUserScrubbingTimelineRef.current = true;
+
+                                  const startClientX = e.clientX;
+                                  const frozenPx = splitPxPerSec;
+                                  const initialOverlays = splitOverlays;
+                                  const fixedTlStart = ov.timelineStart;
+                                  const fixedSrcStart = ov.sourceStart;
+                                  const initialSrcEnd = ov.sourceEnd;
+                                  const maxAllowedEnd =
+                                    ov.maxSourceDuration || Math.max(initialSrcEnd, 10);
+                                  let latestSrcEnd = initialSrcEnd;
+
+                                  setActiveOverlayTrimDrag({
+                                    id: ov.id,
+                                    side: 'right',
+                                    initialTimelineStart: fixedTlStart,
+                                    initialSourceStart: fixedSrcStart,
+                                    initialSourceEnd: initialSrcEnd,
+                                    liveTimelineStart: fixedTlStart,
+                                    liveSourceStart: fixedSrcStart,
+                                    liveSourceEnd: initialSrcEnd,
+                                    frozenPxPerSec: frozenPx,
+                                  });
+
+                                  const onMove = (ev: PointerEvent) => {
+                                    const dx = ev.clientX - startClientX;
+                                    const nextEnd = Math.min(
+                                      maxAllowedEnd,
+                                      Math.max(
+                                        fixedSrcStart + 0.3,
+                                        Number((initialSrcEnd + dx / frozenPx).toFixed(2))
+                                      )
+                                    );
+                                    if (nextEnd === latestSrcEnd) return;
+                                    latestSrcEnd = nextEnd;
+                                    setActiveOverlayTrimDrag((prev) =>
+                                      prev ? { ...prev, liveSourceEnd: nextEnd } : null
+                                    );
+                                  };
+
+                                  const onUp = () => {
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                    window.removeEventListener('pointercancel', onUp);
+                                    isUserScrubbingTimelineRef.current = false;
+                                    setActiveOverlayTrimDrag(null);
+
+                                    if (Math.abs(latestSrcEnd - initialSrcEnd) >= 0.05) {
+                                      const nextOverlays = initialOverlays.map((item) =>
+                                        item.id === ov.id
+                                          ? { ...item, sourceEnd: latestSrcEnd }
+                                          : item
+                                      );
+                                      setSplitUndoStack((prev) => [
+                                        ...prev.slice(-19),
+                                        {
+                                          video: splitSegments,
+                                          audio: splitAudioSegments,
+                                          text: splitTextOverlays,
+                                          overlays: initialOverlays,
+                                        },
+                                      ]);
+                                      setSplitRedoStack([]);
+                                      setSplitOverlays(nextOverlays);
+                                      const previewTime = Math.max(
+                                        fixedTlStart,
+                                        fixedTlStart + (latestSrcEnd - fixedSrcStart) - 0.1
+                                      );
+                                      setCurrentTime(previewTime);
+                                      trimBoundsRef.current.currentTime = previewTime;
+                                      syncOverlaysToTime(previewTime, false);
+                                      setEditStatusMessage(null);
+                                      setEditErrorMessage(null);
+                                    }
+                                  };
+
+                                  window.addEventListener('pointermove', onMove);
+                                  window.addEventListener('pointerup', onUp);
+                                  window.addEventListener('pointercancel', onUp);
+                                }}
+                                className="absolute top-0 bottom-0 w-8 flex items-center justify-center cursor-ew-resize touch-none z-30 select-none"
+                                title="Touch and pull to trim overlay end"
+                              >
+                                <div className="w-5 h-full rounded-r-lg bg-white text-slate-950 flex items-center justify-center shadow-lg pointer-events-none">
+                                  <ChevronRight className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -3361,55 +6695,6 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Add / Replace Audio Track Lane (TikTok "Add sound" bar) */}
-            <div className="px-3">
-              <div className="min-h-[44px] rounded-xl bg-white/[0.08] border border-white/10 flex items-center justify-between gap-2 px-2">
-                <button
-                  type="button"
-                  onClick={() => void openAudioPickerModal()}
-                  className="flex-1 min-h-[44px] px-2 flex items-center gap-2 text-left text-xs font-semibold text-white hover:text-emerald-300 transition-colors cursor-pointer min-w-0"
-                >
-                  <Music className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="truncate">
-                    {splitCustomAudio ? splitCustomAudio.title : 'Add sound'}
-                  </span>
-                </button>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !isMuted;
-                      setIsMuted(next);
-                      if (videoRef.current) videoRef.current.muted = next;
-                    }}
-                    className={`min-h-[34px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-colors whitespace-nowrap ${
-                      isMuted
-                        ? 'bg-red-500/20 text-red-200 border border-red-400/30'
-                        : 'bg-white/10 hover:bg-white/20 text-slate-200'
-                    }`}
-                  >
-                    {isMuted ? 'Video Muted' : 'Mute Video'}
-                  </button>
-
-                  {splitCustomAudio && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (splitAudioRef.current) splitAudioRef.current.pause();
-                        setSplitCustomAudio(null);
-                      }}
-                      className="min-w-[34px] min-h-[34px] rounded-lg bg-white/10 hover:bg-red-500/25 text-slate-200 hover:text-red-200 flex items-center justify-center cursor-pointer"
-                      title="Remove added sound"
-                      aria-label="Remove added sound"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
             {/* Compact Status / Error Strip */}
             {(editErrorMessage || editStatusMessage) && (
               <div className="px-3.5">
@@ -3439,29 +6724,61 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Bottom TikTok Tool Dock */}
+            {/* Bottom Tool Dock: Split, Remove, Audio, Text, Overlay, Save all on one line */}
             {(() => {
               const activeSeg =
                 splitSegments.find((s) => s.id === selectedSplitSegId) ||
                 activeSplitSegAtPlayhead ||
                 splitSegments[0];
-              const isSelectedRemoved = Boolean(activeSeg?.removed);
+              const isAudioTrackSelected =
+                selectedTrackType === 'audio' && splitAudioSegments.length > 0;
+              const isTextTrackSelected =
+                selectedTrackType === 'text' && splitTextOverlays.length > 0;
+              const isOverlayTrackSelected =
+                selectedTrackType === 'overlay' && splitOverlays.length > 0;
+              const isSelectedRemoved =
+                !isAudioTrackSelected &&
+                !isTextTrackSelected &&
+                !isOverlayTrackSelected &&
+                Boolean(activeSeg?.removed);
               const keptCount = splitSegments.filter((s) => !s.removed).length;
+              const canRemoveSelected = isOverlayTrackSelected
+                ? splitOverlays.length > 0
+                : isAudioTrackSelected
+                ? splitAudioSegments.length > 0
+                : isTextTrackSelected
+                ? splitTextOverlays.length > 0
+                : isSelectedRemoved || keptCount > 1;
+              const hasTrimmedHandles = splitSegments.some(
+                (s) => s.sourceStart > 0.05 || s.sourceEnd < s.maxSourceDuration - 0.05
+              );
               const hasAnyEdits =
                 splitSegments.some((s) => s.removed) ||
                 splitSegments.length > 1 ||
                 splitSegments.some((s) => s.mediaType === 'image' || s.sourceUri !== currentVideo?.uri) ||
+                hasTrimmedHandles ||
                 Boolean(splitCustomAudio) ||
-                isMuted;
+                splitAudioSegments.length > 0 ||
+                isMuted ||
+                splitTextOverlays.length > 0 ||
+                splitOverlays.length > 0;
 
               return (
-                <div className="px-3 flex items-center justify-center gap-2 overflow-x-auto no-scrollbar">
+                <div className="px-2 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     onClick={handleSplitAtPlayhead}
                     disabled={isProcessingEdit}
-                    className="min-w-[66px] h-[58px] px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40"
-                    title="Split at white playhead line"
+                    className="min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40"
+                    title={
+                      isOverlayTrackSelected
+                        ? 'Split overlay at white playhead line'
+                        : isTextTrackSelected
+                        ? 'Split text at white playhead line'
+                        : isAudioTrackSelected
+                        ? 'Split audio at white playhead line'
+                        : 'Split video at white playhead line'
+                    }
                   >
                     <Scissors className="w-4 h-4" />
                     <span className="text-[11px] font-medium whitespace-nowrap">Split</span>
@@ -3470,13 +6787,23 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   <button
                     type="button"
                     onClick={handleToggleRemoveSelectedSegment}
-                    disabled={isProcessingEdit || (!isSelectedRemoved && keptCount <= 1)}
-                    className={`min-w-[66px] h-[58px] px-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-35 ${
+                    disabled={isProcessingEdit || !canRemoveSelected}
+                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-35 ${
                       isSelectedRemoved
                         ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
                         : 'bg-red-500/15 hover:bg-red-500/25 border-red-400/30 text-red-200'
                     }`}
-                    title={isSelectedRemoved ? 'Restore selected part' : 'Remove selected part'}
+                    title={
+                      isOverlayTrackSelected
+                        ? 'Remove selected overlay'
+                        : isTextTrackSelected
+                        ? 'Remove selected text overlay'
+                        : isAudioTrackSelected
+                        ? 'Remove selected audio part'
+                        : isSelectedRemoved
+                        ? 'Restore selected part'
+                        : 'Remove selected part'
+                    }
                   >
                     {isSelectedRemoved ? (
                       <>
@@ -3491,24 +6818,56 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     )}
                   </button>
 
-                  {splitSegments.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={handleKeepOnlySelectedSegment}
-                      disabled={isProcessingEdit}
-                      className="min-w-[74px] h-[58px] px-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40"
-                      title="Remove all other parts and keep only the selected clip"
-                    >
-                      <Check className="w-4 h-4 text-cyan-300" />
-                      <span className="text-[11px] font-medium whitespace-nowrap">Keep Only</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => void openAudioPickerModal()}
+                    disabled={isProcessingEdit}
+                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                      splitCustomAudio
+                        ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
+                        : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
+                    }`}
+                    title="Add or replace audio track"
+                  >
+                    <Music className="w-4 h-4" />
+                    <span className="text-[11px] font-medium whitespace-nowrap">Audio</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openAddTextEditor()}
+                    disabled={isProcessingEdit}
+                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                      splitTextOverlays.length > 0
+                        ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200'
+                        : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
+                    }`}
+                    title="Add text overlay to video"
+                  >
+                    <Type className="w-4 h-4" />
+                    <span className="text-[11px] font-medium whitespace-nowrap">Text</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={openOverlayPickerModal}
+                    disabled={isProcessingEdit}
+                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                      splitOverlays.length > 0
+                        ? 'bg-violet-500/20 border-violet-400/50 text-violet-200'
+                        : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
+                    }`}
+                    title="Add overlay video or photo on top of video"
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span className="text-[11px] font-medium whitespace-nowrap">Overlay</span>
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => void handleSaveSplitTimeline()}
                     disabled={isProcessingEdit || !hasAnyEdits}
-                    className="min-w-[74px] h-[58px] px-3 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-white/10 disabled:text-slate-400 disabled:border disabled:border-white/10 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0"
+                    className="min-w-[52px] sm:min-w-[64px] h-[56px] px-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-white/10 disabled:text-slate-400 disabled:border disabled:border-white/10 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0"
                     title="Save edited video"
                   >
                     {isProcessingEdit ? (
@@ -3526,7 +6885,342 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           </div>
         )}
 
-        {/* Full-Screen Modal Pickers inside Split Studio: Audio / Phone Videos / Phone Images */}
+        {/* Text Overlay Editor Modal inside Split Studio */}
+        {isTextEditorOpen && (
+          <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col justify-between p-4">
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => setIsTextEditorOpen(false)}
+                className="min-w-[44px] min-h-[44px] px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center justify-center cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <div className="flex items-center gap-2">
+                {selectedTextId && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTextOverlay(selectedTextId)}
+                    className="min-w-[44px] min-h-[44px] px-3 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-400/40 text-red-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSaveTextOverlay}
+                  className="min-h-[44px] px-5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
+            {/* Live Styled Text Input Area */}
+            {(() => {
+              const hasBg = draftTextBgStyle !== 'none';
+              const resolvedBg = hasBg
+                ? draftTextBgColor || (draftTextBgStyle === 'solid' ? '#ffffff' : 'rgba(15, 23, 42, 0.82)')
+                : 'transparent';
+              const resolvedColor =
+                hasBg &&
+                resolvedBg.toLowerCase() === '#ffffff' &&
+                draftTextColor.toLowerCase() === '#ffffff'
+                  ? '#111827'
+                  : draftTextColor;
+              const previewText = draftTextValue.trim() || 'Sample Text';
+              const previewAnim = computeTextAnimationState(
+                draftTextAnimation,
+                animPreviewElapsed,
+                previewText.length
+              );
+              const revealPct =
+                draftTextAnimation === 'typewriter' && previewText.length > 0
+                  ? Math.min(100, Math.round((previewAnim.visibleChars / previewText.length) * 100))
+                  : 100;
+
+              return (
+                <div className="flex-1 flex flex-col items-center justify-center px-2">
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    value={draftTextValue}
+                    onChange={(e) => setDraftTextValue(e.target.value)}
+                    placeholder="Type your video text..."
+                    style={{
+                      fontSize: `${Math.round(draftTextSize * 0.92)}px`,
+                      fontFamily: resolveOverlayFontCss(draftTextFont),
+                      color: resolvedColor,
+                      backgroundColor: resolvedBg,
+                      textTransform: draftTextStyleEffect === 'uppercase' ? 'uppercase' : 'none',
+                      textShadow: resolveTextEffectShadow(draftTextStyleEffect, resolvedColor, hasBg),
+                      opacity: previewAnim.opacity,
+                      transform: `translate(${previewAnim.offsetX}px, ${previewAnim.offsetY}px) scale(${previewAnim.scale})`,
+                      clipPath:
+                        draftTextAnimation === 'typewriter' && revealPct < 100
+                          ? `inset(0 ${100 - revealPct}% 0 0)`
+                          : undefined,
+                    }}
+                    className={`w-full max-w-md rounded-2xl px-4 py-3 text-center leading-tight resize-none focus:outline-none placeholder:text-slate-400 ${
+                      draftTextFont === 'display' ? 'font-black' : 'font-bold'
+                    } ${hasBg ? 'shadow-xl' : ''}`}
+                  />
+                  <p className="text-[11px] text-slate-400 mt-2">
+                    Drag text anywhere on the video after tapping Done
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Expandable Section Drawer + Headings Row (Text color, Text Bg color, Fonts, Styles, Templates) */}
+            <div className="max-w-lg w-full mx-auto space-y-2.5">
+              {activeTextSection !== 'none' && (
+                <div className="bg-slate-900/95 border border-white/15 rounded-2xl p-3 shadow-2xl">
+                  {activeTextSection === 'color' && (
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {TEXT_COLOR_PALETTE.map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => setDraftTextColor(col)}
+                          style={{ backgroundColor: col }}
+                          aria-label={`Text color ${col}`}
+                          className={`w-8 h-8 rounded-full border-2 cursor-pointer transition-transform ${
+                            draftTextColor.toLowerCase() === col.toLowerCase()
+                              ? 'border-emerald-400 scale-110 ring-2 ring-emerald-400/40'
+                              : 'border-white/30 hover:scale-105'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {activeTextSection === 'bg' && (
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftTextBgStyle('none');
+                          setDraftTextBgColor(undefined);
+                        }}
+                        className={`min-h-[36px] px-3 rounded-xl text-xs font-semibold border cursor-pointer transition-colors ${
+                          draftTextBgStyle === 'none'
+                            ? 'bg-emerald-400 border-emerald-300 text-slate-950 font-bold'
+                            : 'bg-white/10 border-white/15 text-white hover:bg-white/20'
+                        }`}
+                      >
+                        None
+                      </button>
+                      {TEXT_BG_PALETTE.map((col) => {
+                        const isSelectedBg =
+                          draftTextBgStyle !== 'none' &&
+                          (draftTextBgColor || (draftTextBgStyle === 'solid' ? '#ffffff' : '#111827')).toLowerCase() ===
+                            col.toLowerCase();
+                        return (
+                          <button
+                            key={col}
+                            type="button"
+                            onClick={() => {
+                              setDraftTextBgColor(col);
+                              setDraftTextBgStyle(col === '#ffffff' ? 'solid' : 'dark');
+                            }}
+                            style={{ backgroundColor: col }}
+                            aria-label={`Text background color ${col}`}
+                            className={`w-8 h-8 rounded-full border-2 cursor-pointer transition-transform ${
+                              isSelectedBg
+                                ? 'border-emerald-400 scale-110 ring-2 ring-emerald-400/40'
+                                : 'border-white/30 hover:scale-105'
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {activeTextSection === 'fonts' && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {TEXT_FONT_OPTIONS.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setDraftTextFont(f.id)}
+                          style={{ fontFamily: resolveOverlayFontCss(f.id) }}
+                          className={`min-h-[40px] px-2.5 rounded-xl text-xs border cursor-pointer transition-colors ${
+                            draftTextFont === f.id
+                              ? 'bg-emerald-400 border-emerald-300 text-slate-950 font-bold'
+                              : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {activeTextSection === 'styles' && (
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {TEXT_STYLE_OPTIONS.map((st) => (
+                          <button
+                            key={st.id}
+                            type="button"
+                            onClick={() => setDraftTextStyleEffect(st.id)}
+                            className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-colors ${
+                              draftTextStyleEffect === st.id
+                                ? 'bg-emerald-400 text-slate-950 font-bold'
+                                : 'bg-white/10 hover:bg-white/20 text-white'
+                            }`}
+                          >
+                            {st.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <div className="flex items-center gap-1">
+                          {(
+                            [
+                              { val: 20, label: 'S' },
+                              { val: 26, label: 'M' },
+                              { val: 34, label: 'L' },
+                            ] as const
+                          ).map((sz) => (
+                            <button
+                              key={sz.val}
+                              type="button"
+                              onClick={() => setDraftTextSize(sz.val)}
+                              className={`min-w-[36px] min-h-[36px] rounded-lg text-xs font-bold cursor-pointer ${
+                                draftTextSize === sz.val
+                                  ? 'bg-white text-slate-950'
+                                  : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                              }`}
+                            >
+                              {sz.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setDraftTextTiming('all')}
+                            className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                              draftTextTiming === 'all'
+                                ? 'bg-cyan-400 text-slate-950 font-bold'
+                                : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                            }`}
+                          >
+                            Whole Video
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDraftTextTiming('4s')}
+                            className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer ${
+                              draftTextTiming === '4s'
+                                ? 'bg-cyan-400 text-slate-950 font-bold'
+                                : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                            }`}
+                          >
+                            From Here (4s)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTextSection === 'templates' && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {TEXT_TEMPLATE_OPTIONS.map((tpl) => {
+                        const tplHasBg = tpl.bgStyle !== 'none';
+                        return (
+                          <button
+                            key={tpl.id}
+                            type="button"
+                            onClick={() => {
+                              setDraftTextColor(tpl.color);
+                              setDraftTextBgStyle(tpl.bgStyle);
+                              setDraftTextBgColor(tpl.bgColor);
+                              setDraftTextFont(tpl.fontFamily);
+                              setDraftTextStyleEffect(tpl.textStyle);
+                              setDraftTextSize(tpl.fontSize);
+                            }}
+                            style={{
+                              fontFamily: resolveOverlayFontCss(tpl.fontFamily),
+                              color: tpl.color,
+                              backgroundColor: tplHasBg ? tpl.bgColor : 'rgba(255,255,255,0.06)',
+                              textTransform: tpl.textStyle === 'uppercase' ? 'uppercase' : 'none',
+                              textShadow: resolveTextEffectShadow(tpl.textStyle, tpl.color, tplHasBg),
+                            }}
+                            className="min-h-[42px] px-1.5 rounded-xl border border-white/15 text-[11px] font-bold flex items-center justify-center cursor-pointer hover:scale-[1.03] transition-transform truncate"
+                          >
+                            {tpl.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {activeTextSection === 'animations' && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {TEXT_ANIMATION_OPTIONS.map((animOpt) => (
+                        <button
+                          key={animOpt.id}
+                          type="button"
+                          onClick={() => {
+                            setDraftTextAnimation(animOpt.id);
+                            setAnimPreviewTrigger((prev) => prev + 1);
+                          }}
+                          className={`min-h-[40px] px-2 rounded-xl text-[11px] font-semibold border cursor-pointer transition-colors ${
+                            draftTextAnimation === animOpt.id
+                              ? 'bg-emerald-400 border-emerald-300 text-slate-950 font-bold'
+                              : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
+                          }`}
+                        >
+                          {animOpt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Clickable Section Headings Bar */}
+              <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-1.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {(
+                  [
+                    { id: 'color', label: 'Text color' },
+                    { id: 'bg', label: 'Text Bg color' },
+                    { id: 'fonts', label: 'Fonts' },
+                    { id: 'styles', label: 'Styles' },
+                    { id: 'templates', label: 'Templates' },
+                    { id: 'animations', label: 'Animations' },
+                  ] as const
+                ).map((sec) => {
+                  const isOpen = activeTextSection === sec.id;
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => setActiveTextSection(isOpen ? 'none' : sec.id)}
+                      className={`min-h-[42px] px-3 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                        isOpen
+                          ? 'bg-emerald-400 text-slate-950 font-bold'
+                          : 'bg-white/5 hover:bg-white/15 text-slate-200'
+                      }`}
+                    >
+                      {sec.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full-Screen Modal Pickers inside Split Studio: Audio / Phone Videos / Phone Images / Overlay */}
         {activeSplitPicker !== 'none' && (
           <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-md flex flex-col overflow-hidden">
             <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10">
@@ -3544,6 +7238,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     ? 'Add / Replace Audio'
                     : activeSplitPicker === 'video'
                     ? 'Add Video from Phone'
+                    : activeSplitPicker === 'overlay'
+                    ? 'Add Overlay'
                     : 'Add Image from Phone'}
                 </h3>
               </div>
@@ -3553,7 +7249,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 onClick={() => {
                   if (activeSplitPicker === 'audio') splitAudioUploadInputRef.current?.click();
                   else if (activeSplitPicker === 'video') splitAddVideoInputRef.current?.click();
-                  else splitAddImageInputRef.current?.click();
+                  else if (activeSplitPicker === 'overlay') {
+                    if (overlayPickerTab === 'video') splitOverlayVideoInputRef.current?.click();
+                    else splitOverlayImageInputRef.current?.click();
+                  } else splitAddImageInputRef.current?.click();
                 }}
                 disabled={isPreparingSplitMedia}
                 className="min-h-[44px] px-3.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50"
@@ -3564,10 +7263,47 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     ? 'Upload Audio'
                     : activeSplitPicker === 'video'
                     ? 'Upload Video'
+                    : activeSplitPicker === 'overlay'
+                    ? overlayPickerTab === 'video'
+                      ? 'Upload Video'
+                      : 'Upload Photo'
                     : 'Upload Image'}
                 </span>
               </button>
             </div>
+
+            {/* Overlay Tab Toggle (Overlay Video / Overlay Photo) */}
+            {activeSplitPicker === 'overlay' && (
+              <div className="shrink-0 px-4 pt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOverlayPickerTab('video')}
+                  className={`flex-1 min-h-[44px] px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors border ${
+                    overlayPickerTab === 'video'
+                      ? 'bg-violet-500 border-violet-300 text-white'
+                      : 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/15'
+                  }`}
+                >
+                  <Film className="w-4 h-4 shrink-0" />
+                  <span>Overlay Video</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOverlayPickerTab('image');
+                    if (deviceImages.length === 0) void loadDeviceImages();
+                  }}
+                  className={`flex-1 min-h-[44px] px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors border ${
+                    overlayPickerTab === 'image'
+                      ? 'bg-violet-500 border-violet-300 text-white'
+                      : 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/15'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4 shrink-0" />
+                  <span>Overlay Photo</span>
+                </button>
+              </div>
+            )}
 
             {/* Search Input */}
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
@@ -3578,22 +7314,28 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   value={
                     activeSplitPicker === 'audio'
                       ? audioPickerSearch
-                      : activeSplitPicker === 'video'
+                      : activeSplitPicker === 'video' ||
+                        (activeSplitPicker === 'overlay' && overlayPickerTab === 'video')
                       ? videoPickerSearch
                       : imagePickerSearch
                   }
                   onChange={(e) => {
                     const val = e.target.value;
                     if (activeSplitPicker === 'audio') setAudioPickerSearch(val);
-                    else if (activeSplitPicker === 'video') setVideoPickerSearch(val);
+                    else if (
+                      activeSplitPicker === 'video' ||
+                      (activeSplitPicker === 'overlay' && overlayPickerTab === 'video')
+                    )
+                      setVideoPickerSearch(val);
                     else setImagePickerSearch(val);
                   }}
                   placeholder={
                     activeSplitPicker === 'audio'
                       ? 'Search songs on your phone...'
-                      : activeSplitPicker === 'video'
+                      : activeSplitPicker === 'video' ||
+                        (activeSplitPicker === 'overlay' && overlayPickerTab === 'video')
                       ? 'Search videos on your phone...'
-                      : 'Search images on your phone...'
+                      : 'Search photos on your phone...'
                   }
                   className="w-full min-h-[44px] bg-white/10 border border-white/15 focus:border-emerald-400 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none"
                 />
@@ -3748,6 +7490,89 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                           key={`img-${img.id}`}
                           image={img}
                           onSelect={(selected) => void appendImageToTimeline(selected)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {activeSplitPicker === 'overlay' && overlayPickerTab === 'video' && (
+                <>
+                  {permissionDenied ? (
+                    <div className="py-10 text-center space-y-3">
+                      <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
+                      <p className="text-sm font-semibold text-white">Video Permission Required</p>
+                      <button
+                        type="button"
+                        onClick={() => void loadDeviceVideos()}
+                        className="min-h-[44px] px-5 rounded-xl bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer"
+                      >
+                        Allow Video Access
+                      </button>
+                    </div>
+                  ) : isLoadingLibrary ? (
+                    <div className="py-12 text-center space-y-2">
+                      <div className="w-8 h-8 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin mx-auto" />
+                      <p className="text-xs text-slate-400 font-mono">Scanning phone videos...</p>
+                    </div>
+                  ) : filteredPickerVideos.length === 0 ? (
+                    <div className="py-12 text-center space-y-3">
+                      <Film className="w-10 h-10 text-slate-600 mx-auto" />
+                      <p className="text-sm font-semibold text-slate-300">
+                        No videos found · Tap Upload Video above
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="dark grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                      {filteredPickerVideos.map((vid) => (
+                        <VideoThumbnailCard
+                          key={`ov-vid-${vid.id}`}
+                          video={vid}
+                          isSelected={false}
+                          onSelect={(selected) => void addOverlayVideoToTimeline(selected)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeSplitPicker === 'overlay' && overlayPickerTab === 'image' && (
+                <>
+                  {imagePermissionDenied ? (
+                    <div className="py-10 text-center space-y-3">
+                      <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
+                      <p className="text-sm font-semibold text-white">Photos Permission Required</p>
+                      <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                        Allow photos & images access so BeatPulse can show photos on your phone.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void loadDeviceImages()}
+                        className="min-h-[44px] px-5 rounded-xl bg-emerald-400 text-slate-950 text-xs font-bold cursor-pointer"
+                      >
+                        Allow Photos Access
+                      </button>
+                    </div>
+                  ) : isLoadingImagePicker ? (
+                    <div className="py-12 text-center space-y-2">
+                      <div className="w-8 h-8 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin mx-auto" />
+                      <p className="text-xs text-slate-400 font-mono">Scanning phone photos...</p>
+                    </div>
+                  ) : filteredDeviceImages.length === 0 ? (
+                    <div className="py-12 text-center space-y-3">
+                      <ImageIcon className="w-10 h-10 text-slate-600 mx-auto" />
+                      <p className="text-sm font-semibold text-slate-300">
+                        No photos found · Tap Upload Photo above
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3">
+                      {filteredDeviceImages.map((img) => (
+                        <ImageThumbnailCard
+                          key={`ov-img-${img.id}`}
+                          image={img}
+                          onSelect={(selected) => void addOverlayImageToTimeline(selected)}
                         />
                       ))}
                     </div>
