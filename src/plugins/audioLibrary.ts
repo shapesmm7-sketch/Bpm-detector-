@@ -300,7 +300,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 /**
  * Saves an exported audio Blob locally to the device:
- * - On native Android (Capacitor): streams in 384 KB chunks directly into Android MediaStore (Music/BeatPulse/).
+ * - On native Android (Capacitor): streams in 384 KB chunks directly into Android MediaStore (Music/Mo Vibe/).
  * - On Web: triggers a standard browser file download.
  */
 export async function saveExportedAudioBlob(
@@ -329,7 +329,7 @@ export async function saveExportedAudioBlob(
         mimeType: blob.type || 'audio/wav',
       });
       onProgress?.(100);
-      return { displayPath: result.displayPath || `Music/BeatPulse/${fileName}` };
+      return { displayPath: result.displayPath || `Music/Mo Vibe/${fileName}` };
     } catch (err) {
       try {
         await AudioLibrary.cancelAudioExport({ exportId });
@@ -355,7 +355,7 @@ export async function saveExportedAudioBlob(
 
 /**
  * Saves a composed video Blob (multi-clip / images / replaced audio) locally:
- * - On native Android: streams in 384 KB chunks into Android MediaStore Movies/BeatPulse/.
+ * - On native Android: streams in 384 KB chunks into Android MediaStore Movies/Mo Vibe/.
  * - On Web: triggers a browser file download.
  */
 export async function saveExportedVideoBlob(

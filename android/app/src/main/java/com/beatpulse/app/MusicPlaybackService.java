@@ -446,7 +446,7 @@ public class MusicPlaybackService extends Service {
 
     private void initMediaSession() {
         if (mediaSession != null) return;
-        mediaSession = new MediaSession(this, "BeatPulseMusicSession");
+        mediaSession = new MediaSession(this, "MoVibeMusicSession");
         mediaSession.setCallback(mediaSessionCallback, mainHandler);
         mediaSession.setSessionActivity(createOpenAudioPlayerIntent());
         mediaSession.setActive(true);
@@ -954,7 +954,7 @@ public class MusicPlaybackService extends Service {
     private Notification buildNotification() {
         String title = currentTrack != null
             ? (currentTrack.title != null && !currentTrack.title.isEmpty() ? currentTrack.title : currentTrack.displayName)
-            : "BeatPulse Music";
+            : "Mo Vibe Music";
         String artist = currentTrack != null
             ? (currentTrack.artist != null && !currentTrack.artist.isEmpty() ? currentTrack.artist : "Unknown Artist")
             : "Ready to play";
@@ -963,7 +963,7 @@ public class MusicPlaybackService extends Service {
             ? currentArtwork
             : (currentTrack != null
                 ? AudioArtworkHelper.createGeneratedArtwork(currentTrack.title, currentTrack.artist, currentTrack.id)
-                : AudioArtworkHelper.createGeneratedArtwork("BeatPulse", "Music", "beatpulse"));
+                : AudioArtworkHelper.createGeneratedArtwork("Mo Vibe", "Music", "movibe"));
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? new Notification.Builder(this, CHANNEL_ID)

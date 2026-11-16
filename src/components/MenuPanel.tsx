@@ -72,13 +72,13 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
       setDefaultStatus(status);
       if (status.isAudioDefault && status.isVideoDefault) {
         setFeedbackTone('success');
-        setFeedbackMessage('BeatPulse is now your default Audio & Video player.');
+        setFeedbackMessage('Mo Vibe is now your default Audio & Video player.');
       } else if (status.isAudioDefault) {
         setFeedbackTone('success');
-        setFeedbackMessage('BeatPulse is now set for Audio files. Tap Set Video to finish video files too.');
+        setFeedbackMessage('Mo Vibe is now set for Audio files. Tap Set Video to finish video files too.');
       } else if (status.isVideoDefault) {
         setFeedbackTone('success');
-        setFeedbackMessage('BeatPulse is now set for Video files. Tap Set Audio to finish audio files too.');
+        setFeedbackMessage('Mo Vibe is now set for Video files. Tap Set Audio to finish audio files too.');
       }
     }).then((handle) => {
       listenerHandle = handle;
@@ -97,7 +97,7 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
     if (!nativeAndroid) {
       setFeedbackTone('info');
       setFeedbackMessage(
-        'Default system player setup works on the BeatPulse Android app. On Android, tapping Set as Default lets BeatPulse open every audio and video file.'
+        'Default system player setup works on the Mo Vibe Android app. On Android, tapping Set as Default lets Mo Vibe open every audio and video file.'
       );
       return;
     }
@@ -119,13 +119,13 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
         setFeedbackTone('success');
         setFeedbackMessage(
           res.target === 'both'
-            ? 'BeatPulse is already your default Audio and Video player.'
-            : `BeatPulse is already set as your default ${res.target} player.`
+            ? 'Mo Vibe is already your default Audio and Video player.'
+            : `Mo Vibe is already set as your default ${res.target} player.`
         );
       } else if (res.action === 'prompted_chooser') {
         setFeedbackTone('info');
         setFeedbackMessage(
-          `In the Android popup, select BeatPulse and tap "Always" to set it as your default ${res.target} player.`
+          `In the Android popup, select Mo Vibe and tap "Always" to set it as your default ${res.target} player.`
         );
       } else if (res.action === 'opened_clear_defaults') {
         setFeedbackTone('warn');
@@ -134,10 +134,10 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
         );
       } else {
         setFeedbackTone('info');
-        setFeedbackMessage('Opened Android default apps settings. Select BeatPulse for audio and video.');
+        setFeedbackMessage('Opened Android default apps settings. Select Mo Vibe for audio and video.');
       }
     } catch (err) {
-      console.error('Failed to set BeatPulse as default player:', err);
+      console.error('Failed to set Mo Vibe as default player:', err);
       setFeedbackTone('warn');
       setFeedbackMessage('Could not open Android default player prompt. Use Android Settings below.');
     } finally {
@@ -148,7 +148,7 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
   const handleOpenSettings = async () => {
     if (!nativeAndroid) {
       setFeedbackTone('info');
-      setFeedbackMessage('Android Default Apps settings are only available inside the BeatPulse Android app.');
+      setFeedbackMessage('Android Default Apps settings are only available inside the Mo Vibe Android app.');
       return;
     }
     try {
@@ -258,7 +258,7 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
           </div>
         </section>
 
-        {/* Set BeatPulse as Default Player Card */}
+        {/* Set Mo Vibe as Default Player Card */}
         <section className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm dark:shadow-xl space-y-4">
           <div className="flex items-start gap-4">
             <div
@@ -276,10 +276,10 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
             </div>
             <div className="flex-1 min-w-0 space-y-1">
               <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                Set BeatPulse as Default Player
+                Set Mo Vibe as Default Player
               </h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Open and play any audio or video file clicked on your phone directly in BeatPulse.
+                Open and play any audio or video file clicked on your phone directly in Mo Vibe.
               </p>
             </div>
           </div>
@@ -298,16 +298,16 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
             {isFullyDefault ? (
               <>
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>BeatPulse is Default Player</span>
+                <span>Mo Vibe is Default Player</span>
               </>
             ) : (
               <>
                 <PlayCircle className="w-4 h-4 shrink-0" />
                 <span>
                   {defaultStatus?.isAudioDefault && !defaultStatus?.isVideoDefault
-                    ? 'Set BeatPulse Default for Video'
+                    ? 'Set Mo Vibe Default for Video'
                     : !defaultStatus?.isAudioDefault && defaultStatus?.isVideoDefault
-                    ? 'Set BeatPulse Default for Audio'
+                    ? 'Set Mo Vibe Default for Audio'
                     : 'Set as Default Player'}
                 </span>
               </>
@@ -335,7 +335,7 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
                       }`}
                     >
                       {defaultStatus.isAudioDefault
-                        ? 'Default · BeatPulse'
+                        ? 'Default · Mo Vibe'
                         : defaultStatus.audioDefaultApp
                         ? `Current · ${defaultStatus.audioDefaultApp}`
                         : 'Not set yet'}
@@ -378,7 +378,7 @@ export const MenuPanel: React.FC<MenuPanelProps> = ({
                       }`}
                     >
                       {defaultStatus.isVideoDefault
-                        ? 'Default · BeatPulse'
+                        ? 'Default · Mo Vibe'
                         : defaultStatus.videoDefaultApp
                         ? `Current · ${defaultStatus.videoDefaultApp}`
                         : 'Not set yet'}

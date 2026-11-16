@@ -202,8 +202,8 @@ public class AudioLibraryPlugin extends Plugin {
                 boolean audioSet = status.optBoolean("isAudioDefault", false);
                 boolean videoSet = status.optBoolean("isVideoDefault", false);
                 String msg = (audioSet || videoSet)
-                    ? "BeatPulse set as default player!"
-                    : "Choose 'Always' next time to set BeatPulse as default.";
+                    ? "Mo Vibe set as default player!"
+                    : "Choose 'Always' next time to set Mo Vibe as default.";
                 getActivity().runOnUiThread(() ->
                     Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show()
                 );
@@ -410,7 +410,7 @@ public class AudioLibraryPlugin extends Plugin {
             } catch (Exception e) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() ->
-                        Toast.makeText(getContext(), "Unable to open media file in BeatPulse", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getContext(), "Unable to open media file in Mo Vibe", Toast.LENGTH_SHORT).show()
                     );
                 }
             }
@@ -1692,7 +1692,7 @@ public class AudioLibraryPlugin extends Plugin {
 
                 RemuxResult remux = remuxVideoSegmentLossless(getContext(), sourceUri, startUs, endUs, tempOut);
 
-                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "BeatPulse_Video");
+                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "MoVibe_Video");
                 String outFileName = baseTitle + "_trimmed_" + (System.currentTimeMillis() % 100000) + ".mp4";
                 String outTitle = baseTitle + " (Trimmed)";
 
@@ -1758,7 +1758,7 @@ public class AudioLibraryPlugin extends Plugin {
                     cutUs = Math.max(150_000L, Math.min(totalDurationUs - 150_000L, requestedSplitUs));
                 }
 
-                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "BeatPulse_Video");
+                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "MoVibe_Video");
                 long tag = System.currentTimeMillis() % 100000;
                 JSArray videosArr = new JSArray();
                 JSArray pathsArr = new JSArray();
@@ -1812,8 +1812,8 @@ public class AudioLibraryPlugin extends Plugin {
                 if (getActivity() != null) {
                     int count = videosArr.length();
                     String msg = count > 1
-                        ? "Split into 2 original-quality clips in Movies/BeatPulse/"
-                        : "Saved split clip in Movies/BeatPulse/";
+                        ? "Split into 2 original-quality clips in Movies/Mo Vibe/"
+                        : "Saved split clip in Movies/Mo Vibe/";
                     getActivity().runOnUiThread(() ->
                         Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show()
                     );
@@ -1895,7 +1895,7 @@ public class AudioLibraryPlugin extends Plugin {
                         tempOut
                     );
 
-                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "BeatPulse_Video");
+                String baseTitle = sanitizeFileBaseName(rawTitle, displayName, "MoVibe_Video");
                 String outFileName = baseTitle + "_edited_" + (System.currentTimeMillis() % 100000) + ".mp4";
                 String outTitle = baseTitle + " (Edited)";
 
@@ -2539,7 +2539,7 @@ public class AudioLibraryPlugin extends Plugin {
             values.put(MediaStore.Video.Media.TITLE, title);
             values.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
             values.put(MediaStore.Video.Media.DURATION, durationMs);
-            values.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BeatPulse");
+            values.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Mo Vibe");
             values.put(MediaStore.Video.Media.IS_PENDING, 1);
 
             Uri itemUri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
@@ -2569,7 +2569,7 @@ public class AudioLibraryPlugin extends Plugin {
             if (lastSeg != null && !lastSeg.isEmpty()) {
                 mediaId = lastSeg;
             }
-            savedDisplayPath = "Movies/BeatPulse/" + finalFileName;
+            savedDisplayPath = "Movies/Mo Vibe/" + finalFileName;
         } else {
             boolean hasWritePerm = ContextCompat.checkSelfPermission(
                 getContext(),
@@ -2580,12 +2580,12 @@ public class AudioLibraryPlugin extends Plugin {
             if (hasWritePerm) {
                 targetDir = new File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                    "BeatPulse"
+                    "Mo Vibe"
                 );
-                savedDisplayPath = "Movies/BeatPulse/" + finalFileName;
+                savedDisplayPath = "Movies/Mo Vibe/" + finalFileName;
             } else {
                 File appMoviesDir = getContext().getExternalFilesDir(Environment.DIRECTORY_MOVIES);
-                targetDir = new File(appMoviesDir != null ? appMoviesDir : getContext().getFilesDir(), "BeatPulse");
+                targetDir = new File(appMoviesDir != null ? appMoviesDir : getContext().getFilesDir(), "Mo Vibe");
                 savedDisplayPath = targetDir.getAbsolutePath() + "/" + finalFileName;
             }
 
@@ -2709,7 +2709,7 @@ public class AudioLibraryPlugin extends Plugin {
                     ContentValues values = new ContentValues();
                     values.put(MediaStore.Audio.Media.DISPLAY_NAME, finalFileName);
                     values.put(MediaStore.Audio.Media.MIME_TYPE, resolvedMime);
-                    values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/BeatPulse");
+                    values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/Mo Vibe");
                     values.put(MediaStore.Audio.Media.IS_MUSIC, 1);
                     values.put(MediaStore.Audio.Media.IS_PENDING, 1);
 
@@ -2725,7 +2725,7 @@ public class AudioLibraryPlugin extends Plugin {
                         ContentValues dlValues = new ContentValues();
                         dlValues.put(MediaStore.Downloads.DISPLAY_NAME, finalFileName);
                         dlValues.put(MediaStore.Downloads.MIME_TYPE, resolvedMime);
-                        dlValues.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/BeatPulse");
+                        dlValues.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Mo Vibe");
                         dlValues.put(MediaStore.Downloads.IS_PENDING, 1);
                         itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, dlValues);
                         savedToDownloads = true;
@@ -2753,7 +2753,7 @@ public class AudioLibraryPlugin extends Plugin {
                     resolver.update(itemUri, completed, null, null);
 
                     savedUri = itemUri.toString();
-                    savedDisplayPath = (savedToDownloads ? "Download/BeatPulse/" : "Music/BeatPulse/") + finalFileName;
+                    savedDisplayPath = (savedToDownloads ? "Download/Mo Vibe/" : "Music/Mo Vibe/") + finalFileName;
                 } else {
                     boolean hasWritePerm = ContextCompat.checkSelfPermission(
                         getContext(),
@@ -2764,12 +2764,12 @@ public class AudioLibraryPlugin extends Plugin {
                     if (hasWritePerm) {
                         targetDir = new File(
                             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                            "BeatPulse"
+                            "Mo Vibe"
                         );
-                        savedDisplayPath = "Music/BeatPulse/" + finalFileName;
+                        savedDisplayPath = "Music/Mo Vibe/" + finalFileName;
                     } else {
                         File appMusicDir = getContext().getExternalFilesDir(Environment.DIRECTORY_MUSIC);
-                        targetDir = new File(appMusicDir != null ? appMusicDir : getContext().getFilesDir(), "BeatPulse");
+                        targetDir = new File(appMusicDir != null ? appMusicDir : getContext().getFilesDir(), "Mo Vibe");
                         savedDisplayPath = targetDir.getAbsolutePath() + "/" + finalFileName;
                     }
 
@@ -2838,7 +2838,7 @@ public class AudioLibraryPlugin extends Plugin {
         String exportId = call.getString("exportId");
         String rawFileName = call.getString("fileName", "beatpulse_edited.mp4");
         String mimeType = call.getString("mimeType", "video/mp4");
-        String rawTitle = call.getString("title", "BeatPulse Edited Video");
+        String rawTitle = call.getString("title", "Mo Vibe Edited Video");
         Double durationMsObj = call.getDouble("durationMs", 0.0);
         String resolution = call.getString("resolution", "");
 
@@ -2916,7 +2916,7 @@ public class AudioLibraryPlugin extends Plugin {
             values.put(MediaStore.Video.Media.TITLE, title);
             values.put(MediaStore.Video.Media.MIME_TYPE, mimeType);
             values.put(MediaStore.Video.Media.DURATION, durationMs);
-            values.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BeatPulse");
+            values.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Mo Vibe");
             values.put(MediaStore.Video.Media.IS_PENDING, 1);
 
             Uri itemUri = null;
@@ -2931,7 +2931,7 @@ public class AudioLibraryPlugin extends Plugin {
                 ContentValues dlValues = new ContentValues();
                 dlValues.put(MediaStore.Downloads.DISPLAY_NAME, finalFileName);
                 dlValues.put(MediaStore.Downloads.MIME_TYPE, mimeType);
-                dlValues.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/BeatPulse");
+                dlValues.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Mo Vibe");
                 dlValues.put(MediaStore.Downloads.IS_PENDING, 1);
                 itemUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, dlValues);
                 savedToDownloads = true;
@@ -2963,13 +2963,13 @@ public class AudioLibraryPlugin extends Plugin {
             if (lastSeg != null && !lastSeg.isEmpty()) {
                 mediaId = lastSeg;
             }
-            savedDisplayPath = (savedToDownloads ? "Download/BeatPulse/" : "Movies/BeatPulse/") + finalFileName;
+            savedDisplayPath = (savedToDownloads ? "Download/Mo Vibe/" : "Movies/Mo Vibe/") + finalFileName;
         } else {
             File targetDir = new File(
                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
-                "BeatPulse"
+                "Mo Vibe"
             );
-            savedDisplayPath = "Movies/BeatPulse/" + finalFileName;
+            savedDisplayPath = "Movies/Mo Vibe/" + finalFileName;
             if (!targetDir.exists()) {
                 //noinspection ResultOfMethodCallIgnored
                 targetDir.mkdirs();

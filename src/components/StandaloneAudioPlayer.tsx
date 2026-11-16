@@ -971,7 +971,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             <ShieldAlert className="w-10 h-10 text-amber-500 dark:text-amber-400 mx-auto" />
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Audio Permission Required</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
-              Allow audio access so BeatPulse can list and play all songs stored on your phone.
+              Allow audio access so Mo Vibe can list and play all songs stored on your phone.
             </p>
             <button
               type="button"

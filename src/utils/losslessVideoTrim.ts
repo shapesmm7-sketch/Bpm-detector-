@@ -848,7 +848,7 @@ function sanitizeBaseName(name: string): string {
     .replace(/\.[^/.]+$/, '')
     .replace(/[\\/:*?"<>|]/g, '_')
     .trim();
-  return clean || 'BeatPulse_Video';
+  return clean || 'MoVibe_Video';
 }
 
 export async function trimVideoBlobLossless(

@@ -66,8 +66,8 @@ export const Header: React.FC<HeaderProps> = ({
           }}
           className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-2 whitespace-nowrap hover:opacity-90 transition-opacity"
         >
-          <span className="hidden sm:inline">
-            PulseBPM Studio
+          <span>
+            Mo Vibe
           </span>
         </a>
       </div>

@@ -31,6 +31,7 @@ export interface TimelineTextOverlay {
   fontSize: number; // reference px at 360px short side
   startTime: number;
   endTime: number;
+  trackRow?: number;
 }
 
 export interface TextAnimationFrameState {
@@ -201,7 +202,7 @@ function sanitizeBaseName(name: string): string {
     .replace(/\.[^/.]+$/, '')
     .replace(/[\\/:*?"<>|]/g, '_')
     .trim();
-  return clean || 'BeatPulse_Video';
+  return clean || 'MoVibe_Video';
 }
 
 function pickSupportedRecorderFormat(): {

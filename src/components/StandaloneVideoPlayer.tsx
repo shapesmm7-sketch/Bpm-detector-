@@ -780,6 +780,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   const overlayLastSeekMsRef = useRef<Record<string, number>>({});
   const overlayWasVisibleRef = useRef<Record<string, boolean>>({});
   const overlayPlayInFlightRef = useRef<Record<string, boolean>>({});
+  const overlayPrewarmedRef = useRef<Record<string, boolean>>({});
   const audioLastSeekMsRef = useRef<number>(0);
   const overlayBoxRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const overlayPinchRef = useRef<{
@@ -852,7 +853,14 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   const [selectedAudioSegId, setSelectedAudioSegId] = useState<string | null>(null);
   const [splitOverlays, setSplitOverlays] = useState<TimelineOverlayItem[]>([]);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
-  const [selectedTrackType, setSelectedTrackType] = useState<'video' | 'audio' | 'text' | 'overlay'>('video');
+  const [selectedTrackType, setSelectedTrackType] = useState<'none' | 'video' | 'audio' | 'text' | 'overlay'>('none');
+  const clearTimelineSelection = () => {
+    setSelectedTrackType('none');
+    setSelectedSplitSegId(null);
+    setSelectedAudioSegId(null);
+    setSelectedTextId(null);
+    setSelectedOverlayId(null);
+  };
   const [mainVideoCrop, setMainVideoCrop] = useState<VideoCropRect>(DEFAULT_VIDEO_CROP);
   const [isMainCropActive, setIsMainCropActive] = useState<boolean>(false);
   const [activeCropAspect, setActiveCropAspect] = useState<CropAspectPreset>('free');
@@ -948,6 +956,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   const [draftTextAnimation, setDraftTextAnimation] = useState<TextAnimationType>('none');
   const [draftTextSize, setDraftTextSize] = useState<20 | 26 | 34>(26);
   const [draftTextTiming, setDraftTextTiming] = useState<'all' | '4s' | 'custom'>('all');
+  const [draftTextRow, setDraftTextRow] = useState<number>(0);
+  const [draftTextInsertStart, setDraftTextInsertStart] = useState<number | null>(null);
   const [activeTextSection, setActiveTextSection] = useState<
     'none' | 'color' | 'bg' | 'fonts' | 'styles' | 'templates' | 'animations'
   >('none');
@@ -2611,7 +2621,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       removed: false,
     };
     setSplitSegments([initialSeg]);
-    setSelectedSplitSegId(initialSeg.id);
+    setSelectedTrackType('none');
+    setSelectedSplitSegId(null);
+    setSelectedAudioSegId(null);
+    setSelectedTextId(null);
+    setSelectedOverlayId(null);
     setSplitUndoStack([]);
     setSplitRedoStack([]);
     setEditMode('split');
@@ -2646,7 +2660,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     nextAudio: TimelineAudioSegment[],
     nextSelectedVideoId?: string | null,
     nextSelectedAudioId?: string | null,
-    nextTrackType?: 'video' | 'audio' | 'text' | 'overlay',
+    nextTrackType?: 'none' | 'video' | 'audio' | 'text' | 'overlay',
     nextText?: TimelineTextOverlay[],
     nextSelectedTextId?: string | null,
     nextOverlays?: TimelineOverlayItem[],
@@ -2747,7 +2761,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       (selectedTrackType === 'text' && previous.text.length === 0) ||
       (selectedTrackType === 'overlay' && previous.overlays.length === 0)
     ) {
-      setSelectedTrackType('video');
+      setSelectedTrackType('none');
     }
     setEditErrorMessage(null);
   };
@@ -2804,7 +2818,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       (selectedTrackType === 'text' && nextState.text.length === 0) ||
       (selectedTrackType === 'overlay' && nextState.overlays.length === 0)
     ) {
-      setSelectedTrackType('video');
+      setSelectedTrackType('none');
     }
     setEditErrorMessage(null);
   };
@@ -2888,12 +2902,14 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         ...target,
         id: `txt-L-${Date.now()}`,
         endTime: cutTime,
+        trackRow: target.trackRow ?? 0,
       };
       const rightText: TimelineTextOverlay = {
         ...target,
         id: `txt-R-${Date.now()}`,
         startTime: cutTime,
         endTime: effectiveEnd,
+        trackRow: target.trackRow ?? 0,
       };
       const idx = splitTextOverlays.findIndex((ov) => ov.id === target.id);
       const nextText = [
@@ -3008,7 +3024,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         splitAudioSegments,
         undefined,
         undefined,
-        nextOverlays.length > 0 ? 'overlay' : 'video',
+        nextOverlays.length > 0 ? 'overlay' : 'none',
         undefined,
         undefined,
         nextOverlays,
@@ -3035,7 +3051,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         splitAudioSegments,
         undefined,
         undefined,
-        nextText.length > 0 ? 'text' : 'video',
+        nextText.length > 0 ? 'text' : 'none',
         nextText,
         nextSelected
       );
@@ -3056,7 +3072,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       if (nextAudio.length === 0) {
         if (splitAudioRef.current) splitAudioRef.current.pause();
         setSplitCustomAudio(null);
-        commitTimelineState(splitSegments, [], undefined, null, 'video');
+        commitTimelineState(splitSegments, [], undefined, null, 'none');
         return;
       }
 
@@ -3139,7 +3155,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return () => window.cancelAnimationFrame(rafId);
   }, [isTextEditorOpen, draftTextAnimation, animPreviewTrigger]);
 
-  const openAddTextEditor = (existing?: TimelineTextOverlay) => {
+  const openAddTextEditor = (
+    existing?: TimelineTextOverlay,
+    options?: { row?: number; startAt?: number }
+  ) => {
     pauseAllSplitVideos();
     setIsPlaying(false);
     setShowAddMediaMenu(false);
@@ -3160,6 +3179,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       setDraftTextStyleEffect(existing.textStyle || 'clean');
       setDraftTextAnimation(existing.animation || 'none');
       setDraftTextSize(existing.fontSize >= 32 ? 34 : existing.fontSize <= 22 ? 20 : 26);
+      setDraftTextRow(existing.trackRow ?? 0);
+      setDraftTextInsertStart(null);
       const isWhole =
         existing.startTime <= 0.05 &&
         (existing.endTime >= 90000 || existing.endTime >= Math.max(0.5, maxSplitTimelineDuration) - 0.1);
@@ -3174,7 +3195,46 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       setDraftTextStyleEffect('clean');
       setDraftTextAnimation('none');
       setDraftTextSize(26);
-      setDraftTextTiming('all');
+
+      const timelineCap = Math.max(0.5, maxSplitTimelineDuration);
+      const maxRow = splitTextOverlays.reduce((m, t) => Math.max(m, t.trackRow ?? 0), -1);
+      if (options?.row !== undefined) {
+        setDraftTextRow(options.row);
+        if (options.startAt !== undefined) {
+          setDraftTextInsertStart(options.startAt);
+          setDraftTextTiming('4s');
+        } else {
+          setDraftTextInsertStart(null);
+          setDraftTextTiming('all');
+        }
+      } else if (splitTextOverlays.length === 0) {
+        setDraftTextRow(0);
+        setDraftTextInsertStart(null);
+        setDraftTextTiming('all');
+      } else {
+        // Pick first row without an overlapping text block near playhead, or place on a new line below
+        let freeRow = -1;
+        for (let r = 0; r <= maxRow; r++) {
+          const overlaps = splitTextOverlays.some((t) => {
+            if ((t.trackRow ?? 0) !== r) return false;
+            const end = t.endTime >= 90000 ? timelineCap : t.endTime;
+            return currentTime >= t.startTime - 0.05 && currentTime < end - 0.05;
+          });
+          if (!overlaps) {
+            freeRow = r;
+            break;
+          }
+        }
+        if (freeRow >= 0) {
+          setDraftTextRow(freeRow);
+          setDraftTextInsertStart(Number(Math.min(timelineCap - 0.5, currentTime).toFixed(2)));
+          setDraftTextTiming('4s');
+        } else {
+          setDraftTextRow(maxRow + 1);
+          setDraftTextInsertStart(null);
+          setDraftTextTiming('4s');
+        }
+      }
     }
     setIsTextEditorOpen(true);
   };
@@ -3189,7 +3249,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           splitAudioSegments,
           undefined,
           undefined,
-          nextText.length > 0 ? 'text' : 'video',
+          nextText.length > 0 ? 'text' : 'none',
           nextText,
           nextText[0]?.id || null
         );
@@ -3214,7 +3274,8 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           ? timelineCap
           : Math.max(startTime + 0.3, Math.min(timelineCap, existingItem.endTime));
     } else if (draftTextTiming === '4s') {
-      startTime = Number(Math.max(0, Math.min(timelineCap - 0.3, currentTime)).toFixed(2));
+      const baseStart = draftTextInsertStart !== null ? draftTextInsertStart : currentTime;
+      startTime = Number(Math.max(0, Math.min(timelineCap - 0.3, baseStart)).toFixed(2));
       endTime = Number(Math.min(timelineCap, startTime + 4.0).toFixed(2));
     }
 
@@ -3233,6 +3294,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               fontSize: draftTextSize,
               startTime,
               endTime,
+              trackRow: draftTextRow,
             }
           : item
       );
@@ -3246,12 +3308,15 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         selectedTextId
       );
     } else {
-      const offsetShift = Math.min(0.24, splitTextOverlays.length * 0.06);
+      const sameRowShift =
+        draftTextRow > 0
+          ? Math.min(0.28, draftTextRow * 0.09)
+          : Math.min(0.24, splitTextOverlays.length * 0.06);
       const newOverlay: TimelineTextOverlay = {
         id: `txt-${Date.now()}`,
         text: clean,
         x: 0.5,
-        y: Math.min(0.82, 0.5 + offsetShift),
+        y: Math.min(0.84, 0.5 + sameRowShift),
         color: draftTextColor,
         bgStyle: draftTextBgStyle,
         bgColor: draftTextBgStyle === 'none' ? undefined : draftTextBgColor,
@@ -3261,6 +3326,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         fontSize: draftTextSize,
         startTime,
         endTime,
+        trackRow: draftTextRow,
       };
       const nextText = [...splitTextOverlays, newOverlay];
       commitTimelineState(
@@ -3286,7 +3352,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       splitAudioSegments,
       undefined,
       undefined,
-      nextText.length > 0 ? 'text' : 'video',
+      nextText.length > 0 ? 'text' : 'none',
       nextText,
       nextSel
     );

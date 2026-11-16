@@ -605,7 +605,7 @@ export default function App() {
         controller.signal
       );
 
-      const safeBase = (trackName || 'BeatPulse_Track')
+      const safeBase = (trackName || 'MoVibe_Track')
         .replace(/[\\/:*?"<>|]/g, '_')
         .trim();
       const targetBpm = bpmResult ? (bpmResult.bpm * rate).toFixed(2) : liveBpm.toFixed(2);
