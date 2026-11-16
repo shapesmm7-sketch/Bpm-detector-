@@ -78,6 +78,8 @@ public class AudioLibraryPlugin extends Plugin {
     private static final String PROBE_VIDEO_FILENAME = "beatpulse_default_setup_probe.mp4";
 
     private ActivityResultLauncher<String> permissionLauncher;
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
+    private boolean hasRequestedNotifications = false;
     private String pendingCallId;
     private String pendingPermissionType = "audio";
     private File lastTempAudioFile;
@@ -86,6 +88,7 @@ public class AudioLibraryPlugin extends Plugin {
     private File lastExternalMediaFile;
     private final Object pendingMediaLock = new Object();
     private JSObject pendingExternalMedia;
+    private String pendingOpenSection;
     private final Map<String, File> pendingExports = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ExecutorService thumbExecutor = Executors.newFixedThreadPool(3);
@@ -137,9 +140,45 @@ public class AudioLibraryPlugin extends Plugin {
             }
         );
 
+        notificationPermissionLauncher = bridge.registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            isGranted -> {
+                // Notification permission result handled cleanly without interrupting playback
+            }
+        );
+
+        MusicPlaybackService.setStateListener(state ->
+            notifyListeners("musicPlaybackStateChanged", state)
+        );
+
         if (getActivity() != null) {
             handleExternalIntent(getActivity().getIntent());
+            handleNavigationIntent(getActivity().getIntent());
         }
+    }
+
+    public void handleNavigationIntent(Intent intent) {
+        if (intent == null) return;
+        String targetSection = intent.getStringExtra(MusicPlaybackService.EXTRA_OPEN_SECTION);
+        if (targetSection == null || targetSection.isEmpty()) return;
+        intent.removeExtra(MusicPlaybackService.EXTRA_OPEN_SECTION);
+
+        synchronized (pendingMediaLock) {
+            pendingOpenSection = targetSection;
+        }
+        JSObject payload = new JSObject();
+        payload.put("section", targetSection);
+        notifyListeners("openSectionRequested", payload);
+    }
+
+    @PluginMethod
+    public void consumePendingOpenSection(PluginCall call) {
+        JSObject result = new JSObject();
+        synchronized (pendingMediaLock) {
+            result.put("section", pendingOpenSection);
+            pendingOpenSection = null;
+        }
+        call.resolve(result);
     }
 
     public void handleExternalIntent(Intent intent) {
@@ -242,10 +281,12 @@ public class AudioLibraryPlugin extends Plugin {
                 if ("http".equals(scheme) || "https".equals(scheme)) {
                     localUrl = uriString;
                 } else {
-                    // Check if file:// URI points to a directly readable local file
+                    // Check if file:// URI points to a directly readable local file without URL-unsafe characters
                     if ("file".equals(scheme) && data.getPath() != null) {
-                        File directFile = new File(data.getPath());
-                        if (directFile.exists() && directFile.canRead()) {
+                        String rawPath = data.getPath();
+                        boolean hasUnsafeUrlChars = rawPath.contains("#") || rawPath.contains("?") || rawPath.contains("%");
+                        File directFile = new File(rawPath);
+                        if (!hasUnsafeUrlChars && directFile.exists() && directFile.canRead()) {
                             filePath = directFile.getAbsolutePath();
                             if (size <= 0) {
                                 size = directFile.length();
@@ -267,8 +308,9 @@ public class AudioLibraryPlugin extends Plugin {
                                 if (dataIdx >= 0) {
                                     String candidate = pathCursor.getString(dataIdx);
                                     if (candidate != null && !candidate.isEmpty()) {
+                                        boolean hasUnsafeUrlChars = candidate.contains("#") || candidate.contains("?") || candidate.contains("%");
                                         File directFile = new File(candidate);
-                                        if (directFile.exists() && directFile.canRead()) {
+                                        if (!hasUnsafeUrlChars && directFile.exists() && directFile.canRead()) {
                                             filePath = directFile.getAbsolutePath();
                                             if (size <= 0) {
                                                 size = directFile.length();
@@ -1108,6 +1150,7 @@ public class AudioLibraryPlugin extends Plugin {
         String uriString = call.getString("uri");
         String mediaKind = call.getString("mediaKind", "audio");
         boolean keepAlive = Boolean.TRUE.equals(call.getBoolean("keepAlive", false));
+        boolean forceCopy = Boolean.TRUE.equals(call.getBoolean("forceCopy", false));
         String defaultExt = "video".equals(mediaKind) ? ".mp4" : "image".equals(mediaKind) ? ".jpg" : ".mp3";
         String displayName = call.getString("displayName", "media" + defaultExt);
 
@@ -1121,29 +1164,32 @@ public class AudioLibraryPlugin extends Plugin {
                 Uri contentUri = Uri.parse(uriString);
                 ContentResolver resolver = getContext().getContentResolver();
 
-                // Fast path: if MediaStore exposes a directly readable filesystem path, stream from it with zero copy.
+                // Fast path: if MediaStore exposes a directly readable filesystem path without #, ?, or % URL delimiters
                 String directPath = null;
-                try (Cursor pathCursor = resolver.query(
-                    contentUri,
-                    new String[] { MediaStore.MediaColumns.DATA },
-                    null,
-                    null,
-                    null
-                )) {
-                    if (pathCursor != null && pathCursor.moveToFirst()) {
-                        int dataIdx = pathCursor.getColumnIndex(MediaStore.MediaColumns.DATA);
-                        if (dataIdx >= 0) {
-                            String candidate = pathCursor.getString(dataIdx);
-                            if (candidate != null && !candidate.isEmpty()) {
-                                File directFile = new File(candidate);
-                                if (directFile.exists() && directFile.canRead()) {
-                                    directPath = directFile.getAbsolutePath();
+                if (!forceCopy) {
+                    try (Cursor pathCursor = resolver.query(
+                        contentUri,
+                        new String[] { MediaStore.MediaColumns.DATA },
+                        null,
+                        null,
+                        null
+                    )) {
+                        if (pathCursor != null && pathCursor.moveToFirst()) {
+                            int dataIdx = pathCursor.getColumnIndex(MediaStore.MediaColumns.DATA);
+                            if (dataIdx >= 0) {
+                                String candidate = pathCursor.getString(dataIdx);
+                                if (candidate != null && !candidate.isEmpty()) {
+                                    boolean hasUnsafeUrlChars = candidate.contains("#") || candidate.contains("?") || candidate.contains("%");
+                                    File directFile = new File(candidate);
+                                    if (!hasUnsafeUrlChars && directFile.exists() && directFile.canRead()) {
+                                        directPath = directFile.getAbsolutePath();
+                                    }
                                 }
                             }
                         }
+                    } catch (Exception ignored) {
+                        directPath = null;
                     }
-                } catch (Exception ignored) {
-                    directPath = null;
                 }
 
                 if (directPath != null) {
@@ -1218,6 +1264,182 @@ public class AudioLibraryPlugin extends Plugin {
                 call.reject("Failed to prepare media file: " + e.getMessage(), e);
             }
         });
+    }
+
+    @PluginMethod
+    public void getAudioThumbnail(PluginCall call) {
+        String id = call.getString("id", "");
+        String uriString = call.getString("uri", "");
+        String title = call.getString("title", "Audio Track");
+        String artist = call.getString("artist", "Unknown Artist");
+
+        thumbExecutor.execute(() -> {
+            try {
+                AudioArtworkHelper.ArtworkResult art = AudioArtworkHelper.getOrCreateAudioArtwork(
+                    getContext(),
+                    id,
+                    uriString,
+                    title,
+                    artist
+                );
+                JSObject res = new JSObject();
+                if (art.filePath != null && !art.filePath.isEmpty()) {
+                    res.put("filePath", art.filePath);
+                    res.put("localUrl", bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + art.filePath);
+                } else {
+                    res.put("localUrl", "");
+                }
+                res.put("hasEmbeddedArt", art.hasEmbeddedArt);
+                call.resolve(res);
+            } catch (Exception e) {
+                JSObject empty = new JSObject();
+                empty.put("localUrl", "");
+                empty.put("hasEmbeddedArt", false);
+                call.resolve(empty);
+            }
+        });
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasRequestedNotifications) {
+            if (ContextCompat.checkSelfPermission(getContext(), Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+                hasRequestedNotifications = true;
+                if (getActivity() != null && notificationPermissionLauncher != null) {
+                    getActivity().runOnUiThread(() ->
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    );
+                }
+            }
+        }
+    }
+
+    private List<MusicPlaybackService.TrackMeta> parseTrackQueue(JSArray arr) {
+        List<MusicPlaybackService.TrackMeta> list = new ArrayList<>();
+        if (arr == null) return list;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject obj = arr.optJSONObject(i);
+            if (obj == null) continue;
+            MusicPlaybackService.TrackMeta tm = new MusicPlaybackService.TrackMeta();
+            tm.id = obj.optString("id", "");
+            tm.title = obj.optString("title", "");
+            tm.displayName = obj.optString("displayName", "");
+            tm.artist = obj.optString("artist", "Unknown Artist");
+            tm.album = obj.optString("album", "");
+            tm.durationMs = Math.max(0L, obj.optLong("durationMs", 0L));
+            tm.size = Math.max(0L, obj.optLong("size", 0L));
+            tm.mimeType = obj.optString("mimeType", "audio/*");
+            tm.uri = obj.optString("uri", "");
+            if (!tm.uri.isEmpty()) {
+                list.add(tm);
+            }
+        }
+        return list;
+    }
+
+    private void sendMusicServiceCommand(String action, long seekMs, boolean startForegroundIfIdle) {
+        boolean serviceHasTrack = MusicPlaybackService.getCurrentSnapshot().optBoolean("hasTrack", false);
+        if (!startForegroundIfIdle && !serviceHasTrack) {
+            return;
+        }
+        Intent intent = new Intent(getContext(), MusicPlaybackService.class);
+        intent.setAction(action);
+        if (seekMs >= 0L) {
+            intent.putExtra(MusicPlaybackService.EXTRA_SEEK_MS, seekMs);
+        }
+        ContextCompat.startForegroundService(getContext(), intent);
+    }
+
+    @PluginMethod
+    public void startMusicPlayback(PluginCall call) {
+        JSArray songsJson = call.getArray("songs");
+        int startIndex = call.getInt("startIndex", 0);
+        boolean isShuffle = Boolean.TRUE.equals(call.getBoolean("isShuffle", false));
+        String repeatMode = call.getString("repeatMode", "all");
+        Double volumeObj = call.getDouble("volume", 1.0);
+        boolean isMuted = Boolean.TRUE.equals(call.getBoolean("isMuted", false));
+
+        List<MusicPlaybackService.TrackMeta> queue = parseTrackQueue(songsJson);
+        if (queue.isEmpty()) {
+            call.reject("No playable tracks in queue");
+            return;
+        }
+
+        requestNotificationPermissionIfNeeded();
+        float vol = volumeObj != null ? volumeObj.floatValue() : 1.0f;
+        MusicPlaybackService.setQueueAndSettings(queue, startIndex, isShuffle, repeatMode, vol, isMuted);
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_PLAY_QUEUE, -1L, true);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void toggleMusicPlayPause(PluginCall call) {
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_PLAY_PAUSE, -1L, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void pauseMusicPlayback(PluginCall call) {
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_PAUSE, -1L, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void resumeMusicPlayback(PluginCall call) {
+        requestNotificationPermissionIfNeeded();
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_RESUME, -1L, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void stepMusicTrack(PluginCall call) {
+        int direction = call.getInt("direction", 1);
+        sendMusicServiceCommand(
+            direction < 0 ? MusicPlaybackService.ACTION_PREVIOUS : MusicPlaybackService.ACTION_NEXT,
+            -1L,
+            false
+        );
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void seekMusicPlayback(PluginCall call) {
+        Double posObj = call.getDouble("positionMs", 0.0);
+        long posMs = posObj != null ? Math.max(0L, Math.round(posObj)) : 0L;
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_SEEK, posMs, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void updateMusicSettings(PluginCall call) {
+        boolean isShuffle = Boolean.TRUE.equals(call.getBoolean("isShuffle", false));
+        String repeatMode = call.getString("repeatMode", "all");
+        Double volumeObj = call.getDouble("volume", 1.0);
+        boolean isMuted = Boolean.TRUE.equals(call.getBoolean("isMuted", false));
+        float vol = volumeObj != null ? volumeObj.floatValue() : 1.0f;
+
+        MusicPlaybackService.updateSettingsOnly(isShuffle, repeatMode, vol, isMuted);
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_UPDATE_SETTINGS, -1L, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void updateMusicQueue(PluginCall call) {
+        JSArray songsJson = call.getArray("songs");
+        List<MusicPlaybackService.TrackMeta> queue = parseTrackQueue(songsJson);
+        MusicPlaybackService.updateQueueListOnly(queue);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void stopMusicPlayback(PluginCall call) {
+        sendMusicServiceCommand(MusicPlaybackService.ACTION_STOP, -1L, false);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getMusicPlaybackState(PluginCall call) {
+        call.resolve(MusicPlaybackService.getCurrentSnapshot());
     }
 
     @PluginMethod
@@ -2786,6 +3008,7 @@ public class AudioLibraryPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         super.handleOnDestroy();
+        MusicPlaybackService.setStateListener(null);
         if (lastTempAudioFile != null && lastTempAudioFile.exists()) {
             //noinspection ResultOfMethodCallIgnored
             lastTempAudioFile.delete();

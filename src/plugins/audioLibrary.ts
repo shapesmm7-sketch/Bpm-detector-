@@ -11,6 +11,27 @@ export interface AudioTrackItem {
   mimeType: string;
   uri: string;
   webUrl?: string;
+  thumbnailUrl?: string;
+  hasEmbeddedArt?: boolean;
+}
+
+export type MusicRepeatMode = 'off' | 'all' | 'one';
+
+export interface MusicPlaybackState {
+  hasTrack: boolean;
+  trackId: string;
+  trackUri: string;
+  title: string;
+  displayName: string;
+  artist: string;
+  album: string;
+  isPlaying: boolean;
+  isLoading: boolean;
+  positionMs: number;
+  durationMs: number;
+  isShuffle: boolean;
+  repeatMode: MusicRepeatMode;
+  error?: string;
 }
 
 export interface VideoTrackItem {
@@ -114,9 +135,20 @@ interface AudioLibraryPluginInterface {
     displayName?: string;
     mediaKind?: 'audio' | 'video' | 'image';
     keepAlive?: boolean;
+    forceCopy?: boolean;
   }): Promise<{
     filePath?: string;
     localUrl: string;
+  }>;
+  getAudioThumbnail(options: {
+    id: string;
+    uri: string;
+    title?: string;
+    artist?: string;
+  }): Promise<{
+    filePath?: string;
+    localUrl: string;
+    hasEmbeddedArt?: boolean;
   }>;
   getVideoThumbnail(options: {
     id: string;
@@ -155,6 +187,31 @@ interface AudioLibraryPluginInterface {
   consumePendingExternalMedia(): Promise<{
     media: ExternalMediaPayload | null;
   }>;
+  consumePendingOpenSection(): Promise<{
+    section: 'home' | 'audio' | 'video' | null;
+  }>;
+  startMusicPlayback(options: {
+    songs: AudioTrackItem[];
+    startIndex: number;
+    isShuffle: boolean;
+    repeatMode: MusicRepeatMode;
+    volume: number;
+    isMuted: boolean;
+  }): Promise<void>;
+  toggleMusicPlayPause(): Promise<void>;
+  pauseMusicPlayback(): Promise<void>;
+  resumeMusicPlayback(): Promise<void>;
+  stepMusicTrack(options: { direction: -1 | 1 }): Promise<void>;
+  seekMusicPlayback(options: { positionMs: number }): Promise<void>;
+  updateMusicSettings(options: {
+    isShuffle: boolean;
+    repeatMode: MusicRepeatMode;
+    volume: number;
+    isMuted: boolean;
+  }): Promise<void>;
+  updateMusicQueue(options: { songs: AudioTrackItem[] }): Promise<void>;
+  stopMusicPlayback(): Promise<void>;
+  getMusicPlaybackState(): Promise<MusicPlaybackState>;
   getDefaultPlayerStatus(): Promise<DefaultPlayerStatus>;
   setAsDefaultPlayer(options?: {
     mediaType?: 'auto' | 'audio' | 'video';
@@ -178,6 +235,14 @@ interface AudioLibraryPluginInterface {
   addListener(
     eventName: 'defaultPlayerStatusChanged',
     listenerFunc: (status: DefaultPlayerStatus) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'musicPlaybackStateChanged',
+    listenerFunc: (state: MusicPlaybackState) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'openSectionRequested',
+    listenerFunc: (payload: { section: 'home' | 'audio' | 'video' }) => void
   ): Promise<PluginListenerHandle>;
   beginAudioExport(): Promise<{
     exportId: string;
@@ -215,10 +280,12 @@ export function isNativeAndroid(): boolean {
 }
 
 export function resolvePlayableAudioUrl(prepared: { filePath?: string; localUrl: string }): string {
-  if (prepared.filePath) {
-    return Capacitor.convertFileSrc(prepared.filePath);
+  const raw = prepared.filePath ? Capacitor.convertFileSrc(prepared.filePath) : prepared.localUrl;
+  if (!raw) return raw;
+  if (raw.includes('/_capacitor_file_') && (raw.includes('#') || raw.includes('?'))) {
+    return raw.replace(/#/g, '%23').replace(/\?/g, '%3F');
   }
-  return prepared.localUrl;
+  return raw;
 }
 
 function uint8ToBase64(bytes: Uint8Array): string {

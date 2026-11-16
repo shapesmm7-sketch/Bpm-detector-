@@ -282,6 +282,15 @@ export default function App() {
       listenerHandle = handle;
     });
 
+    let sectionListenerHandle: { remove: () => Promise<void> } | null = null;
+    void AudioLibrary.addListener('openSectionRequested', (payload) => {
+      if (payload?.section === 'home' || payload?.section === 'audio' || payload?.section === 'video') {
+        setActiveSection(payload.section);
+      }
+    }).then((handle) => {
+      sectionListenerHandle = handle;
+    });
+
     void AudioLibrary.consumePendingExternalMedia()
       .then((res) => {
         if (res?.media) {
@@ -292,9 +301,22 @@ export default function App() {
         console.warn('Could not check pending external media:', err);
       });
 
+    void AudioLibrary.consumePendingOpenSection()
+      .then((res) => {
+        if (res?.section === 'home' || res?.section === 'audio' || res?.section === 'video') {
+          setActiveSection(res.section);
+        }
+      })
+      .catch(() => {
+        // ignore if no pending section
+      });
+
     return () => {
       if (listenerHandle) {
         void listenerHandle.remove();
+      }
+      if (sectionListenerHandle) {
+        void sectionListenerHandle.remove();
       }
     };
   }, []);

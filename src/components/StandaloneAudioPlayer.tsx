@@ -2,9 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLibrary,
   AudioTrackItem,
+  MusicPlaybackState,
+  MusicRepeatMode,
   isNativeAndroid,
-  resolvePlayableAudioUrl,
 } from '../plugins/audioLibrary';
+import { AudioArtwork } from './AudioArtwork';
+import {
+  extractWebAudioCoverArt,
+  getGeneratedAudioArtworkUrl,
+} from '../utils/audioArtwork';
 import {
   Music,
   Play,
@@ -32,7 +38,7 @@ interface StandaloneAudioPlayerProps {
   externalTrackRequest?: { requestId: string; track: AudioTrackItem } | null;
 }
 
-type RepeatMode = 'off' | 'all' | 'one';
+type RepeatMode = MusicRepeatMode;
 
 function formatTime(sec: number): string {
   if (!isFinite(sec) || sec < 0) return '0:00';
@@ -60,22 +66,45 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
   const webObjectUrlsRef = useRef<string[]>([]);
   const hasAutoLoadedRef = useRef<boolean>(false);
   const lastExternalRequestIdRef = useRef<string | null>(null);
+  const isScrubbingRef = useRef<boolean>(false);
+  const scrubSeekTimeoutRef = useRef<number | null>(null);
+  const wasPlayingNativeRef = useRef<boolean>(false);
 
   const [songs, setSongs] = useState<AudioTrackItem[]>(sharedSongs);
+  const songsRef = useRef<AudioTrackItem[]>(songs);
+  useEffect(() => {
+    songsRef.current = songs;
+  }, [songs]);
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoadingLibrary, setIsLoadingLibrary] = useState<boolean>(false);
   const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [currentTrack, setCurrentTrack] = useState<AudioTrackItem | null>(null);
+  const currentTrackRef = useRef<AudioTrackItem | null>(null);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
   const [isLoadingTrack, setIsLoadingTrack] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const isPlayingRef = useRef<boolean>(false);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
+
+  const onPlaybackStartedRef = useRef(onPlaybackStarted);
+  useEffect(() => {
+    onPlaybackStartedRef.current = onPlaybackStarted;
+  }, [onPlaybackStarted]);
 
   useEffect(() => {
     if (sharedSongs.length > 0 && songs.length === 0) {
@@ -85,6 +114,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
 
   useEffect(() => {
     return () => {
+      if (scrubSeekTimeoutRef.current !== null) {
+        window.clearTimeout(scrubSeekTimeoutRef.current);
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
@@ -96,9 +128,128 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     };
   }, []);
 
-  // Pause standalone audio player if another section (Home BPM Analyzer or Video Player) starts playing
+  // Synchronize React player state from native Android MusicPlaybackService
   useEffect(() => {
-    if (pauseSignal > 0 && audioRef.current && !audioRef.current.paused) {
+    if (!isNativeAndroid()) return;
+
+    const applyNativeState = (state: MusicPlaybackState | null | undefined) => {
+      if (!state) return;
+
+      if (!state.hasTrack) {
+        wasPlayingNativeRef.current = false;
+        const active = currentTrackRef.current;
+        if (!active || !active.webUrl || !active.uri.startsWith('blob:')) {
+          setCurrentTrack(null);
+          setIsPlaying(false);
+          setIsLoadingTrack(false);
+          setCurrentTime(0);
+        }
+        return;
+      }
+
+      const list = songsRef.current;
+      const matched = list.find(
+        (s) =>
+          (state.trackId && s.id === state.trackId) ||
+          (state.trackUri && s.uri === state.trackUri)
+      );
+
+      const resolvedTrack: AudioTrackItem = matched || {
+        id: state.trackId || state.trackUri || `track-${Date.now()}`,
+        title: state.title || state.displayName || 'Audio Track',
+        displayName: state.displayName || state.title || 'audio_track',
+        artist: state.artist || 'Unknown Artist',
+        album: state.album || '',
+        durationMs: state.durationMs || 0,
+        size: 0,
+        mimeType: 'audio/*',
+        uri: state.trackUri || '',
+      };
+
+      const nextPlaying = Boolean(state.isPlaying);
+      if (!wasPlayingNativeRef.current && nextPlaying) {
+        onPlaybackStartedRef.current();
+      }
+      wasPlayingNativeRef.current = nextPlaying;
+
+      setCurrentTrack(resolvedTrack);
+      setIsPlaying(nextPlaying);
+      setIsLoadingTrack(Boolean(state.isLoading));
+      if (!isScrubbingRef.current) {
+        setCurrentTime(Math.max(0, (state.positionMs || 0) / 1000));
+      }
+      if (typeof state.durationMs === 'number' && state.durationMs >= 0) {
+        setDuration(state.durationMs / 1000);
+      }
+      if (typeof state.isShuffle === 'boolean') {
+        setIsShuffle(state.isShuffle);
+      }
+      if (
+        state.repeatMode === 'off' ||
+        state.repeatMode === 'all' ||
+        state.repeatMode === 'one'
+      ) {
+        setRepeatMode(state.repeatMode);
+      }
+      if (state.error) {
+        setErrorMessage(state.error);
+      } else if (nextPlaying || state.isLoading) {
+        setErrorMessage(null);
+      }
+    };
+
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+    void AudioLibrary.addListener('musicPlaybackStateChanged', applyNativeState).then(
+      (handle) => {
+        listenerHandle = handle;
+      }
+    );
+
+    const syncNow = () => {
+      void AudioLibrary.getMusicPlaybackState()
+        .then(applyNativeState)
+        .catch(() => {
+          // ignore transient bridge query failure
+        });
+    };
+
+    syncNow();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncNow();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (listenerHandle) {
+        void listenerHandle.remove();
+      }
+    };
+  }, []);
+
+  // Re-enrich currentTrack with full library metadata if song list loads after service hydration
+  useEffect(() => {
+    if (!currentTrack || songs.length === 0) return;
+    const matched = songs.find(
+      (s) => s.id === currentTrack.id || (s.uri && s.uri === currentTrack.uri)
+    );
+    if (matched && (matched.size !== currentTrack.size || matched.thumbnailUrl !== currentTrack.thumbnailUrl)) {
+      setCurrentTrack(matched);
+    }
+  }, [songs, currentTrack]);
+
+  // Pause standalone audio player ONLY if another section (Home BPM Analyzer or Video Player) starts playing
+  useEffect(() => {
+    if (pauseSignal <= 0) return;
+    if (isNativeAndroid()) {
+      if (isPlayingRef.current) {
+        void AudioLibrary.pauseMusicPlayback();
+      }
+    }
+    if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.pause();
       setIsPlaying(false);
     }
@@ -115,6 +266,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         const list = res.songs || [];
         setSongs(list);
         onSongsLoaded(list);
+        if (currentTrackRef.current && list.length > 0) {
+          void AudioLibrary.updateMusicQueue({ songs: list }).catch(() => {});
+        }
       } else {
         setPermissionDenied(true);
       }
@@ -144,22 +298,56 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     );
   }, [songs, searchQuery]);
 
+  const shouldUseNativeService = (track: AudioTrackItem): boolean => {
+    return isNativeAndroid() && Boolean(track.uri) && !track.uri.startsWith('blob:');
+  };
+
   const playTrack = async (track: AudioTrackItem) => {
     setErrorMessage(null);
     setIsLoadingTrack(true);
     onPlaybackStarted();
 
-    try {
-      let playableUrl = track.webUrl || '';
-      if (!playableUrl && isNativeAndroid()) {
-        const prepared = await AudioLibrary.prepareMediaFile({
-          uri: track.uri,
-          displayName: track.displayName || track.title,
-          mediaKind: 'audio',
-        });
-        playableUrl = resolvePlayableAudioUrl(prepared);
-      }
+    if (shouldUseNativeService(track)) {
+      try {
+        if (audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+        const pool = filteredSongs.length > 0 ? filteredSongs : songs;
+        const activeQueue = pool.some(
+          (s) => s.id === track.id || (s.uri && s.uri === track.uri)
+        )
+          ? pool
+          : [track, ...pool];
+        const startIndex = Math.max(
+          0,
+          activeQueue.findIndex(
+            (s) => s.id === track.id || (s.uri && s.uri === track.uri)
+          )
+        );
 
+        setCurrentTrack(track);
+        setCurrentTime(0);
+        setDuration(track.durationMs > 0 ? track.durationMs / 1000 : 0);
+
+        await AudioLibrary.startMusicPlayback({
+          songs: activeQueue,
+          startIndex,
+          isShuffle,
+          repeatMode,
+          volume,
+          isMuted,
+        });
+      } catch (err) {
+        console.error('Native background audio playback failed:', err);
+        setErrorMessage(`Could not play "${track.title || track.displayName}".`);
+        setIsLoadingTrack(false);
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    try {
+      const playableUrl = track.webUrl || track.uri;
       if (!playableUrl) {
         throw new Error('Audio source unavailable');
       }
@@ -177,8 +365,16 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       await audioEl.play();
       setIsPlaying(true);
     } catch (err) {
-      console.error('Audio playback failed:', err);
-      setErrorMessage(`Could not play "${track.title || track.displayName}".`);
+      const msg = err instanceof Error ? err.message : '';
+      const name = err instanceof DOMException ? err.name : '';
+      if (
+        name !== 'AbortError' &&
+        !msg.includes('interrupted by a call to pause') &&
+        !msg.includes('interrupted by a new load request')
+      ) {
+        console.error('Audio playback failed:', err);
+        setErrorMessage(`Could not play "${track.title || track.displayName}".`);
+      }
       setIsPlaying(false);
     } finally {
       setIsLoadingTrack(false);
@@ -200,9 +396,6 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
   }, [externalTrackRequest]);
 
   const handleTogglePlayPause = async () => {
-    const audioEl = audioRef.current;
-    if (!audioEl) return;
-
     if (!currentTrack) {
       if (filteredSongs.length > 0) {
         await playTrack(filteredSongs[0]);
@@ -210,13 +403,32 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       return;
     }
 
+    if (shouldUseNativeService(currentTrack)) {
+      if (!isPlaying) {
+        onPlaybackStarted();
+      }
+      try {
+        await AudioLibrary.toggleMusicPlayPause();
+      } catch (err) {
+        console.error('Native toggle play/pause failed:', err);
+      }
+      return;
+    }
+
+    const audioEl = audioRef.current;
+    if (!audioEl) return;
+
     if (audioEl.paused) {
       onPlaybackStarted();
       try {
         await audioEl.play();
         setIsPlaying(true);
       } catch (err) {
-        console.error('Resume failed:', err);
+        const msg = err instanceof Error ? err.message : '';
+        const name = err instanceof DOMException ? err.name : '';
+        if (name !== 'AbortError' && !msg.includes('interrupted by a call to pause')) {
+          console.error('Resume failed:', err);
+        }
       }
     } else {
       audioEl.pause();
@@ -226,12 +438,23 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
 
   const handleStepTrack = (direction: -1 | 1) => {
     const pool = filteredSongs.length > 0 ? filteredSongs : songs;
-    if (pool.length === 0) return;
 
     if (!currentTrack) {
-      void playTrack(pool[0]);
+      if (pool.length > 0) {
+        void playTrack(pool[0]);
+      }
       return;
     }
+
+    if (shouldUseNativeService(currentTrack)) {
+      onPlaybackStarted();
+      void AudioLibrary.stepMusicTrack({ direction }).catch((err) => {
+        console.error('Native track step failed:', err);
+      });
+      return;
+    }
+
+    if (pool.length === 0) return;
 
     if (isShuffle && pool.length > 1) {
       const candidates = pool.filter((s) => s.id !== currentTrack.id);
@@ -250,7 +473,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     const audioEl = audioRef.current;
     if (repeatMode === 'one' && audioEl) {
       audioEl.currentTime = 0;
-      void audioEl.play();
+      void audioEl.play().catch(() => {});
       return;
     }
 
@@ -276,32 +499,150 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     }
   };
 
-  const handleWebFilesSelected = (files: FileList | null) => {
+  // Web browser MediaSession integration fallback
+  const stepTrackRef = useRef(handleStepTrack);
+  stepTrackRef.current = handleStepTrack;
+  const togglePlayPauseRef = useRef(handleTogglePlayPause);
+  togglePlayPauseRef.current = handleTogglePlayPause;
+
+  useEffect(() => {
+    if (isNativeAndroid() || typeof navigator === 'undefined' || !('mediaSession' in navigator)) {
+      return;
+    }
+    const ms = navigator.mediaSession;
+    if (!currentTrack) {
+      ms.metadata = null;
+      ms.playbackState = 'none';
+      return;
+    }
+
+    const artUrl =
+      currentTrack.thumbnailUrl ||
+      getGeneratedAudioArtworkUrl(
+        currentTrack.title || currentTrack.displayName,
+        currentTrack.artist,
+        currentTrack.id || currentTrack.uri
+      );
+
+    if (typeof MediaMetadata !== 'undefined') {
+      ms.metadata = new MediaMetadata({
+        title: currentTrack.title || currentTrack.displayName,
+        artist: currentTrack.artist || 'Unknown Artist',
+        album: currentTrack.album || '',
+        artwork: artUrl ? [{ src: artUrl, sizes: '360x360', type: 'image/png' }] : [],
+      });
+    }
+    ms.playbackState = isPlaying ? 'playing' : 'paused';
+
+    try {
+      ms.setActionHandler('play', () => void togglePlayPauseRef.current());
+      ms.setActionHandler('pause', () => void togglePlayPauseRef.current());
+      ms.setActionHandler('previoustrack', () => stepTrackRef.current(-1));
+      ms.setActionHandler('nexttrack', () => stepTrackRef.current(1));
+      ms.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number' && audioRef.current) {
+          audioRef.current.currentTime = details.seekTime;
+          setCurrentTime(details.seekTime);
+        }
+      });
+    } catch {
+      // ignore unsupported MediaSession action handlers in older browsers
+    }
+  }, [currentTrack, isPlaying]);
+
+  const handleWebFilesSelected = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const added: AudioTrackItem[] = [];
+    const fileMap: Array<{ id: string; file: File }> = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const url = URL.createObjectURL(file);
       webObjectUrlsRef.current.push(url);
+      const id = `web-audio-${Date.now()}-${i}`;
+      const title = file.name.replace(/\.[^/.]+$/, '');
+      const artist = 'Local File';
       added.push({
-        id: `web-audio-${Date.now()}-${i}`,
-        title: file.name.replace(/\.[^/.]+$/, ''),
+        id,
+        title,
         displayName: file.name,
-        artist: 'Local File',
+        artist,
         album: '',
         durationMs: 0,
         size: file.size,
         mimeType: file.type || 'audio/*',
         uri: url,
         webUrl: url,
+        thumbnailUrl: getGeneratedAudioArtworkUrl(title, artist, id),
+        hasEmbeddedArt: false,
       });
+      fileMap.push({ id, file });
     }
-    const merged = [...added, ...songs];
-    setSongs(merged);
+
+    setSongs((prev) => [...added, ...prev]);
+
+    // Extract embedded ID3/MP4 cover art asynchronously
+    for (const entry of fileMap) {
+      const coverUrl = await extractWebAudioCoverArt(entry.file);
+      if (coverUrl) {
+        webObjectUrlsRef.current.push(coverUrl);
+        setSongs((prev) =>
+          prev.map((s) =>
+            s.id === entry.id ? { ...s, thumbnailUrl: coverUrl, hasEmbeddedArt: true } : s
+          )
+        );
+        setCurrentTrack((prev) =>
+          prev && prev.id === entry.id
+            ? { ...prev, thumbnailUrl: coverUrl, hasEmbeddedArt: true }
+            : prev
+        );
+      }
+    }
+  };
+
+  const syncNativeSettings = (
+    nextShuffle: boolean,
+    nextRepeat: RepeatMode,
+    nextVolume: number,
+    nextMuted: boolean
+  ) => {
+    if (!isNativeAndroid() || !currentTrackRef.current || !shouldUseNativeService(currentTrackRef.current)) {
+      return;
+    }
+    void AudioLibrary.updateMusicSettings({
+      isShuffle: nextShuffle,
+      repeatMode: nextRepeat,
+      volume: nextVolume,
+      isMuted: nextMuted,
+    }).catch(() => {});
+  };
+
+  const toggleShuffle = () => {
+    setIsShuffle((prev) => {
+      const next = !prev;
+      syncNativeSettings(next, repeatMode, volume, isMuted);
+      return next;
+    });
   };
 
   const cycleRepeat = () => {
-    setRepeatMode((prev) => (prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off'));
+    setRepeatMode((prev) => {
+      const next: RepeatMode = prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off';
+      syncNativeSettings(isShuffle, next, volume, isMuted);
+      return next;
+    });
+  };
+
+  const commitSeek = (nextSec: number) => {
+    if (currentTrack && shouldUseNativeService(currentTrack)) {
+      if (scrubSeekTimeoutRef.current !== null) {
+        window.clearTimeout(scrubSeekTimeoutRef.current);
+        scrubSeekTimeoutRef.current = null;
+      }
+      void AudioLibrary.seekMusicPlayback({ positionMs: Math.round(nextSec * 1000) }).catch(() => {});
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = nextSec;
+    }
   };
 
   return (
@@ -310,7 +651,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         ref={audioRef}
         preload="metadata"
         onTimeUpdate={() => {
-          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+          if (audioRef.current && !isScrubbingRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+          }
         }}
         onLoadedMetadata={() => {
           if (audioRef.current && isFinite(audioRef.current.duration)) {
@@ -329,7 +672,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         multiple
         className="hidden"
         onChange={(e) => {
-          handleWebFilesSelected(e.target.files);
+          void handleWebFilesSelected(e.target.files);
           e.target.value = '';
         }}
       />
@@ -339,11 +682,12 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         <section className="bg-white dark:bg-slate-900 border border-emerald-500/40 dark:border-emerald-500/35 rounded-2xl p-5 shadow-xl dark:shadow-2xl space-y-5 overflow-hidden min-w-0">
           <div className="flex items-center justify-between gap-3 min-w-0">
             <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                {isLoadingTrack ? (
-                  <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin" />
-                ) : (
-                  <Music className="w-6 h-6" />
+              <div className="relative w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 overflow-hidden flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm">
+                <AudioArtwork song={currentTrack} className="w-full h-full" />
+                {isLoadingTrack && (
+                  <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+                  </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -360,11 +704,16 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             <button
               type="button"
               onClick={() => {
+                if (shouldUseNativeService(currentTrack)) {
+                  void AudioLibrary.stopMusicPlayback().catch(() => {});
+                }
                 if (audioRef.current) {
                   audioRef.current.pause();
                   audioRef.current.currentTime = 0;
                 }
+                wasPlayingNativeRef.current = false;
                 setIsPlaying(false);
+                setIsLoadingTrack(false);
                 setCurrentTime(0);
                 setCurrentTrack(null);
               }}
@@ -385,10 +734,37 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
               step={0.1}
               value={Math.min(currentTime, duration > 0 ? duration : 100)}
               disabled={!currentTrack || duration <= 0}
+              onPointerDown={() => {
+                isScrubbingRef.current = true;
+              }}
+              onPointerUp={(e) => {
+                isScrubbingRef.current = false;
+                commitSeek(parseFloat((e.target as HTMLInputElement).value));
+              }}
+              onTouchStart={() => {
+                isScrubbingRef.current = true;
+              }}
+              onTouchEnd={(e) => {
+                isScrubbingRef.current = false;
+                commitSeek(parseFloat((e.target as HTMLInputElement).value));
+              }}
+              onBlur={() => {
+                isScrubbingRef.current = false;
+              }}
               onChange={(e) => {
                 const next = parseFloat(e.target.value);
                 setCurrentTime(next);
-                if (audioRef.current) {
+                if (currentTrack && shouldUseNativeService(currentTrack)) {
+                  if (scrubSeekTimeoutRef.current !== null) {
+                    window.clearTimeout(scrubSeekTimeoutRef.current);
+                  }
+                  scrubSeekTimeoutRef.current = window.setTimeout(() => {
+                    scrubSeekTimeoutRef.current = null;
+                    void AudioLibrary.seekMusicPlayback({
+                      positionMs: Math.round(next * 1000),
+                    }).catch(() => {});
+                  }, 60);
+                } else if (audioRef.current) {
                   audioRef.current.currentTime = next;
                 }
               }}
@@ -406,7 +782,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             <div className="flex items-center justify-center gap-2 sm:gap-3 flex-1 sm:flex-initial">
               <button
                 type="button"
-                onClick={() => setIsShuffle((prev) => !prev)}
+                onClick={toggleShuffle}
                 className={`min-w-[44px] min-h-[44px] rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
                   isShuffle
                     ? 'bg-emerald-500/15 dark:bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-400'
@@ -421,7 +797,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => handleStepTrack(-1)}
-                disabled={songs.length === 0}
+                disabled={songs.length === 0 && !currentTrack}
                 className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 disabled:opacity-40 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
                 title="Previous Track"
                 aria-label="Previous Track"
@@ -447,7 +823,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => handleStepTrack(1)}
-                disabled={songs.length === 0}
+                disabled={songs.length === 0 && !currentTrack}
                 className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 disabled:opacity-40 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
                 title="Next Track"
                 aria-label="Next Track"
@@ -484,6 +860,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                   if (audioRef.current) {
                     audioRef.current.volume = nextMuted ? 0 : volume;
                   }
+                  syncNativeSettings(isShuffle, repeatMode, volume, nextMuted);
                 }}
                 className="text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white cursor-pointer p-1"
                 aria-label={isMuted ? 'Unmute' : 'Mute'}
@@ -502,11 +879,13 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                 value={isMuted ? 0 : volume}
                 onChange={(e) => {
                   const next = parseFloat(e.target.value);
+                  const nextMuted = next === 0;
                   setVolume(next);
-                  setIsMuted(next === 0);
+                  setIsMuted(nextMuted);
                   if (audioRef.current) {
                     audioRef.current.volume = next;
                   }
+                  syncNativeSettings(isShuffle, repeatMode, next, nextMuted);
                 }}
                 aria-label="Audio volume"
                 className="w-24 accent-emerald-500 dark:accent-emerald-400 cursor-pointer"
@@ -639,16 +1018,21 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div
-                      className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+                      className={`relative w-11 h-11 rounded-xl border overflow-hidden flex items-center justify-center shrink-0 shadow-sm ${
                         isSelected
-                          ? 'bg-emerald-500/15 dark:bg-emerald-500/20 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                          ? 'border-emerald-500/60 ring-1 ring-emerald-500/30'
+                          : 'border-slate-200 dark:border-slate-800'
                       }`}
                     >
-                      {isSelected && isPlaying ? (
-                        <Pause className="w-4 h-4 fill-current" />
-                      ) : (
-                        <Play className="w-4 h-4 fill-current ml-0.5" />
+                      <AudioArtwork song={song} className="w-full h-full" />
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center text-emerald-400">
+                          {isPlaying ? (
+                            <Pause className="w-4 h-4 fill-current" />
+                          ) : (
+                            <Play className="w-4 h-4 fill-current ml-0.5" />
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

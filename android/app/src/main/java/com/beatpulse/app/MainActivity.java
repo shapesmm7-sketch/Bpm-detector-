@@ -25,7 +25,9 @@ public class MainActivity extends BridgeActivity {
         if (this.bridge != null) {
             PluginHandle handle = this.bridge.getPlugin("AudioLibrary");
             if (handle != null && handle.getInstance() instanceof AudioLibraryPlugin) {
-                ((AudioLibraryPlugin) handle.getInstance()).handleExternalIntent(intent);
+                AudioLibraryPlugin plugin = (AudioLibraryPlugin) handle.getInstance();
+                plugin.handleExternalIntent(intent);
+                plugin.handleNavigationIntent(intent);
             }
         }
     }

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AudioTrackItem } from '../plugins/audioLibrary';
+import { AudioArtwork } from './AudioArtwork';
 import { Music, Search, X, FolderOpen, Clock, HardDrive } from 'lucide-react';
 
 interface PhoneAudioPickerModalProps {
@@ -136,8 +137,8 @@ export const PhoneAudioPickerModal: React.FC<PhoneAudioPickerModalProps> = ({
                 className="w-full px-5 py-3.5 text-left hover:bg-slate-100 dark:hover:bg-slate-800/70 active:bg-slate-200 dark:active:bg-slate-800 transition-colors flex items-center justify-between gap-3 cursor-pointer"
               >
                 <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                    <Music className="w-4 h-4" />
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden shrink-0 shadow-sm">
+                    <AudioArtwork song={song} className="w-full h-full" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">

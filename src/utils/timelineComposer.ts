@@ -156,6 +156,13 @@ export interface TimelineAudioComposeClip {
   sourceEnd: number;
 }
 
+export interface VideoCropRect {
+  left: number; // 0..1 normalized
+  top: number; // 0..1 normalized
+  right: number; // 0..1 normalized
+  bottom: number; // 0..1 normalized
+}
+
 export interface TimelineOverlayComposeClip {
   id: string;
   mediaType: 'video' | 'image';
@@ -165,7 +172,8 @@ export interface TimelineOverlayComposeClip {
   timelineStart: number;
   x: number; // 0..1 normalized horizontal center
   y: number; // 0..1 normalized vertical center
-  scale: number; // 0.15..0.95 normalized width fraction of stage
+  scale: number; // 0.15..1.85 normalized width fraction of stage
+  rotation?: number; // degrees clockwise
   muted?: boolean;
 }
 
@@ -176,6 +184,7 @@ export interface ComposeTimelineOptions {
   customAudioClips?: TimelineAudioComposeClip[];
   textOverlays?: TimelineTextOverlay[];
   overlayClips?: TimelineOverlayComposeClip[];
+  mainVideoCrop?: VideoCropRect;
   onProgress?: (percent: number) => void;
 }
 
@@ -269,24 +278,40 @@ function loadVideoMetadata(url: string): Promise<{ video: HTMLVideoElement; widt
   });
 }
 
+function normalizeCropRect(crop?: VideoCropRect): VideoCropRect {
+  if (!crop) return { left: 0, top: 0, right: 1, bottom: 1 };
+  const left = Math.max(0, Math.min(0.85, crop.left));
+  const top = Math.max(0, Math.min(0.85, crop.top));
+  const right = Math.max(left + 0.1, Math.min(1, crop.right));
+  const bottom = Math.max(top + 0.1, Math.min(1, crop.bottom));
+  return { left, top, right, bottom };
+}
+
 function drawContainedFrame(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
   srcWidth: number,
   srcHeight: number,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
+  crop?: VideoCropRect
 ): void {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
   if (srcWidth <= 0 || srcHeight <= 0) return;
 
-  const scale = Math.min(canvasWidth / srcWidth, canvasHeight / srcHeight);
-  const drawW = srcWidth * scale;
-  const drawH = srcHeight * scale;
+  const c = normalizeCropRect(crop);
+  const sx = c.left * srcWidth;
+  const sy = c.top * srcHeight;
+  const sw = Math.max(2, (c.right - c.left) * srcWidth);
+  const sh = Math.max(2, (c.bottom - c.top) * srcHeight);
+
+  const scale = Math.min(canvasWidth / sw, canvasHeight / sh);
+  const drawW = sw * scale;
+  const drawH = sh * scale;
   const dx = (canvasWidth - drawW) / 2;
   const dy = (canvasHeight - drawH) / 2;
-  ctx.drawImage(source, dx, dy, drawW, drawH);
+  ctx.drawImage(source, sx, sy, sw, sh, dx, dy, drawW, drawH);
 }
 
 function drawRoundRect(
@@ -472,35 +497,37 @@ function drawMediaOverlays(
 
     if (!src || srcW <= 0 || srcH <= 0) continue;
 
-    const targetWidthFrac = Math.max(0.15, Math.min(0.95, ov.scale || 0.42));
-    let drawW = canvasWidth * targetWidthFrac;
-    let drawH = drawW * (srcH / srcW);
-    if (drawH > canvasHeight * 0.9) {
-      const clampScale = (canvasHeight * 0.9) / drawH;
-      drawW *= clampScale;
-      drawH *= clampScale;
-    }
+    const targetWidthFrac = Math.max(0.15, Math.min(1.85, ov.scale || 0.42));
+    const drawW = canvasWidth * targetWidthFrac;
+    const drawH = drawW * (srcH / srcW);
 
-    const cx = Math.max(0.06, Math.min(0.94, ov.x)) * canvasWidth;
-    const cy = Math.max(0.06, Math.min(0.94, ov.y)) * canvasHeight;
-    const dx = Math.max(4, Math.min(canvasWidth - drawW - 4, cx - drawW / 2));
-    const dy = Math.max(4, Math.min(canvasHeight - drawH - 4, cy - drawH / 2));
-    const cornerRadius = Math.max(8, Math.round(Math.min(drawW, drawH) * 0.06));
+    const cx = Math.max(0.02, Math.min(0.98, ov.x)) * canvasWidth;
+    const cy = Math.max(0.02, Math.min(0.98, ov.y)) * canvasHeight;
+    const rotRad = (((ov.rotation || 0) % 360) * Math.PI) / 180;
+    const cornerRadius = Math.max(8, Math.round(Math.min(drawW, drawH) * 0.05));
 
     ctx.save();
+    ctx.translate(cx, cy);
+    if (rotRad !== 0) {
+      ctx.rotate(rotRad);
+    }
     ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
     ctx.shadowBlur = Math.max(8, Math.round(canvasWidth * 0.02));
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
-    drawRoundRect(ctx, dx, dy, drawW, drawH, cornerRadius);
+    drawRoundRect(ctx, -drawW / 2, -drawH / 2, drawW, drawH, cornerRadius);
     ctx.fillStyle = '#000000';
     ctx.fill();
     ctx.restore();
 
     ctx.save();
-    drawRoundRect(ctx, dx, dy, drawW, drawH, cornerRadius);
+    ctx.translate(cx, cy);
+    if (rotRad !== 0) {
+      ctx.rotate(rotRad);
+    }
+    drawRoundRect(ctx, -drawW / 2, -drawH / 2, drawW, drawH, cornerRadius);
     ctx.clip();
-    ctx.drawImage(src, dx, dy, drawW, drawH);
+    ctx.drawImage(src, -drawW / 2, -drawH / 2, drawW, drawH);
     ctx.restore();
   }
 }
@@ -543,10 +570,13 @@ export async function composeSplitTimelineBlob(
     baseH = firstImg.naturalHeight || 1280;
   }
 
+  const cropRect = normalizeCropRect(options.mainVideoCrop);
+  const croppedBaseW = baseW * (cropRect.right - cropRect.left);
+  const croppedBaseH = baseH * (cropRect.bottom - cropRect.top);
   const maxSide = 1280;
-  const downScale = Math.min(1, maxSide / Math.max(baseW, baseH));
-  const canvasWidth = makeEvenDimension(baseW * downScale, 720);
-  const canvasHeight = makeEvenDimension(baseH * downScale, 1280);
+  const downScale = Math.min(1, maxSide / Math.max(croppedBaseW, croppedBaseH));
+  const canvasWidth = makeEvenDimension(croppedBaseW * downScale, 720);
+  const canvasHeight = makeEvenDimension(croppedBaseH * downScale, 1280);
 
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -708,7 +738,10 @@ export async function composeSplitTimelineBlob(
     preparedOverlayVideos.set(ov.id, { video: ovVideo, vw, vh, mediaSrcNode: ovSrcNode });
   }
 
+  const overlayLastSeekMs = new Map<string, number>();
+
   const syncOverlayVideosAtTime = (curTotalSec: number) => {
+    const nowMs = performance.now();
     for (const ov of activeOverlays) {
       if (ov.mediaType !== 'video') continue;
       const entry = preparedOverlayVideos.get(ov.id);
@@ -722,13 +755,23 @@ export async function composeSplitTimelineBlob(
           ov.sourceStart,
           Math.min(ov.sourceEnd, ov.sourceStart + Math.max(0, curTotalSec - ov.timelineStart))
         );
-        if (Math.abs(el.currentTime - targetTime) > 0.25) {
+        const lastSeekMs = overlayLastSeekMs.get(ov.id) || 0;
+        const nearEnd = ov.sourceEnd - targetTime <= 0.15;
+        if (
+          !el.seeking &&
+          !nearEnd &&
+          Math.abs(el.currentTime - targetTime) > 0.65 &&
+          nowMs - lastSeekMs >= 900
+        ) {
+          overlayLastSeekMs.set(ov.id, nowMs);
           el.currentTime = targetTime;
         }
-        if (el.paused && el.readyState >= 2) {
-          void el.play().catch(() => {
-            el.muted = true;
-            void el.play().catch(() => {});
+        if (el.paused && !el.ended && !el.seeking && el.readyState >= 2 && targetTime < ov.sourceEnd - 0.04) {
+          void el.play().catch((err: unknown) => {
+            if ((err as { name?: string })?.name === 'NotAllowedError') {
+              el.muted = true;
+              void el.play().catch(() => {});
+            }
           });
         }
       } else if (!el.paused) {
@@ -871,7 +914,8 @@ export async function composeSplitTimelineBlob(
               img.naturalWidth || canvasWidth,
               img.naturalHeight || canvasHeight,
               canvasWidth,
-              canvasHeight
+              canvasHeight,
+              cropRect
             );
             const curTotalSec = completedTimelineSec + Math.min(clipDurationSec, elapsedMs / 1000);
             syncOverlayVideosAtTime(curTotalSec);
@@ -908,7 +952,7 @@ export async function composeSplitTimelineBlob(
         const { video: tempVideo, vw, vh, mediaSrcNode } = prepared;
 
         syncOverlayVideosAtTime(completedTimelineSec);
-        drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight);
+        drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight, cropRect);
         drawMediaOverlays(
           ctx,
           activeOverlays,
@@ -943,7 +987,7 @@ export async function composeSplitTimelineBlob(
 
           const drawStep = () => {
             if (finished) return;
-            drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight);
+            drawContainedFrame(ctx, tempVideo, vw, vh, canvasWidth, canvasHeight, cropRect);
             const clipElapsed = Math.max(0, tempVideo.currentTime - clip.sourceStart);
             const curTotalSec = completedTimelineSec + Math.min(clipDurationSec, clipElapsed);
             syncOverlayVideosAtTime(curTotalSec);
