@@ -30,7 +30,7 @@ public final class AudioArtworkHelper {
         public boolean hasEmbeddedArt;
     }
 
-    private static final int ART_SIZE_PX = 360;
+    private static final int ART_SIZE_PX = 512;
 
     private static final int[][] PALETTES = new int[][] {
         { 0xFF064E3B, 0xFF10B981, 0xFFA7F3D0 }, // Emerald Mint
@@ -66,14 +66,14 @@ public final class AudioArtworkHelper {
             thumbDir.mkdirs();
         }
 
-        File embeddedCache = new File(thumbDir, "a_v3_e_" + safeId + ".jpg");
+        File embeddedCache = new File(thumbDir, "a_v4_e_" + safeId + ".jpg");
         if (embeddedCache.exists() && embeddedCache.length() > 0) {
             result.filePath = embeddedCache.getAbsolutePath();
             result.hasEmbeddedArt = true;
             return result;
         }
 
-        File generatedCache = new File(thumbDir, "a_v3_g_" + safeId + ".jpg");
+        File generatedCache = new File(thumbDir, "a_v4_g_" + safeId + ".jpg");
         if (generatedCache.exists() && generatedCache.length() > 0) {
             result.filePath = generatedCache.getAbsolutePath();
             result.hasEmbeddedArt = false;

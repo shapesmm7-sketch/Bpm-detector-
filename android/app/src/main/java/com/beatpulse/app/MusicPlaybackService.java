@@ -80,6 +80,7 @@ public class MusicPlaybackService extends Service {
     private static String sharedRepeatMode = "all";
     private static float sharedVolume = 1.0f;
     private static boolean sharedMuted = false;
+    private static float sharedPlaybackSpeed = 1.0f;
     private static volatile MusicPlaybackService activeInstance;
     private static volatile StateListener stateListener;
     private static volatile JSObject lastSnapshot;
@@ -90,7 +91,8 @@ public class MusicPlaybackService extends Service {
         boolean shuffle,
         String repeatMode,
         float volume,
-        boolean muted
+        boolean muted,
+        float playbackSpeed
     ) {
         synchronized (STATE_LOCK) {
             sharedQueue = queue != null ? new ArrayList<>(queue) : new ArrayList<>();
@@ -99,10 +101,17 @@ public class MusicPlaybackService extends Service {
             sharedRepeatMode = (repeatMode != null && !repeatMode.isEmpty()) ? repeatMode : "all";
             sharedVolume = Math.max(0f, Math.min(1f, volume));
             sharedMuted = muted;
+            sharedPlaybackSpeed = Math.max(0.5f, Math.min(2.0f, playbackSpeed > 0f ? playbackSpeed : 1.0f));
         }
     }
 
-    public static void updateSettingsOnly(boolean shuffle, String repeatMode, float volume, boolean muted) {
+    public static void updateSettingsOnly(
+        boolean shuffle,
+        String repeatMode,
+        float volume,
+        boolean muted,
+        float playbackSpeed
+    ) {
         synchronized (STATE_LOCK) {
             sharedShuffle = shuffle;
             if (repeatMode != null && !repeatMode.isEmpty()) {
@@ -110,6 +119,7 @@ public class MusicPlaybackService extends Service {
             }
             sharedVolume = Math.max(0f, Math.min(1f, volume));
             sharedMuted = muted;
+            sharedPlaybackSpeed = Math.max(0.5f, Math.min(2.0f, playbackSpeed > 0f ? playbackSpeed : 1.0f));
         }
     }
 
@@ -193,6 +203,7 @@ public class MusicPlaybackService extends Service {
     private String repeatMode = "all";
     private float volume = 1.0f;
     private boolean isMuted = false;
+    private float playbackSpeed = 1.0f;
     private boolean receiverRegistered = false;
 
     private final Runnable progressTickRunnable = new Runnable() {
@@ -326,6 +337,7 @@ public class MusicPlaybackService extends Service {
                     repeatMode = sharedRepeatMode;
                     volume = sharedVolume;
                     isMuted = sharedMuted;
+                    playbackSpeed = sharedPlaybackSpeed;
                 }
                 loadAndPlayIndex(targetIdx, true);
                 break;
@@ -365,8 +377,11 @@ public class MusicPlaybackService extends Service {
                     repeatMode = sharedRepeatMode;
                     volume = sharedVolume;
                     isMuted = sharedMuted;
+                    playbackSpeed = sharedPlaybackSpeed;
                 }
                 applyEffectiveVolume();
+                applyPlaybackSpeed();
+                updateMediaSessionState();
                 notifyJsState();
                 break;
             }
@@ -639,6 +654,7 @@ public class MusicPlaybackService extends Service {
                         try {
                             nextMp.start();
                             isPlaying = true;
+                            applyPlaybackSpeed();
                             mainHandler.post(progressTickRunnable);
                         } catch (Exception e) {
                             isPlaying = false;
@@ -707,6 +723,7 @@ public class MusicPlaybackService extends Service {
                 }
                 isPlaying = true;
                 applyEffectiveVolume();
+                applyPlaybackSpeed();
                 mainHandler.removeCallbacks(progressTickRunnable);
                 mainHandler.post(progressTickRunnable);
                 updateMediaSessionState();
@@ -799,6 +816,7 @@ public class MusicPlaybackService extends Service {
                 mediaPlayer.start();
                 lastKnownPositionMs = 0L;
                 isPlaying = true;
+                applyPlaybackSpeed();
                 mainHandler.post(progressTickRunnable);
                 updateMediaSessionState();
                 postOrUpdateNotification(true);
@@ -895,6 +913,18 @@ public class MusicPlaybackService extends Service {
         }
     }
 
+    private void applyPlaybackSpeed() {
+        if (mediaPlayer == null || !isPlaying || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return;
+        }
+        try {
+            float safeSpeed = Math.max(0.5f, Math.min(2.0f, playbackSpeed));
+            mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(safeSpeed));
+        } catch (Exception ignored) {
+            // ignore unsupported playback speed on rare codecs
+        }
+    }
+
     private void updateMediaSessionMetadata() {
         if (mediaSession == null || currentTrack == null) return;
 
@@ -942,7 +972,7 @@ public class MusicPlaybackService extends Service {
 
         PlaybackState pbState = new PlaybackState.Builder()
             .setActions(actions)
-            .setState(state, Math.max(0L, lastKnownPositionMs), isPlaying ? 1.0f : 0.0f)
+            .setState(state, Math.max(0L, lastKnownPositionMs), isPlaying ? playbackSpeed : 0.0f)
             .build();
 
         mediaSession.setPlaybackState(pbState);
@@ -1054,6 +1084,7 @@ public class MusicPlaybackService extends Service {
         obj.put("durationMs", Math.max(0L, currentDurationMs));
         obj.put("isShuffle", isShuffle);
         obj.put("repeatMode", repeatMode);
+        obj.put("playbackSpeed", playbackSpeed);
         return obj;
     }
 

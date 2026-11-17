@@ -27,6 +27,9 @@ import {
   FolderPlus,
   ShieldAlert,
   X,
+  Gauge,
+  Minus,
+  Plus,
 } from 'lucide-react';
 
 interface StandaloneAudioPlayerProps {
@@ -100,6 +103,11 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isShuffle, setIsShuffle] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('all');
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const playbackSpeedRef = useRef<number>(playbackSpeed);
+  useEffect(() => {
+    playbackSpeedRef.current = playbackSpeed;
+  }, [playbackSpeed]);
 
   const onPlaybackStartedRef = useRef(onPlaybackStarted);
   useEffect(() => {
@@ -190,6 +198,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         state.repeatMode === 'one'
       ) {
         setRepeatMode(state.repeatMode);
+      }
+      if (typeof state.playbackSpeed === 'number' && state.playbackSpeed >= 0.5 && state.playbackSpeed <= 2.0) {
+        setPlaybackSpeed(Number(state.playbackSpeed.toFixed(2)));
       }
       if (state.error) {
         setErrorMessage(state.error);
@@ -336,6 +347,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           repeatMode,
           volume,
           isMuted,
+          playbackSpeed: playbackSpeedRef.current,
         });
       } catch (err) {
         console.error('Native background audio playback failed:', err);
@@ -361,7 +373,10 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
 
       audioEl.src = playableUrl;
       audioEl.volume = isMuted ? 0 : volume;
+      audioEl.playbackRate = playbackSpeedRef.current;
+      audioEl.preservesPitch = true;
       audioEl.load();
+      audioEl.playbackRate = playbackSpeedRef.current;
       await audioEl.play();
       setIsPlaying(true);
     } catch (err) {
@@ -604,7 +619,8 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     nextShuffle: boolean,
     nextRepeat: RepeatMode,
     nextVolume: number,
-    nextMuted: boolean
+    nextMuted: boolean,
+    nextSpeed: number = playbackSpeedRef.current
   ) => {
     if (!isNativeAndroid() || !currentTrackRef.current || !shouldUseNativeService(currentTrackRef.current)) {
       return;
@@ -614,7 +630,30 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       repeatMode: nextRepeat,
       volume: nextVolume,
       isMuted: nextMuted,
+      playbackSpeed: nextSpeed,
     }).catch(() => {});
+  };
+
+  const applySongSpeed = (rawSpeed: number) => {
+    const clamped = Math.max(0.5, Math.min(2.0, Number(rawSpeed.toFixed(2))));
+    playbackSpeedRef.current = clamped;
+    setPlaybackSpeed(clamped);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = clamped;
+      audioRef.current.preservesPitch = true;
+    }
+    syncNativeSettings(isShuffle, repeatMode, volume, isMuted, clamped);
+  };
+
+  const stepSongSpeed = (delta: number) => {
+    applySongSpeed(playbackSpeedRef.current + delta);
+  };
+
+  const cycleSongSpeed = () => {
+    const presets = [1.0, 1.25, 1.5, 1.75, 2.0, 0.75];
+    const currentIdx = presets.findIndex((p) => Math.abs(p - playbackSpeedRef.current) < 0.05);
+    const nextSpeed = currentIdx >= 0 ? presets[(currentIdx + 1) % presets.length] : 1.0;
+    applySongSpeed(nextSpeed);
   };
 
   const toggleShuffle = () => {
@@ -656,8 +695,12 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           }
         }}
         onLoadedMetadata={() => {
-          if (audioRef.current && isFinite(audioRef.current.duration)) {
-            setDuration(audioRef.current.duration);
+          if (audioRef.current) {
+            if (isFinite(audioRef.current.duration)) {
+              setDuration(audioRef.current.duration);
+            }
+            audioRef.current.playbackRate = playbackSpeedRef.current;
+            audioRef.current.preservesPitch = true;
           }
         }}
         onEnded={handleTrackEnded}
@@ -679,26 +722,14 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
 
       {/* Audio Player Deck — visible only once user taps a song */}
       {currentTrack && (
-        <section className="bg-white dark:bg-slate-900 border border-emerald-500/40 dark:border-emerald-500/35 rounded-2xl p-5 shadow-xl dark:shadow-2xl space-y-5 overflow-hidden min-w-0">
+        <section className="bg-white dark:bg-slate-900 border border-emerald-500/40 dark:border-emerald-500/35 rounded-2xl p-4 sm:p-5 shadow-xl dark:shadow-2xl space-y-4 overflow-hidden min-w-0">
+          {/* Player Header */}
           <div className="flex items-center justify-between gap-3 min-w-0">
-            <div className="flex items-center gap-3.5 min-w-0 flex-1">
-              <div className="relative w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 overflow-hidden flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm">
-                <AudioArtwork song={currentTrack} className="w-full h-full" />
-                {isLoadingTrack && (
-                  <div className="absolute inset-0 bg-slate-950/45 flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
-                  {currentTrack.title || currentTrack.displayName}
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                  {currentTrack.artist}
-                  {currentTrack.album ? ` · ${currentTrack.album}` : ''}
-                </p>
-              </div>
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[11px] font-mono uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-semibold truncate">
+                {isPlaying ? 'Now Playing' : 'Paused'}
+              </span>
             </div>
 
             <button
@@ -717,12 +748,33 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                 setCurrentTime(0);
                 setCurrentTrack(null);
               }}
-              className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="min-w-[40px] min-h-[40px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               title="Close Audio Player"
               aria-label="Close Audio Player"
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Full-Size Cover Artwork Stage */}
+          <div className="relative w-full max-w-[340px] aspect-square mx-auto rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 overflow-hidden shadow-2xl">
+            <AudioArtwork song={currentTrack} className="w-full h-full" />
+            {isLoadingTrack && (
+              <div className="absolute inset-0 bg-slate-950/45 backdrop-blur-[1px] flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+
+          {/* Track Title & Artist beneath Artwork */}
+          <div className="text-center space-y-1 min-w-0 px-1">
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 truncate">
+              {currentTrack.title || currentTrack.displayName}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 truncate">
+              {currentTrack.artist}
+              {currentTrack.album ? ` · ${currentTrack.album}` : ''}
+            </p>
           </div>
 
           {/* Timeline Scrubber */}
@@ -778,8 +830,8 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           </div>
 
           {/* Transport Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-            <div className="flex items-center justify-center gap-2 sm:gap-3 flex-1 sm:flex-initial">
+          <div className="flex flex-col items-center gap-4 pt-1">
+            <div className="flex items-center justify-center gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={toggleShuffle}
@@ -850,46 +902,87 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
               </button>
             </div>
 
-            {/* Volume */}
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 mx-auto sm:mx-0">
-              <button
-                type="button"
-                onClick={() => {
-                  const nextMuted = !isMuted;
-                  setIsMuted(nextMuted);
-                  if (audioRef.current) {
-                    audioRef.current.volume = nextMuted ? 0 : volume;
-                  }
-                  syncNativeSettings(isShuffle, repeatMode, volume, nextMuted);
-                }}
-                className="text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white cursor-pointer p-1"
-                aria-label={isMuted ? 'Unmute' : 'Mute'}
-              >
-                {isMuted || volume === 0 ? (
-                  <VolumeX className="w-4 h-4 text-red-500 dark:text-red-400" />
-                ) : (
-                  <Volume2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                )}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={isMuted ? 0 : volume}
-                onChange={(e) => {
-                  const next = parseFloat(e.target.value);
-                  const nextMuted = next === 0;
-                  setVolume(next);
-                  setIsMuted(nextMuted);
-                  if (audioRef.current) {
-                    audioRef.current.volume = next;
-                  }
-                  syncNativeSettings(isShuffle, repeatMode, next, nextMuted);
-                }}
-                aria-label="Audio volume"
-                className="w-24 accent-emerald-500 dark:accent-emerald-400 cursor-pointer"
-              />
+            {/* Speed & Volume Strip */}
+            <div className="w-full flex flex-wrap items-center justify-center sm:justify-between gap-2.5">
+              {/* Song Playback Speed Control */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 px-1.5 py-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => stepSongSpeed(-0.25)}
+                  disabled={playbackSpeed <= 0.5}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-35 text-slate-700 dark:text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Decrease Song Speed"
+                  aria-label="Decrease Song Speed"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={cycleSongSpeed}
+                  className={`min-h-[32px] px-2.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    playbackSpeed !== 1
+                      ? 'bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                      : 'text-slate-800 dark:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800'
+                  }`}
+                  title="Tap to change song speed"
+                  aria-label={`Song speed ${playbackSpeed}x`}
+                >
+                  <Gauge className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>{playbackSpeed.toFixed(playbackSpeed % 0.25 === 0 && playbackSpeed % 0.5 !== 0 ? 2 : 1)}x</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepSongSpeed(0.25)}
+                  disabled={playbackSpeed >= 2.0}
+                  className="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-35 text-slate-700 dark:text-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                  title="Increase Song Speed"
+                  aria-label="Increase Song Speed"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Volume */}
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMuted = !isMuted;
+                    setIsMuted(nextMuted);
+                    if (audioRef.current) {
+                      audioRef.current.volume = nextMuted ? 0 : volume;
+                    }
+                    syncNativeSettings(isShuffle, repeatMode, volume, nextMuted);
+                  }}
+                  className="text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white cursor-pointer p-1"
+                  aria-label={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="w-4 h-4 text-red-500 dark:text-red-400" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  )}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => {
+                    const next = parseFloat(e.target.value);
+                    const nextMuted = next === 0;
+                    setVolume(next);
+                    setIsMuted(nextMuted);
+                    if (audioRef.current) {
+                      audioRef.current.volume = next;
+                    }
+                    syncNativeSettings(isShuffle, repeatMode, next, nextMuted);
+                  }}
+                  aria-label="Audio volume"
+                  className="w-24 accent-emerald-500 dark:accent-emerald-400 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 

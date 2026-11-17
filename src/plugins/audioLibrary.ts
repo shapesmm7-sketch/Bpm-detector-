@@ -31,6 +31,7 @@ export interface MusicPlaybackState {
   durationMs: number;
   isShuffle: boolean;
   repeatMode: MusicRepeatMode;
+  playbackSpeed?: number;
   error?: string;
 }
 
@@ -197,6 +198,7 @@ interface AudioLibraryPluginInterface {
     repeatMode: MusicRepeatMode;
     volume: number;
     isMuted: boolean;
+    playbackSpeed?: number;
   }): Promise<void>;
   toggleMusicPlayPause(): Promise<void>;
   pauseMusicPlayback(): Promise<void>;
@@ -208,6 +210,7 @@ interface AudioLibraryPluginInterface {
     repeatMode: MusicRepeatMode;
     volume: number;
     isMuted: boolean;
+    playbackSpeed?: number;
   }): Promise<void>;
   updateMusicQueue(options: { songs: AudioTrackItem[] }): Promise<void>;
   stopMusicPlayback(): Promise<void>;

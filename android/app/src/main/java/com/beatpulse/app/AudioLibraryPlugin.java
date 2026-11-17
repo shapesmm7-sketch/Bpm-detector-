@@ -537,12 +537,12 @@ public class AudioLibraryPlugin extends Plugin {
 
     @PluginMethod
     public void setAppAppearance(PluginCall call) {
-        String rawTheme = call.getString("theme", "dark");
-        String theme = ("light".equals(rawTheme) || "system".equals(rawTheme)) ? rawTheme : "dark";
+        String rawTheme = call.getString("theme", "light");
+        String theme = ("dark".equals(rawTheme) || "system".equals(rawTheme)) ? rawTheme : "light";
 
         Context ctx = getContext();
         SharedPreferences prefs = ctx.getSharedPreferences("beatpulse_prefs", Context.MODE_PRIVATE);
-        prefs.edit().putString("app_theme", theme).apply();
+        prefs.edit().putString("app_theme_v2", theme).apply();
 
         boolean isDark = resolveIsDarkTheme(ctx, theme);
         Activity activity = getActivity();
@@ -562,7 +562,7 @@ public class AudioLibraryPlugin extends Plugin {
     public static void applyStoredAppearance(Activity activity, WebView webView) {
         if (activity == null) return;
         SharedPreferences prefs = activity.getSharedPreferences("beatpulse_prefs", Context.MODE_PRIVATE);
-        String theme = prefs.getString("app_theme", "dark");
+        String theme = prefs.getString("app_theme_v2", "light");
         boolean isDark = resolveIsDarkTheme(activity, theme);
         activity.runOnUiThread(() -> applyNativeAppearance(activity, webView, isDark));
     }
@@ -1358,6 +1358,7 @@ public class AudioLibraryPlugin extends Plugin {
         String repeatMode = call.getString("repeatMode", "all");
         Double volumeObj = call.getDouble("volume", 1.0);
         boolean isMuted = Boolean.TRUE.equals(call.getBoolean("isMuted", false));
+        Double speedObj = call.getDouble("playbackSpeed", 1.0);
 
         List<MusicPlaybackService.TrackMeta> queue = parseTrackQueue(songsJson);
         if (queue.isEmpty()) {
@@ -1367,7 +1368,8 @@ public class AudioLibraryPlugin extends Plugin {
 
         requestNotificationPermissionIfNeeded();
         float vol = volumeObj != null ? volumeObj.floatValue() : 1.0f;
-        MusicPlaybackService.setQueueAndSettings(queue, startIndex, isShuffle, repeatMode, vol, isMuted);
+        float speed = speedObj != null ? speedObj.floatValue() : 1.0f;
+        MusicPlaybackService.setQueueAndSettings(queue, startIndex, isShuffle, repeatMode, vol, isMuted, speed);
         sendMusicServiceCommand(MusicPlaybackService.ACTION_PLAY_QUEUE, -1L, true);
         call.resolve();
     }
@@ -1416,9 +1418,11 @@ public class AudioLibraryPlugin extends Plugin {
         String repeatMode = call.getString("repeatMode", "all");
         Double volumeObj = call.getDouble("volume", 1.0);
         boolean isMuted = Boolean.TRUE.equals(call.getBoolean("isMuted", false));
+        Double speedObj = call.getDouble("playbackSpeed", 1.0);
         float vol = volumeObj != null ? volumeObj.floatValue() : 1.0f;
+        float speed = speedObj != null ? speedObj.floatValue() : 1.0f;
 
-        MusicPlaybackService.updateSettingsOnly(isShuffle, repeatMode, vol, isMuted);
+        MusicPlaybackService.updateSettingsOnly(isShuffle, repeatMode, vol, isMuted, speed);
         sendMusicServiceCommand(MusicPlaybackService.ACTION_UPDATE_SETTINGS, -1L, false);
         call.resolve();
     }

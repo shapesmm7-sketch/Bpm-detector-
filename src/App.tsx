@@ -39,7 +39,7 @@ import {
 
 import { Music, Home, Video } from 'lucide-react';
 
-const THEME_STORAGE_KEY = 'beatpulse_theme';
+const THEME_STORAGE_KEY = 'movibe_theme';
 
 export default function App() {
   const [activeSection, setActiveSection] = useState<'home' | 'audio' | 'video'>('home');
@@ -53,13 +53,13 @@ export default function App() {
     } catch {
       // ignore storage errors
     }
-    return 'dark';
+    return 'light';
   });
   const [systemPrefersDark, setSystemPrefersDark] = useState<boolean>(() => {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
-    return true;
+    return false;
   });
   const [audioPauseSignal, setAudioPauseSignal] = useState<number>(0);
   const [videoPauseSignal, setVideoPauseSignal] = useState<number>(0);

@@ -1238,10 +1238,65 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
       const ovDur = Math.max(0.1, ov.sourceEnd - ov.sourceStart);
       const ovEnd = ov.timelineStart + ovDur;
-      const isVisible = globalSec >= ov.timelineStart - 0.02 && globalSec < ovEnd - 0.01;
+      const hasAdjacentPrev = overlays.some(
+        (o) =>
+          o.id !== ov.id &&
+          o.mediaType === 'video' &&
+          Math.abs(o.timelineStart + Math.max(0.1, o.sourceEnd - o.sourceStart) - ov.timelineStart) < 0.05
+      );
+      const hasAdjacentNext = overlays.some(
+        (o) =>
+          o.id !== ov.id &&
+          o.mediaType === 'video' &&
+          Math.abs(o.timelineStart - ovEnd) < 0.05
+      );
+
+      const isVisible =
+        (hasAdjacentPrev ? globalSec >= ov.timelineStart : globalSec >= ov.timelineStart - 0.015) &&
+        (hasAdjacentNext ? globalSec < ovEnd : globalSec < ovEnd - 0.01);
+
       if (!isVisible) {
         overlayWasVisibleRef.current[ov.id] = false;
         if (!el.paused) el.pause();
+
+        // Pre-seek upcoming/inactive cut segments cleanly to their sourceStart while hidden
+        // so transitions into cut 2+ are instant without decoder flush stalls.
+        if (el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - ov.sourceStart) > 0.08) {
+          const lastSeekMs = overlayLastSeekMsRef.current[ov.id] || 0;
+          if (forceSync || nowMs - lastSeekMs >= 250) {
+            overlayLastSeekMsRef.current[ov.id] = nowMs;
+            el.currentTime = ov.sourceStart;
+          }
+        }
+
+        // Synchronously pre-warm hidden cut video elements inside the user's Play tap so Chrome
+        // Android / WebView grants playback activation before the playhead reaches cut 2+.
+        if (
+          forceSync &&
+          shouldPlay &&
+          !overlayPrewarmedRef.current[ov.id] &&
+          !overlayPlayInFlightRef.current[ov.id]
+        ) {
+          overlayPrewarmedRef.current[ov.id] = true;
+          overlayPlayInFlightRef.current[ov.id] = true;
+          el.muted = true;
+          void el
+            .play()
+            .then(() => {
+              if (!overlayWasVisibleRef.current[ov.id] || !trimBoundsRef.current.isPlaying) {
+                el.pause();
+                if (el.readyState >= 1 && !el.seeking && Math.abs(el.currentTime - ov.sourceStart) > 0.08) {
+                  el.currentTime = ov.sourceStart;
+                }
+              }
+            })
+            .catch(() => {
+              overlayPrewarmedRef.current[ov.id] = false;
+            })
+            .finally(() => {
+              overlayPlayInFlightRef.current[ov.id] = false;
+            });
+        }
         continue;
       }
 
@@ -1257,7 +1312,16 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         Math.min(ov.sourceEnd, ov.sourceStart + Math.max(0, globalSec - ov.timelineStart))
       );
 
-      if (el.readyState >= 1 && !el.seeking) {
+      // Stop cleanly once this cut reaches its own sourceEnd boundary
+      const reachedOvEnd =
+        targetOffset >= ov.sourceEnd - 0.02 ||
+        (shouldPlay && !el.seeking && el.readyState >= 2 && el.currentTime >= ov.sourceEnd - 0.015);
+      if (reachedOvEnd) {
+        if (!el.paused) el.pause();
+        continue;
+      }
+
+      if (el.readyState >= 1 && !el.seeking && !overlayPlayInFlightRef.current[ov.id]) {
         const drift = Math.abs(el.currentTime - targetOffset);
         const lastSeekMs = overlayLastSeekMsRef.current[ov.id] || 0;
         const nearClipEnd = ov.sourceEnd - targetOffset <= 0.15;
@@ -1266,11 +1330,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         if (!shouldPlay) {
           shouldSeek = drift > 0.05 && (forceSync || nowMs - lastSeekMs >= 70);
         } else if (forceSync || !wasVisible) {
-          shouldSeek = !nearClipEnd && drift > 0.12 && (forceSync || nowMs - lastSeekMs >= 200);
+          shouldSeek = !nearClipEnd && drift > 0.14 && (forceSync || nowMs - lastSeekMs >= 200);
         } else {
-          // During continuous playback, allow normal audio-vs-muted-video pipeline offset (~200-400ms)
-          // without triggering hard re-seeks that flush decoders and cause start/stop stuttering.
-          shouldSeek = !nearClipEnd && drift > 0.65 && nowMs - lastSeekMs >= 900;
+          // During continuous playback, allow normal pipeline offset without flushing decoders
+          // (which previously caused second-cut stuttering).
+          shouldSeek = !nearClipEnd && drift > 0.85 && nowMs - lastSeekMs >= 1200;
         }
 
         if (shouldSeek) {
@@ -1283,12 +1347,13 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         if (
           el.paused &&
           (!el.ended || forceSync) &&
-          (!el.seeking || forceSync) &&
+          (!el.seeking || forceSync || !wasVisible) &&
           el.readyState >= (forceSync ? 1 : 2) &&
           !overlayPlayInFlightRef.current[ov.id] &&
-          targetOffset < ov.sourceEnd - 0.04
+          targetOffset < ov.sourceEnd - 0.03
         ) {
           overlayPlayInFlightRef.current[ov.id] = true;
+          overlayPrewarmedRef.current[ov.id] = true;
           void el
             .play()
             .then(() => {
@@ -4019,7 +4084,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               setVideos((prev) => [...newItems, ...prev]);
               setLastSavedClip(newItems[0]);
             }
-            setEditStatusMessage('Split into 2 original-quality clips in Movies/BeatPulse/');
+            setEditStatusMessage('Split into 2 original-quality clips in Movies/Mo Vibe/');
           } else {
             const srcUrl = mainVideoUrlRef.current || currentVideo.webUrl || videoRef.current?.currentSrc;
             if (!srcUrl) throw new Error('Video source is unavailable.');
@@ -4286,6 +4351,12 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       {/* VLC-Style Full-Viewport Video Player Screen (Zero Scrolling) */}
       <div
         ref={playerContainerRef}
+        onClick={(e) => {
+          if (editMode !== 'split') return;
+          if (!(e.target as HTMLElement).closest('[data-keep-selection="true"]')) {
+            clearTimelineSelection();
+          }
+        }}
         className={
           isPlayerOpen
             ? 'fixed inset-0 z-50 bg-black flex flex-col w-full h-full overflow-hidden select-none'
@@ -4315,7 +4386,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </p>
               <p className="text-[10px] font-mono tabular-nums text-slate-400">
                 {isProcessingEdit && exportProgressPct !== null
-                  ? `Saving video... ${exportProgressPct}%`
+                  ? `Exporting video... ${exportProgressPct}%`
                   : canExportSplitLossless
                   ? 'Original quality · No re-encoding'
                   : splitTextOverlays.length > 0
@@ -4326,17 +4397,18 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
             <button
               type="button"
+              data-keep-selection="true"
               onClick={() => void handleSaveSplitTimeline()}
               disabled={isProcessingEdit}
               className="min-h-[44px] px-4 rounded-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors whitespace-nowrap"
-              title="Save Video"
-              aria-label="Save Edited Video"
+              title="Export Video"
+              aria-label="Export Edited Video"
             >
               {isProcessingEdit ? (
                 <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Save</span>
+                  <span>Export</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -4352,6 +4424,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           onClick={() => {
             if (editMode === 'split') {
               if (isMainCropActive) return;
+              if (selectedTrackType !== 'none') {
+                clearTimelineSelection();
+                return;
+              }
               void handleTogglePlayPause();
             } else if (isPreviewingTrim) {
               void handleTogglePlayPause();
@@ -4839,6 +4915,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   {/* Interactive Main Video Crop Box Overlay */}
                   {editMode === 'split' && isMainCropActive && (
                     <div
+                      data-keep-selection="true"
                       onClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
                       className="absolute inset-0 z-30 select-none touch-none"
@@ -4972,10 +5049,17 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                         ? activeOverlayTrimDrag.liveSourceEnd
                         : ov.sourceEnd;
                       const ovEnd = liveTlStart + Math.max(0.1, liveSrcEnd - liveSrcStart);
+                      const hasAdjacentNextOv = splitOverlays.some(
+                        (o) =>
+                          o.id !== ov.id &&
+                          o.mediaType === 'video' &&
+                          Math.abs(o.timelineStart - ovEnd) < 0.05
+                      );
                       const isVisible =
                         !isMainCropActive &&
-                        currentTime >= liveTlStart - 0.02 &&
-                        currentTime <= ovEnd + 0.02;
+                        currentTime >= liveTlStart - 0.005 &&
+                        (currentTime < ovEnd - 0.005 ||
+                          (!hasAdjacentNextOv && Math.abs(currentTime - ovEnd) <= 0.02));
                       const isSelectedOv =
                         selectedTrackType === 'overlay' && selectedOverlayId === ov.id;
                       const rotDeg = ov.rotation || 0;
@@ -4983,6 +5067,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       return (
                         <div
                           key={ov.id}
+                          data-keep-selection="true"
                           ref={(el) => {
                             overlayBoxRefs.current[ov.id] = el;
                           }}
@@ -5109,6 +5194,17 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                                 playsInline
                                 preload="auto"
                                 muted={ov.muted}
+                                onLoadedMetadata={(e) => {
+                                  const v = e.currentTarget;
+                                  if (
+                                    v.readyState >= 1 &&
+                                    !v.seeking &&
+                                    Math.abs(v.currentTime - ov.sourceStart) > 0.08 &&
+                                    !trimBoundsRef.current.isPlaying
+                                  ) {
+                                    v.currentTime = ov.sourceStart;
+                                  }
+                                }}
                                 className="w-full h-auto max-h-[70vh] block object-contain pointer-events-none select-none bg-black"
                               />
                             ) : (
@@ -5199,7 +5295,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                                       splitAudioSegments,
                                       undefined,
                                       undefined,
-                                      nextOverlays.length > 0 ? 'overlay' : 'video',
+                                      nextOverlays.length > 0 ? 'overlay' : 'none',
                                       undefined,
                                       undefined,
                                       nextOverlays,
@@ -5376,6 +5472,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       return (
                         <div
                           key={ov.id}
+                          data-keep-selection="true"
                           onClick={(e) => e.stopPropagation()}
                           onPointerDown={(e) => {
                             e.stopPropagation();
@@ -5445,6 +5542,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 {/* Floating Main Video Crop Bar when Crop Mode is Active */}
                 {editMode === 'split' && isMainCropActive && (
                   <div
+                    data-keep-selection="true"
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                     className="absolute bottom-2 left-1/2 -translate-x-1/2 z-40 max-w-[96%] px-2.5 py-1.5 rounded-2xl bg-slate-950/92 border border-white/15 backdrop-blur-md shadow-2xl flex items-center gap-1 overflow-x-auto no-scrollbar"
@@ -6150,6 +6248,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
               <button
                 type="button"
+                data-keep-selection="true"
                 onClick={() => void handleTogglePlayPause()}
                 className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
                 aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -6164,6 +6263,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               <div className="flex items-center justify-end gap-1 min-w-[92px]">
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={handleUndoSplit}
                   disabled={splitUndoStack.length === 0}
                   className="min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 disabled:opacity-30 text-white flex items-center justify-center cursor-pointer"
@@ -6174,6 +6274,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 </button>
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={handleRedoSplit}
                   disabled={splitRedoStack.length === 0}
                   className="min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 disabled:opacity-30 text-white flex items-center justify-center cursor-pointer"
@@ -6184,6 +6285,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 </button>
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={() => void handleFullscreen()}
                   className="min-w-[36px] min-h-[36px] rounded-lg hover:bg-white/10 text-white flex items-center justify-center cursor-pointer"
                   title="Fullscreen"
@@ -6194,15 +6296,29 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </div>
             </div>
 
-            {/* Horizontal Scrolling Multi-Track Timeline (Video, Audio, Text, Overlay) + Left Pinned Track Icons */}
+            {/* Horizontal Scrolling Multi-Track Timeline (Video, Audio, Multi-Line Text, Overlay) + Left Pinned Track Icons */}
+            {(() => {
+              const maxTextRow = splitTextOverlays.reduce(
+                (m, t) => Math.max(m, t.trackRow ?? 0),
+                -1
+              );
+              const textRowCount = splitTextOverlays.length === 0 ? 1 : maxTextRow + 1;
+              const hasTextAddLineRow = splitTextOverlays.length > 0;
+              const textSectionTotalHeightPx =
+                textRowCount * 44 + (hasTextAddLineRow ? 36 : 0);
+              const overlayTopPx = 124 + textSectionTotalHeightPx;
+              const timelineTotalHeightPx =
+                overlayTopPx + (splitOverlays.length > 0 ? 46 : 0);
+
+              return (
             <div
-              className={`relative w-full bg-black overflow-hidden transition-[height] duration-150 ${
-                splitOverlays.length > 0 ? 'h-[214px]' : 'h-[168px]'
-              }`}
+              style={{ height: `${timelineTotalHeightPx}px` }}
+              className="relative w-full bg-black overflow-hidden transition-[height] duration-150"
             >
               {/* Fixed Mute Button on Left Edge (Video Row) */}
               <button
                 type="button"
+                data-keep-selection="true"
                 onClick={() => {
                   const next = !isMuted;
                   trimBoundsRef.current.isMuted = next;
@@ -6227,10 +6343,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               {splitAudioSegments.length > 0 ? (
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={() => {
                     if (splitAudioRef.current) splitAudioRef.current.pause();
                     setSplitCustomAudio(null);
-                    commitTimelineState(splitSegments, [], undefined, null, 'video');
+                    commitTimelineState(splitSegments, [], undefined, null, 'none');
                   }}
                   className="absolute left-2 top-[78px] z-30 w-10 h-10 rounded-xl bg-zinc-900/90 border border-emerald-400/40 text-emerald-300 hover:bg-red-500/20 hover:border-red-400/50 hover:text-red-200 flex items-center justify-center cursor-pointer transition-colors"
                   title="Remove added audio track"
@@ -6241,6 +6358,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               ) : (
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={() => void openAudioPickerModal()}
                   className="absolute left-2 top-[78px] z-30 w-10 h-10 rounded-xl bg-zinc-900/90 border border-white/15 text-slate-300 hover:text-white hover:bg-white/15 flex items-center justify-center cursor-pointer transition-colors"
                   title="Add audio"
@@ -6250,9 +6368,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 </button>
               )}
 
-              {/* Fixed Text Track Icon on Left Edge (Text Row) */}
+              {/* Fixed Text Track Icon on Left Edge (Text Row 1) */}
               <button
                 type="button"
+                data-keep-selection="true"
                 onClick={() => openAddTextEditor()}
                 className={`absolute left-2 top-[124px] z-30 w-10 h-[38px] rounded-xl border flex items-center justify-center cursor-pointer transition-colors ${
                   splitTextOverlays.length > 0
@@ -6265,12 +6384,14 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 <Type className="w-4 h-4" />
               </button>
 
-              {/* Fixed Overlay Track Icon on Left Edge (Overlay Row, visible when overlays added) */}
+              {/* Fixed Overlay Track Icon on Left Edge (Overlay Row, aligned below all text lines) */}
               {splitOverlays.length > 0 && (
                 <button
                   type="button"
+                  data-keep-selection="true"
                   onClick={openOverlayPickerModal}
-                  className="absolute left-2 top-[168px] z-30 w-10 h-[40px] rounded-xl border bg-violet-500/15 border-violet-400/45 text-violet-300 hover:bg-violet-500/25 flex items-center justify-center cursor-pointer transition-colors"
+                  style={{ top: `${overlayTopPx}px` }}
+                  className="absolute left-2 z-30 w-10 h-[40px] rounded-xl border bg-violet-500/15 border-violet-400/45 text-violet-300 hover:bg-violet-500/25 flex items-center justify-center cursor-pointer transition-colors"
                   title="Add overlay video or photo"
                   aria-label="Add overlay"
                 >
@@ -6525,6 +6646,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       return (
                         <div
                           key={seg.id}
+                          data-keep-selection="true"
                           style={{
                             width: `${slotWidth}px`,
                             transform: isMovingVideoSeg
@@ -7029,6 +7151,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                         return (
                           <div
                             key={aSeg.id}
+                            data-keep-selection="true"
                             style={{ width: `${slotWidth}px` }}
                             className={`relative h-full shrink-0 ${idx > 0 ? 'ml-0.5' : ''} ${
                               isSelected ? 'z-20' : ''
@@ -7331,56 +7454,71 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     )}
                   </div>
 
-                  {/* Row 3: Text Track Line Directly Below Audio Line (+ Add text or positioned interactive text blocks) */}
-                  <div className="relative h-[38px] mt-1.5">
-                    {splitTextOverlays.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => openAddTextEditor()}
-                        style={{ width: `${Math.max(140, maxSplitTimelineDuration * splitPxPerSec)}px` }}
-                        className="h-full rounded-lg bg-white/[0.06] hover:bg-white/[0.11] border border-white/10 px-3 flex items-center gap-2 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors text-left"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-                        <span className="truncate">Add text</span>
-                      </button>
-                    ) : (
-                      splitTextOverlays.map((ov) => {
-                        const timelineCap = Math.max(0.5, maxSplitTimelineDuration);
-                        const isDraggingTrim = activeTextTrimDrag?.id === ov.id;
-                        const isDraggingMove = activeTextMoveDrag?.id === ov.id;
-                        const pxPerSec = isDraggingTrim
-                          ? activeTextTrimDrag.frozenPxPerSec
-                          : isDraggingMove
-                          ? activeTextMoveDrag.frozenPxPerSec
-                          : splitPxPerSec;
-                        const storedStart = Math.max(0, ov.startTime);
-                        const storedEnd =
-                          ov.endTime >= 90000
-                            ? timelineCap
-                            : Math.max(storedStart + 0.3, ov.endTime);
-                        const liveStart = isDraggingTrim
-                          ? activeTextTrimDrag.liveStart
-                          : isDraggingMove
-                          ? activeTextMoveDrag.liveStart
-                          : storedStart;
-                        const liveEnd = isDraggingTrim
-                          ? activeTextTrimDrag.liveEnd
-                          : isDraggingMove
-                          ? activeTextMoveDrag.liveEnd
-                          : storedEnd;
-                        const leftPx = liveStart * pxPerSec;
-                        const barWidth = Math.max(28, (liveEnd - liveStart) * pxPerSec);
-                        const isSelected =
-                          selectedTrackType === 'text' && selectedTextId === ov.id;
+                  {/* Row 3+: Multi-Section & Multi-Line Text Tracks (+ Add text in front OR add new text line below) */}
+                  {Array.from({ length: textRowCount }).map((_, rowIdx) => {
+                    const timelineCap = Math.max(0.5, maxSplitTimelineDuration);
+                    const rowItems = splitTextOverlays
+                      .filter((t) => (t.trackRow ?? 0) === rowIdx)
+                      .sort((a, b) => a.startTime - b.startTime);
+                    const rowLastEnd = rowItems.reduce(
+                      (m, t) => Math.max(m, t.endTime >= 90000 ? timelineCap : t.endTime),
+                      0
+                    );
 
-                        return (
-                          <div
-                            key={ov.id}
-                            style={{ left: `${leftPx}px`, width: `${barWidth}px` }}
-                            className={`absolute top-0 bottom-0 ${
-                              isDraggingMove ? 'z-30 opacity-95' : isSelected ? 'z-20' : 'z-10'
-                            }`}
+                    return (
+                      <div key={`text-row-${rowIdx}`} className="relative h-[38px] mt-1.5">
+                        {rowItems.length === 0 ? (
+                          <button
+                            type="button"
+                            data-keep-selection="true"
+                            onClick={() => openAddTextEditor(undefined, { row: rowIdx })}
+                            style={{ width: `${Math.max(140, maxSplitTimelineDuration * splitPxPerSec)}px` }}
+                            className="h-full rounded-lg bg-white/[0.06] hover:bg-white/[0.11] border border-white/10 px-3 flex items-center gap-2 text-slate-300 hover:text-white text-xs font-medium cursor-pointer transition-colors text-left"
                           >
+                            <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                            <span className="truncate">
+                              {rowIdx === 0 ? 'Add text' : `Add text on Line ${rowIdx + 1}`}
+                            </span>
+                          </button>
+                        ) : (
+                          <>
+                            {rowItems.map((ov) => {
+                              const isDraggingTrim = activeTextTrimDrag?.id === ov.id;
+                              const isDraggingMove = activeTextMoveDrag?.id === ov.id;
+                              const pxPerSec = isDraggingTrim
+                                ? activeTextTrimDrag.frozenPxPerSec
+                                : isDraggingMove
+                                ? activeTextMoveDrag.frozenPxPerSec
+                                : splitPxPerSec;
+                              const storedStart = Math.max(0, ov.startTime);
+                              const storedEnd =
+                                ov.endTime >= 90000
+                                  ? timelineCap
+                                  : Math.max(storedStart + 0.3, ov.endTime);
+                              const liveStart = isDraggingTrim
+                                ? activeTextTrimDrag.liveStart
+                                : isDraggingMove
+                                ? activeTextMoveDrag.liveStart
+                                : storedStart;
+                              const liveEnd = isDraggingTrim
+                                ? activeTextTrimDrag.liveEnd
+                                : isDraggingMove
+                                ? activeTextMoveDrag.liveEnd
+                                : storedEnd;
+                              const leftPx = liveStart * pxPerSec;
+                              const barWidth = Math.max(28, (liveEnd - liveStart) * pxPerSec);
+                              const isSelected =
+                                selectedTrackType === 'text' && selectedTextId === ov.id;
+
+                              return (
+                                <div
+                                  key={ov.id}
+                                  data-keep-selection="true"
+                                  style={{ left: `${leftPx}px`, width: `${barWidth}px` }}
+                                  className={`absolute top-0 bottom-0 ${
+                                    isDraggingMove ? 'z-30 opacity-95' : isSelected ? 'z-20' : 'z-10'
+                                  }`}
+                                >
                             <button
                               type="button"
                               onPointerDown={(e) => {
@@ -7705,11 +7843,53 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                                 </div>
                               </div>
                             )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                                </div>
+                              );
+                            })}
+                            {rowLastEnd < timelineCap - 0.35 && (
+                              <button
+                                type="button"
+                                data-keep-selection="true"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openAddTextEditor(undefined, { row: rowIdx, startAt: rowLastEnd });
+                                }}
+                                style={{
+                                  left: `${rowLastEnd * splitPxPerSec + 4}px`,
+                                  width: `${Math.max(76, (timelineCap - rowLastEnd) * splitPxPerSec - 4)}px`,
+                                }}
+                                className="absolute top-0 bottom-0 rounded-lg border border-dashed border-amber-400/45 bg-amber-500/[0.08] hover:bg-amber-500/20 px-2.5 flex items-center gap-1 text-[11px] font-semibold text-amber-200 cursor-pointer transition-colors truncate"
+                                title="Add another text in front on this line"
+                              >
+                                <Plus className="w-3.5 h-3.5 shrink-0" />
+                                <span className="truncate">Add text</span>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Dedicated "+ Add text line" strip below existing text rows */}
+                  {hasTextAddLineRow && (
+                    <div className="relative h-[30px] mt-1.5">
+                      <button
+                        type="button"
+                        data-keep-selection="true"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openAddTextEditor(undefined, { row: textRowCount });
+                        }}
+                        style={{ width: `${Math.max(140, maxSplitTimelineDuration * splitPxPerSec)}px` }}
+                        className="h-full rounded-lg bg-white/[0.04] hover:bg-white/[0.09] border border-dashed border-white/15 px-3 flex items-center gap-1.5 text-slate-300 hover:text-white text-[11px] font-medium cursor-pointer transition-colors text-left"
+                        title="Create another text line below"
+                      >
+                        <Plus className="w-3 h-3 text-amber-300 shrink-0" />
+                        <span className="truncate">Add text line below</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Row 4: Overlay Track Line (Video & Photo Overlays with Touch-and-Pull < > Trim Handles) */}
                   {splitOverlays.length > 0 && (
@@ -7751,6 +7931,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                         return (
                           <div
                             key={ov.id}
+                            data-keep-selection="true"
                             style={{ left: `${leftPx}px`, width: `${barWidth}px` }}
                             className={`absolute top-0 bottom-0 ${
                               isDraggingMove ? 'z-30 opacity-95' : isSelected ? 'z-20' : 'z-10'
@@ -8186,10 +8367,12 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 </div>
               </div>
             </div>
+              );
+            })()}
 
             {/* + Two-Option Popover Menu: Add Video / Add Image */}
             {showAddMediaMenu && (
-              <div className="px-3">
+              <div data-keep-selection="true" className="px-3">
                 <div className="rounded-2xl bg-slate-900 border border-white/15 p-2 flex items-center gap-2 shadow-2xl">
                   <button
                     type="button"
@@ -8248,7 +8431,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </div>
             )}
 
-            {/* Bottom Tool Dock: Split, Remove, Audio, Text, Overlay, Save all on one line */}
+            {/* Bottom Tool Dock: Split, Remove, Audio, Text, Overlay */}
             {(() => {
               const activeSeg =
                 splitSegments.find((s) => s.id === selectedSplitSegId) ||
@@ -8289,12 +8472,13 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 isCropModified(mainVideoCrop);
 
               return (
-                <div className="px-2 sm:px-3 flex items-center justify-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar">
+                <div className="px-2 sm:px-3 flex items-center justify-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
+                    data-keep-selection="true"
                     onClick={handleSplitAtPlayhead}
                     disabled={isProcessingEdit}
-                    className="min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40"
+                    className="min-w-[54px] sm:min-w-[64px] h-[56px] px-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40"
                     title={
                       isOverlayTrackSelected
                         ? 'Split overlay at white playhead line'
@@ -8311,9 +8495,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
                   <button
                     type="button"
+                    data-keep-selection="true"
                     onClick={handleToggleRemoveSelectedSegment}
                     disabled={isProcessingEdit || !canRemoveSelected}
-                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-35 ${
+                    className={`min-w-[54px] sm:min-w-[64px] h-[56px] px-2 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-35 ${
                       isSelectedRemoved
                         ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
                         : 'bg-red-500/15 hover:bg-red-500/25 border-red-400/30 text-red-200'
@@ -8345,9 +8530,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
                   <button
                     type="button"
+                    data-keep-selection="true"
                     onClick={() => void openAudioPickerModal()}
                     disabled={isProcessingEdit}
-                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                    className={`min-w-[54px] sm:min-w-[64px] h-[56px] px-2 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
                       splitCustomAudio
                         ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-300'
                         : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
@@ -8360,9 +8546,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
                   <button
                     type="button"
+                    data-keep-selection="true"
                     onClick={() => openAddTextEditor()}
                     disabled={isProcessingEdit}
-                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                    className={`min-w-[54px] sm:min-w-[64px] h-[56px] px-2 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
                       splitTextOverlays.length > 0
                         ? 'bg-cyan-500/20 border-cyan-400/50 text-cyan-200'
                         : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
@@ -8375,9 +8562,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
                   <button
                     type="button"
+                    data-keep-selection="true"
                     onClick={openOverlayPickerModal}
                     disabled={isProcessingEdit}
-                    className={`min-w-[50px] sm:min-w-[60px] h-[56px] px-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
+                    className={`min-w-[54px] sm:min-w-[64px] h-[56px] px-2 rounded-xl border flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0 disabled:opacity-40 ${
                       splitOverlays.length > 0
                         ? 'bg-violet-500/20 border-violet-400/50 text-violet-200'
                         : 'bg-white/10 hover:bg-white/15 border-white/10 text-white'
@@ -8387,23 +8575,6 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     <Layers className="w-4 h-4" />
                     <span className="text-[11px] font-medium whitespace-nowrap">Overlay</span>
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleSaveSplitTimeline()}
-                    disabled={isProcessingEdit || !hasAnyEdits}
-                    className="min-w-[52px] sm:min-w-[64px] h-[56px] px-2 rounded-xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-white/10 disabled:text-slate-400 disabled:border disabled:border-white/10 text-slate-950 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors shrink-0"
-                    title="Save edited video"
-                  >
-                    {isProcessingEdit ? (
-                      <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-950 rounded-full animate-spin" />
-                    ) : (
-                      <ArrowRight className="w-4 h-4" />
-                    )}
-                    <span className="text-[11px] whitespace-nowrap">
-                      {isProcessingEdit && exportProgressPct !== null ? `${exportProgressPct}%` : 'Save'}
-                    </span>
-                  </button>
                 </div>
               );
             })()}
@@ -8412,7 +8583,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
         {/* Text Overlay Editor Modal inside Split Studio */}
         {isTextEditorOpen && (
-          <div className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col justify-between p-4">
+          <div
+            data-keep-selection="true"
+            className="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col justify-between p-4"
+          >
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
@@ -8500,8 +8674,74 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               );
             })()}
 
-            {/* Expandable Section Drawer + Headings Row (Text color, Text Bg color, Fonts, Styles, Templates) */}
+            {/* Expandable Section Drawer + Text Line/Section Selector + Style Tabs */}
             <div className="max-w-lg w-full mx-auto space-y-2.5">
+              {/* Text Track Line & Section Bar (same line in front OR new line below) */}
+              {(() => {
+                const maxExistingRow = splitTextOverlays.reduce(
+                  (m, t) => Math.max(m, t.trackRow ?? 0),
+                  0
+                );
+                const visibleLineCount = Math.max(maxExistingRow + 1, draftTextRow + 1);
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 px-1">
+                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                      {Array.from({ length: visibleLineCount }).map((_, rIdx) => (
+                        <button
+                          key={rIdx}
+                          type="button"
+                          onClick={() => setDraftTextRow(rIdx)}
+                          className={`min-h-[30px] px-2.5 rounded-lg text-[11px] font-semibold cursor-pointer whitespace-nowrap transition-colors ${
+                            draftTextRow === rIdx
+                              ? 'bg-amber-400 text-slate-950 font-bold'
+                              : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                          }`}
+                        >
+                          Line {rIdx + 1}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setDraftTextRow(maxExistingRow + 1)}
+                        className="min-h-[30px] px-2 rounded-lg text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-amber-300 border border-dashed border-amber-400/40 cursor-pointer whitespace-nowrap flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>New Line</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftTextInsertStart(null);
+                          setDraftTextTiming('all');
+                        }}
+                        className={`min-h-[30px] px-2 rounded-lg text-[11px] font-semibold cursor-pointer whitespace-nowrap ${
+                          draftTextTiming === 'all'
+                            ? 'bg-cyan-400 text-slate-950 font-bold'
+                            : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                        }`}
+                      >
+                        Whole Video
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDraftTextTiming('4s')}
+                        className={`min-h-[30px] px-2 rounded-lg text-[11px] font-semibold cursor-pointer whitespace-nowrap ${
+                          draftTextTiming === '4s'
+                            ? 'bg-cyan-400 text-slate-950 font-bold'
+                            : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                        }`}
+                      >
+                        {draftTextInsertStart !== null
+                          ? `From ${formatTimePadded(draftTextInsertStart)}`
+                          : '4s Section'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
               {activeTextSection !== 'none' && (
                 <div className="bg-slate-900/95 border border-white/15 rounded-2xl p-3 shadow-2xl">
                   {activeTextSection === 'color' && (
@@ -8986,7 +9226,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
                       <p className="text-sm font-semibold text-white">Photos Permission Required</p>
                       <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                        Allow photos & images access so BeatPulse can show all images on your phone.
+                        Allow photos & images access so Mo Vibe can show all images on your phone.
                       </p>
                       <button
                         type="button"
@@ -9069,7 +9309,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       <ShieldAlert className="w-10 h-10 text-amber-400 mx-auto" />
                       <p className="text-sm font-semibold text-white">Photos Permission Required</p>
                       <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                        Allow photos & images access so BeatPulse can show photos on your phone.
+                        Allow photos & images access so Mo Vibe can show photos on your phone.
                       </p>
                       <button
                         type="button"
@@ -9179,7 +9419,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             <ShieldAlert className="w-10 h-10 text-amber-500 dark:text-amber-400 mx-auto" />
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Video Permission Required</p>
             <p className="text-xs text-slate-600 dark:text-slate-400 max-w-sm mx-auto">
-              Allow video access so BeatPulse can list and play all videos stored on your phone.
+              Allow video access so Mo Vibe can list and play all videos stored on your phone.
             </p>
             <button
               type="button"
