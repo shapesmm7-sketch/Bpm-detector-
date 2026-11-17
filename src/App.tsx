@@ -863,6 +863,56 @@ export default function App() {
     }
   };
 
+  // Load any song from StandaloneAudioPlayer directly into Home Studio (Change key/pitch or Tempo)
+  const handleOpenTrackInStudio = async (song: AudioTrackItem, focus: 'key' | 'tempo') => {
+    setAudioPauseSignal((n) => n + 1);
+    setVideoPauseSignal((n) => n + 1);
+    setActiveSection('home');
+    setActiveTab('analyzer');
+
+    try {
+      stopAudio();
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+
+      let playableUrl = song.webUrl || song.uri;
+      if (isNativeAndroid() && song.uri && !song.uri.startsWith('blob:')) {
+        const prepared = await AudioLibrary.prepareAudioFile({
+          uri: song.uri,
+          displayName: song.displayName || song.title,
+        });
+        playableUrl = resolvePlayableAudioUrl(prepared);
+      }
+
+      if (!playableUrl) {
+        throw new Error('Audio source unavailable');
+      }
+
+      attachNativeAudio(playableUrl, false);
+
+      const response = await fetch(playableUrl);
+      const arrayBuf = await response.arrayBuffer();
+      const id3Bpm = extractId3Bpm(arrayBuf);
+      const decodedBuf = await decodeAudioData(arrayBuf);
+      const cleanTitle = (song.title || song.displayName).replace(/\.[^/.]+$/, '');
+
+      await processAudioBuffer(decodedBuf, cleanTitle, id3Bpm, {
+        sourceUri: song.uri,
+        displayName: song.displayName || song.title,
+      });
+      await suspendAudioContext();
+
+      window.setTimeout(() => {
+        const targetId = focus === 'key' ? 'studio-key-section' : 'studio-tempo-section';
+        document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 180);
+    } catch (err) {
+      console.error('Failed to open track in Home Studio:', err);
+      setAnalysisError('Failed to load selected audio file into Studio. Please try another track.');
+      setIsAnalyzing(false);
+    }
+  };
+
   // Reload a song directly when clicked from Session History
   const handleSelectHistorySong = async (item: HistoryItem) => {
     if (loadingHistoryId) return;
@@ -1172,6 +1222,7 @@ export default function App() {
             sharedSongs={phoneSongs}
             onSongsLoaded={setPhoneSongs}
             externalTrackRequest={externalTrackRequest}
+            onOpenTrackInStudio={(song, focus) => void handleOpenTrackInStudio(song, focus)}
           />
         </div>
 

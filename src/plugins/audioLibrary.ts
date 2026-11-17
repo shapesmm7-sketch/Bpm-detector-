@@ -231,6 +231,93 @@ interface AudioLibraryPluginInterface {
     theme: AppThemeMode;
     isDark: boolean;
   }>;
+  getAudioDetails(options: {
+    uri: string;
+    id?: string;
+    displayName?: string;
+  }): Promise<{
+    bitrateKbps?: number;
+    sampleRateHz?: number;
+    mimeType?: string;
+    folderPath?: string;
+    artist?: string;
+    album?: string;
+    title?: string;
+    durationMs?: number;
+    size?: number;
+  }>;
+  setAsRingtone(options: {
+    uri: string;
+    title?: string;
+    displayName?: string;
+  }): Promise<{
+    status: 'set' | 'permission_required' | 'failed';
+    message?: string;
+  }>;
+  shareAudioFile(options: {
+    uri: string;
+    title?: string;
+    displayName?: string;
+    mimeType?: string;
+  }): Promise<{ shared: boolean }>;
+  deleteAudioFile(options: {
+    uri: string;
+    id?: string;
+  }): Promise<{ deleted: boolean; cancelled?: boolean }>;
+  renameAudioFile(options: {
+    uri: string;
+    id?: string;
+    newTitle: string;
+    newDisplayName?: string;
+    newArtist?: string;
+    newAlbum?: string;
+  }): Promise<{
+    renamed: boolean;
+    cancelled?: boolean;
+    title: string;
+    displayName: string;
+    artist?: string;
+    album?: string;
+  }>;
+  moveOrCopyAudioFile(options: {
+    uri: string;
+    id?: string;
+    displayName: string;
+    title?: string;
+    artist?: string;
+    album?: string;
+    durationMs?: number;
+    mimeType?: string;
+    targetFolder: string;
+    mode: 'move' | 'copy';
+  }): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    newUri?: string;
+    displayPath?: string;
+    song?: AudioTrackItem;
+  }>;
+  moveToSecureFolder(options: {
+    uri: string;
+    id?: string;
+    title?: string;
+    displayName: string;
+    mimeType?: string;
+  }): Promise<{
+    launched: boolean;
+    usedSystemSecureFolder: boolean;
+    message?: string;
+  }>;
+  pinAudioShortcut(options: {
+    id: string;
+    uri: string;
+    title: string;
+    artist?: string;
+    displayName?: string;
+  }): Promise<{
+    pinned: boolean;
+    supported: boolean;
+  }>;
   addListener(
     eventName: 'externalMediaOpened',
     listenerFunc: (payload: ExternalMediaPayload) => void

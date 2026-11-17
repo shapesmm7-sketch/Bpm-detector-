@@ -190,7 +190,10 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
       {/* Main DJ Deck Controls: Tempo Pitch Fader, Song Key Changer, Loop Roll */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4 items-stretch">
         {/* 1. Tempo/Bpm Changer */}
-        <div className="order-1 xl:col-span-8 bg-white dark:bg-slate-950 p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+        <div
+          id="studio-tempo-section"
+          className="order-1 xl:col-span-8 bg-white dark:bg-slate-950 p-3.5 sm:p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3 scroll-mt-20"
+        >
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
@@ -305,7 +308,10 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
         </div>
 
         {/* 2. Song Key Changer (Pitch Shifter directly after Tempo Fader on mobile, full-width below on desktop) */}
-        <div className="order-2 md:col-span-2 xl:order-3 xl:col-span-12 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+        <div
+          id="studio-key-section"
+          className="order-2 md:col-span-2 xl:order-3 xl:col-span-12 bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4 scroll-mt-20"
+        >
           {/* Header Row */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">

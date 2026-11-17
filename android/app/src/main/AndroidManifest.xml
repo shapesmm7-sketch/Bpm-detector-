@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -91,7 +92,7 @@
             android:foregroundServiceType="mediaPlayback" />
     </application>
 
-    <!-- Package visibility for detecting default audio/video player on Android 11+ -->
+    <!-- Package visibility for detecting default audio/video player & Android Secure Folder on Android 11+ -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -101,6 +102,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="video/*" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="audio/*" />
+        </intent>
+        <package android:name="com.samsung.knox.securefolder" />
     </queries>
 
     <!-- Permissions -->
@@ -115,4 +121,5 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
 </manifest>

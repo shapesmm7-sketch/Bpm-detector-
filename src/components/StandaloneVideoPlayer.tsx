@@ -47,7 +47,21 @@ import {
   Upload,
   Layers,
   Crop,
+  Heart,
+  Eye,
+  EyeOff,
+  ListMusic,
+  ListPlus,
+  MoreVertical,
+  Pencil,
+  CheckCircle2,
 } from 'lucide-react';
+import {
+  VideoActionSheetModal,
+  VideoAddToPlaylistModal,
+  VideoPlaylist,
+  VideoPlaylistAddVideosModal,
+} from './VideoLibraryOrganizationModals';
 import {
   exportVideoSegmentsBlobLossless,
   splitVideoBlobLossless,
@@ -67,6 +81,26 @@ import {
 } from '../utils/timelineComposer';
 
 const DEFAULT_VIDEO_CROP: VideoCropRect = { left: 0, top: 0, right: 1, bottom: 1 };
+
+type VideoLibraryFilterTab = 'all' | 'favorites' | 'playlists' | 'hidden';
+type VideoPlaybackScope =
+  | { type: 'all' }
+  | { type: 'favorites' }
+  | { type: 'hidden' }
+  | { type: 'playlist'; playlistId: string };
+
+const VIDEO_PLAYLISTS_STORAGE_KEY = 'movibe_video_playlists';
+const VIDEO_FAVORITES_STORAGE_KEY = 'movibe_video_favorites';
+const VIDEO_HIDDEN_STORAGE_KEY = 'movibe_video_hidden';
+
+function readVideoJsonStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 type CropAspectPreset = 'free' | '16:9' | '9:16' | '1:1' | '4:5';
 
@@ -419,15 +453,23 @@ function extractWebVideoThumbnail(srcUrl: string): Promise<string> {
 interface VideoThumbnailCardProps {
   video: VideoTrackItem;
   isSelected: boolean;
+  isFavorite?: boolean;
+  isHidden?: boolean;
   onSelect: (video: VideoTrackItem) => void;
+  onOpenMenu?: (video: VideoTrackItem) => void;
+  onUnhide?: (video: VideoTrackItem) => void;
 }
 
 const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
   video,
   isSelected,
+  isFavorite,
+  isHidden,
   onSelect,
+  onOpenMenu,
+  onUnhide,
 }) => {
-  const cardRef = useRef<HTMLButtonElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [thumbUrl, setThumbUrl] = useState<string>(
     () => video.thumbnailUrl || videoThumbnailCache.get(video.id) || ''
   );
@@ -499,11 +541,9 @@ const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
   const sizeLabel = formatSize(video.size);
 
   return (
-    <button
+    <div
       ref={cardRef}
-      type="button"
-      onClick={() => onSelect(video)}
-      className={`group text-left flex flex-col gap-1.5 min-w-0 cursor-pointer rounded-xl p-1.5 transition-colors ${
+      className={`group relative flex flex-col gap-1.5 min-w-0 rounded-xl p-1.5 transition-colors ${
         isSelected ? 'bg-emerald-500/10' : 'hover:bg-slate-100 dark:hover:bg-slate-800/50'
       }`}
     >
@@ -514,48 +554,97 @@ const VideoThumbnailCard: React.FC<VideoThumbnailCardProps> = ({
             : 'border-slate-200 group-hover:border-slate-300 dark:border-slate-800 dark:group-hover:border-slate-700'
         }`}
       >
-        {thumbUrl && !hasFailed ? (
-          <img
-            src={thumbUrl}
-            alt={video.title || video.displayName}
-            referrerPolicy="no-referrer"
-            onError={() => setHasFailed(true)}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-900 dark:to-slate-950">
-            <Video className="w-7 h-7 text-slate-400 dark:text-slate-700" />
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => onSelect(video)}
+          className="w-full h-full block cursor-pointer text-left"
+          aria-label={`Play ${video.title || video.displayName}`}
+        >
+          {thumbUrl && !hasFailed ? (
+            <img
+              src={thumbUrl}
+              alt={video.title || video.displayName}
+              referrerPolicy="no-referrer"
+              onError={() => setHasFailed(true)}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-900 dark:to-slate-950">
+              <Video className="w-7 h-7 text-slate-400 dark:text-slate-700" />
+            </div>
+          )}
+        </button>
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/35 pointer-events-none" />
 
         {qualityLabel && (
-          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-mono font-bold text-white leading-none">
+          <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-mono font-bold text-white leading-none pointer-events-none">
             {qualityLabel}
           </span>
         )}
 
+        {onOpenMenu && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMenu(video);
+            }}
+            className="absolute top-1 right-1 w-7 h-7 rounded-lg bg-black/55 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer transition-colors"
+            title="Video options"
+            aria-label={`Options for ${video.title || video.displayName}`}
+          >
+            <MoreVertical className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {isFavorite && (
+          <span className="absolute bottom-1.5 left-1.5 w-5 h-5 rounded-full bg-black/65 flex items-center justify-center pointer-events-none">
+            <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+          </span>
+        )}
+
         {durationLabel && (
-          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono font-semibold tabular-nums text-white leading-none">
+          <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-[10px] font-mono font-semibold tabular-nums text-white leading-none pointer-events-none">
             {durationLabel}
           </span>
         )}
       </div>
 
-      <div className="min-w-0 px-0.5">
-        <p
-          className={`text-xs sm:text-sm font-semibold truncate ${
-            isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-100'
-          }`}
+      <div className="flex items-start justify-between gap-1.5 min-w-0 px-0.5">
+        <button
+          type="button"
+          onClick={() => onSelect(video)}
+          className="min-w-0 flex-1 text-left cursor-pointer"
         >
-          {video.title || video.displayName}
-        </p>
-        <p className="text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-400 truncate">
-          {sizeLabel || video.displayName}
-        </p>
+          <p
+            className={`text-xs sm:text-sm font-semibold truncate ${
+              isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-100'
+            }`}
+          >
+            {video.title || video.displayName}
+          </p>
+          <p className="text-[11px] font-mono tabular-nums text-slate-600 dark:text-slate-400 truncate">
+            {sizeLabel || video.displayName}
+          </p>
+        </button>
+
+        {isHidden && onUnhide && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUnhide(video);
+            }}
+            className="px-2 py-1 rounded-lg bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+            title="Unhide video"
+          >
+            <Eye className="w-3 h-3" />
+            <span>Unhide</span>
+          </button>
+        )}
       </div>
-    </button>
+    </div>
   );
 };
 
@@ -727,6 +816,64 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
 
   const [videos, setVideos] = useState<VideoTrackItem[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [videoLibraryFilter, setVideoLibraryFilter] = useState<VideoLibraryFilterTab>('all');
+  const [selectedVideoPlaylistId, setSelectedVideoPlaylistId] = useState<string | null>(null);
+  const [videoPlaybackScope, setVideoPlaybackScope] = useState<VideoPlaybackScope>({ type: 'all' });
+  const videoPlaybackScopeRef = useRef<VideoPlaybackScope>({ type: 'all' });
+  const [isCreateVideoPlaylistOpen, setIsCreateVideoPlaylistOpen] = useState<boolean>(false);
+  const [newVideoPlaylistNameInput, setNewVideoPlaylistNameInput] = useState<string>('');
+  const [addVideosModalPlaylistId, setAddVideosModalPlaylistId] = useState<string | null>(null);
+  const [renamingVideoPlaylistId, setRenamingVideoPlaylistId] = useState<string | null>(null);
+  const [renamingVideoPlaylistDraft, setRenamingVideoPlaylistDraft] = useState<string>('');
+  const [videoPlaylists, setVideoPlaylists] = useState<VideoPlaylist[]>(() =>
+    readVideoJsonStorage<VideoPlaylist[]>(VIDEO_PLAYLISTS_STORAGE_KEY, [])
+  );
+  const [videoFavoriteIds, setVideoFavoriteIds] = useState<string[]>(() =>
+    readVideoJsonStorage<string[]>(VIDEO_FAVORITES_STORAGE_KEY, [])
+  );
+  const [videoHiddenIds, setVideoHiddenIds] = useState<string[]>(() =>
+    readVideoJsonStorage<string[]>(VIDEO_HIDDEN_STORAGE_KEY, [])
+  );
+  const [menuVideo, setMenuVideo] = useState<VideoTrackItem | null>(null);
+  const [playlistModalVideo, setPlaylistModalVideo] = useState<VideoTrackItem | null>(null);
+  const [videoToast, setVideoToast] = useState<string | null>(null);
+  const videoToastTimerRef = useRef<number | null>(null);
+
+  const showVideoToast = (msg: string, durationMs = 3200) => {
+    setVideoToast(msg);
+    if (videoToastTimerRef.current !== null) {
+      window.clearTimeout(videoToastTimerRef.current);
+    }
+    videoToastTimerRef.current = window.setTimeout(() => {
+      setVideoToast(null);
+      videoToastTimerRef.current = null;
+    }, durationMs);
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIDEO_PLAYLISTS_STORAGE_KEY, JSON.stringify(videoPlaylists));
+    } catch {
+      // ignore quota errors
+    }
+  }, [videoPlaylists]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIDEO_FAVORITES_STORAGE_KEY, JSON.stringify(videoFavoriteIds));
+    } catch {
+      // ignore
+    }
+  }, [videoFavoriteIds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIDEO_HIDDEN_STORAGE_KEY, JSON.stringify(videoHiddenIds));
+    } catch {
+      // ignore
+    }
+  }, [videoHiddenIds]);
+
   const [isLoadingLibrary, setIsLoadingLibrary] = useState<boolean>(false);
   const [permissionDenied, setPermissionDenied] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -2197,15 +2344,144 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     }
   }, [isActiveTab]);
 
+  const videosRef = useRef<VideoTrackItem[]>(videos);
+  videosRef.current = videos;
+  const videoPlaylistsRef = useRef<VideoPlaylist[]>(videoPlaylists);
+  videoPlaylistsRef.current = videoPlaylists;
+  const videoFavoriteIdsRef = useRef<string[]>(videoFavoriteIds);
+  videoFavoriteIdsRef.current = videoFavoriteIds;
+  const videoHiddenIdsRef = useRef<string[]>(videoHiddenIds);
+  videoHiddenIdsRef.current = videoHiddenIds;
+
+  const resolveVideoScopeQueue = (scope: VideoPlaybackScope): VideoTrackItem[] => {
+    const all = videosRef.current;
+    const hidden = videoHiddenIdsRef.current;
+    if (scope.type === 'hidden') {
+      return all.filter((v) => hidden.includes(v.id) || hidden.includes(v.uri));
+    }
+    const visible = all.filter((v) => !hidden.includes(v.id) && !hidden.includes(v.uri));
+    if (scope.type === 'favorites') {
+      const favs = videoFavoriteIdsRef.current;
+      return visible.filter((v) => favs.includes(v.id));
+    }
+    if (scope.type === 'playlist') {
+      const pl = videoPlaylistsRef.current.find((p) => p.id === scope.playlistId);
+      if (!pl) return [];
+      const byId = new Map(visible.map((v) => [v.id, v]));
+      return pl.trackIds
+        .map((id) => byId.get(id))
+        .filter((item): item is VideoTrackItem => Boolean(item));
+    }
+    return visible;
+  };
+
+  const nonHiddenVideos = useMemo(() => {
+    return videos.filter(
+      (v) => !videoHiddenIds.includes(v.id) && !videoHiddenIds.includes(v.uri)
+    );
+  }, [videos, videoHiddenIds]);
+
+  const currentOpenVideoPlaylist = useMemo(() => {
+    if (!selectedVideoPlaylistId) return null;
+    return videoPlaylists.find((p) => p.id === selectedVideoPlaylistId) ?? null;
+  }, [videoPlaylists, selectedVideoPlaylistId]);
+
+  const visibleBaseVideos = useMemo(() => {
+    if (videoLibraryFilter === 'hidden') {
+      return videos.filter(
+        (v) => videoHiddenIds.includes(v.id) || videoHiddenIds.includes(v.uri)
+      );
+    }
+    if (videoLibraryFilter === 'favorites') {
+      return nonHiddenVideos.filter((v) => videoFavoriteIds.includes(v.id));
+    }
+    if (videoLibraryFilter === 'playlists') {
+      const pl = videoPlaylists.find((p) => p.id === selectedVideoPlaylistId);
+      if (!pl) return [];
+      const byId = new Map(nonHiddenVideos.map((v) => [v.id, v]));
+      return pl.trackIds
+        .map((id) => byId.get(id))
+        .filter((item): item is VideoTrackItem => Boolean(item));
+    }
+    return nonHiddenVideos;
+  }, [
+    videos,
+    nonHiddenVideos,
+    videoLibraryFilter,
+    videoHiddenIds,
+    videoFavoriteIds,
+    videoPlaylists,
+    selectedVideoPlaylistId,
+  ]);
+
   const filteredVideos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return videos;
-    return videos.filter(
+    if (!q) return visibleBaseVideos;
+    return visibleBaseVideos.filter(
       (v) =>
         v.title.toLowerCase().includes(q) ||
         v.displayName.toLowerCase().includes(q)
     );
-  }, [videos, searchQuery]);
+  }, [visibleBaseVideos, searchQuery]);
+
+  const handleToggleVideoFavorite = (vid: VideoTrackItem) => {
+    setVideoFavoriteIds((prev) => {
+      const exists = prev.includes(vid.id);
+      const next = exists ? prev.filter((id) => id !== vid.id) : [...prev, vid.id];
+      showVideoToast(
+        exists
+          ? `Removed "${vid.title || vid.displayName}" from favorites`
+          : `Added "${vid.title || vid.displayName}" to favorites`
+      );
+      return next;
+    });
+  };
+
+  const handleToggleVideoHidden = (vid: VideoTrackItem) => {
+    setVideoHiddenIds((prev) => {
+      const isHidden = prev.includes(vid.id) || (vid.uri ? prev.includes(vid.uri) : false);
+      const next = isHidden
+        ? prev.filter((id) => id !== vid.id && id !== vid.uri)
+        : [...prev, vid.id];
+      showVideoToast(
+        isHidden
+          ? `Unhid "${vid.title || vid.displayName}"`
+          : `Hidden "${vid.title || vid.displayName}" from main list`
+      );
+      return next;
+    });
+  };
+
+  const handleCreateVideoPlaylistDirect = () => {
+    const trimmed = newVideoPlaylistNameInput.trim();
+    if (!trimmed) return;
+    const newPl: VideoPlaylist = {
+      id: `vpl-${Date.now()}`,
+      name: trimmed,
+      trackIds: [],
+      createdAt: Date.now(),
+    };
+    setVideoPlaylists((prev) => [newPl, ...prev]);
+    setNewVideoPlaylistNameInput('');
+    setIsCreateVideoPlaylistOpen(false);
+    setVideoLibraryFilter('playlists');
+    setSelectedVideoPlaylistId(newPl.id);
+    showVideoToast(`Created playlist "${trimmed}"`);
+    if (nonHiddenVideos.length > 0) {
+      setAddVideosModalPlaylistId(newPl.id);
+    }
+  };
+
+  const handleRemoveVideoFromPlaylist = (playlistId: string, videoId: string) => {
+    setVideoPlaylists((prev) =>
+      prev.map((pl) =>
+        pl.id === playlistId
+          ? { ...pl, trackIds: pl.trackIds.filter((id) => id !== videoId) }
+          : pl
+      )
+    );
+    showVideoToast('Removed video from playlist');
+  };
 
   const closePlayer = async () => {
     clearHideTimer();
@@ -2287,7 +2563,19 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isPlayerOpen, editMode, isPreviewingTrim, activeSplitPicker, showAddMediaMenu, isTextEditorOpen, isMainCropActive]);
 
-  const playVideoItem = async (item: VideoTrackItem) => {
+  const playVideoItem = async (item: VideoTrackItem, explicitScope?: VideoPlaybackScope) => {
+    const targetScope: VideoPlaybackScope =
+      explicitScope ??
+      (videoLibraryFilter === 'playlists' && selectedVideoPlaylistId
+        ? { type: 'playlist', playlistId: selectedVideoPlaylistId }
+        : videoLibraryFilter === 'favorites'
+        ? { type: 'favorites' }
+        : videoLibraryFilter === 'hidden'
+        ? { type: 'hidden' }
+        : { type: 'all' });
+    videoPlaybackScopeRef.current = targetScope;
+    setVideoPlaybackScope(targetScope);
+
     setErrorMessage(null);
     setEditMode('none');
     setShowAddMediaMenu(false);
@@ -2496,18 +2784,40 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   };
 
   const handleStepVideo = (direction: -1 | 1) => {
-    const pool = filteredVideos.length > 0 ? filteredVideos : videos;
+    const scope = videoPlaybackScopeRef.current;
+    const scopedPool = resolveVideoScopeQueue(scope);
+    const pool =
+      scope.type === 'playlist'
+        ? scopedPool
+        : scopedPool.length > 0
+        ? scopedPool
+        : videos;
     if (pool.length === 0) return;
 
     if (!currentVideo) {
-      void playVideoItem(pool[0]);
+      void playVideoItem(pool[0], scope);
       return;
     }
 
     const idx = pool.findIndex((v) => v.id === currentVideo.id);
     const baseIdx = idx >= 0 ? idx : 0;
     const nextIdx = (baseIdx + direction + pool.length) % pool.length;
-    void playVideoItem(pool[nextIdx]);
+    void playVideoItem(pool[nextIdx], scope);
+  };
+
+  const handlePlayVideoPlaylistFolder = (playlistId: string, startVideo?: VideoTrackItem) => {
+    const scope: VideoPlaybackScope = { type: 'playlist', playlistId };
+    const folderVideos = resolveVideoScopeQueue(scope);
+    if (folderVideos.length === 0) {
+      showVideoToast('Add videos to this playlist first.');
+      setAddVideosModalPlaylistId(playlistId);
+      return;
+    }
+    const target =
+      startVideo && folderVideos.some((v) => v.id === startVideo.id)
+        ? startVideo
+        : folderVideos[0];
+    void playVideoItem(target, scope);
   };
 
   const cycleSpeed = () => {
@@ -4797,6 +5107,17 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       }}
                       onEnded={() => {
                         if (trimBoundsRef.current.editMode !== 'split') {
+                          const scope = videoPlaybackScopeRef.current;
+                          if (scope.type === 'playlist' && trimBoundsRef.current.editMode === 'none') {
+                            const folderPool = resolveVideoScopeQueue(scope);
+                            const idx = currentVideo
+                              ? folderPool.findIndex((v) => v.id === currentVideo.id)
+                              : -1;
+                            if (idx >= 0 && idx < folderPool.length - 1) {
+                              void playVideoItem(folderPool[idx + 1], scope);
+                              return;
+                            }
+                          }
                           setIsPlaying(false);
                           setShowControls(true);
                         }
@@ -9361,8 +9682,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
                   Phone Videos
                 </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono tabular-nums">
-                  {filteredVideos.length} {filteredVideos.length === 1 ? 'video' : 'videos'} · Tap any video to open player
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono tabular-nums truncate">
+                  {videoLibraryFilter === 'playlists' && !selectedVideoPlaylistId
+                    ? `${videoPlaylists.length} ${videoPlaylists.length === 1 ? 'playlist' : 'playlists'} · Open a folder to play only its videos`
+                    : `${filteredVideos.length} ${filteredVideos.length === 1 ? 'video' : 'videos'} · Tap any video to open player`}
                 </p>
               </div>
             </div>
@@ -9412,9 +9735,262 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
               </button>
             )}
           </div>
+
+          {/* Video Library Category Tabs: All, Favorites, Playlists, Hidden */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+            {(
+              [
+                { id: 'all', label: 'All' },
+                { id: 'favorites', label: `Favorites (${videoFavoriteIds.length})` },
+                { id: 'playlists', label: `Playlists (${videoPlaylists.length})` },
+                { id: 'hidden', label: `Hidden (${videoHiddenIds.length})` },
+              ] as Array<{ id: VideoLibraryFilterTab; label: string }>
+            ).map((tab) => {
+              const active = videoLibraryFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setVideoLibraryFilter(tab.id);
+                    if (tab.id === 'playlists') {
+                      setSelectedVideoPlaylistId(null);
+                      setIsCreateVideoPlaylistOpen(false);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors cursor-pointer shrink-0 ${
+                    active
+                      ? 'bg-emerald-500 text-white dark:text-slate-950 border-emerald-500 font-bold'
+                      : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {videoToast && (
+            <div className="px-3.5 py-2.5 rounded-xl bg-emerald-500/12 border border-emerald-500/35 text-emerald-800 dark:text-emerald-300 text-xs font-medium flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span className="truncate">{videoToast}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setVideoToast(null)}
+                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {permissionDenied ? (
+        {/* Special View: Video Playlists */}
+        {videoLibraryFilter === 'playlists' && !selectedVideoPlaylistId ? (
+          <div className="p-4 space-y-3">
+            {!isCreateVideoPlaylistOpen ? (
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateVideoPlaylistOpen(true)}
+                  className="min-h-[42px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newVideoPlaylistNameInput}
+                  onChange={(e) => setNewVideoPlaylistNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateVideoPlaylistDirect();
+                    if (e.key === 'Escape') {
+                      setIsCreateVideoPlaylistOpen(false);
+                      setNewVideoPlaylistNameInput('');
+                    }
+                  }}
+                  autoFocus
+                  placeholder="Write playlist name..."
+                  className="flex-1 min-h-[44px] bg-slate-50 dark:bg-slate-950 border border-emerald-500/60 focus:border-emerald-500 rounded-xl px-3.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateVideoPlaylistDirect}
+                  disabled={!newVideoPlaylistNameInput.trim()}
+                  className="min-h-[44px] px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-white dark:text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateVideoPlaylistOpen(false);
+                    setNewVideoPlaylistNameInput('');
+                  }}
+                  className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                  aria-label="Cancel creating playlist"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {videoPlaylists.length === 0 ? (
+              <div className="py-9 text-center space-y-2">
+                <ListMusic className="w-10 h-10 text-slate-400 dark:text-slate-700 mx-auto" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  No Video Playlists Yet
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                  Tap + Create to organize and play videos strictly inside your own playlist folder.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {videoPlaylists.map((pl) => {
+                  const availableCount = pl.trackIds.filter((tid) =>
+                    nonHiddenVideos.some((v) => v.id === tid)
+                  ).length;
+                  const isThisPlaying =
+                    videoPlaybackScope.type === 'playlist' &&
+                    videoPlaybackScope.playlistId === pl.id &&
+                    Boolean(currentVideo);
+                  const isRenamingThis = renamingVideoPlaylistId === pl.id;
+
+                  return (
+                    <div
+                      key={pl.id}
+                      className={`flex items-center justify-between gap-2 px-3.5 py-3 rounded-xl border transition-colors ${
+                        isThisPlaying
+                          ? 'bg-emerald-500/8 border-emerald-500/45'
+                          : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      {isRenamingThis ? (
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <input
+                            type="text"
+                            value={renamingVideoPlaylistDraft}
+                            onChange={(e) => setRenamingVideoPlaylistDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && renamingVideoPlaylistDraft.trim()) {
+                                const trimmed = renamingVideoPlaylistDraft.trim();
+                                setVideoPlaylists((prev) =>
+                                  prev.map((item) =>
+                                    item.id === pl.id ? { ...item, name: trimmed } : item
+                                  )
+                                );
+                                setRenamingVideoPlaylistId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="flex-1 min-h-[38px] bg-white dark:bg-slate-900 border border-emerald-500 rounded-lg px-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const trimmed = renamingVideoPlaylistDraft.trim();
+                              if (!trimmed) return;
+                              setVideoPlaylists((prev) =>
+                                prev.map((item) =>
+                                  item.id === pl.id ? { ...item, name: trimmed } : item
+                                )
+                              );
+                              setRenamingVideoPlaylistId(null);
+                            }}
+                            className="p-2 rounded-lg bg-emerald-500 text-white cursor-pointer"
+                            aria-label="Save playlist name"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRenamingVideoPlaylistId(null)}
+                            className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                            aria-label="Cancel rename"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedVideoPlaylistId(pl.id)}
+                            className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                              <ListMusic className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {pl.name}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">
+                                {availableCount} {availableCount === 1 ? 'video' : 'videos'}
+                                {isThisPlaying ? ' · Playing folder' : ''}
+                              </div>
+                            </div>
+                          </button>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handlePlayVideoPlaylistFolder(pl.id)}
+                              className="w-9 h-9 rounded-lg bg-emerald-500/12 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center cursor-pointer"
+                              title={`Play "${pl.name}" folder`}
+                              aria-label={`Play playlist ${pl.name}`}
+                            >
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRenamingVideoPlaylistId(pl.id);
+                                setRenamingVideoPlaylistDraft(pl.name);
+                              }}
+                              className="w-9 h-9 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center justify-center cursor-pointer"
+                              title={`Rename ${pl.name}`}
+                              aria-label={`Rename playlist ${pl.name}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVideoPlaylists((prev) => prev.filter((item) => item.id !== pl.id));
+                                if (selectedVideoPlaylistId === pl.id) {
+                                  setSelectedVideoPlaylistId(null);
+                                }
+                                if (
+                                  videoPlaybackScopeRef.current.type === 'playlist' &&
+                                  videoPlaybackScopeRef.current.playlistId === pl.id
+                                ) {
+                                  videoPlaybackScopeRef.current = { type: 'all' };
+                                  setVideoPlaybackScope({ type: 'all' });
+                                }
+                              }}
+                              className="w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 flex items-center justify-center cursor-pointer"
+                              aria-label={`Delete playlist ${pl.name}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : permissionDenied ? (
           <div className="py-12 px-6 text-center space-y-3">
             <ShieldAlert className="w-10 h-10 text-amber-500 dark:text-amber-400 mx-auto" />
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Video Permission Required</p>
@@ -9434,36 +10010,198 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin mx-auto" />
             <p className="text-xs text-slate-600 dark:text-slate-400 font-mono">Scanning phone videos...</p>
           </div>
-        ) : filteredVideos.length === 0 ? (
-          <div className="py-12 px-6 text-center space-y-3">
-            <Video className="w-10 h-10 text-slate-400 dark:text-slate-700 mx-auto" />
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              {videos.length === 0 ? 'No videos loaded yet' : 'No matching videos'}
-            </p>
-            {!isNativeAndroid() && videos.length === 0 && (
-              <button
-                type="button"
-                onClick={() => webFileInputRef.current?.click()}
-                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors"
-              >
-                <FolderPlus className="w-4 h-4" />
-                <span>Choose Video Files</span>
-              </button>
-            )}
-          </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 p-3 sm:p-4">
-            {filteredVideos.map((vid) => (
-              <VideoThumbnailCard
-                key={vid.id}
-                video={vid}
-                isSelected={currentVideo?.id === vid.id}
-                onSelect={(selected) => void playVideoItem(selected)}
-              />
-            ))}
+          <div>
+            {videoLibraryFilter === 'playlists' && selectedVideoPlaylistId && currentOpenVideoPlaylist && (
+              <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200/80 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVideoPlaylistId(null)}
+                    className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer shrink-0"
+                  >
+                    &larr; Playlists
+                  </button>
+                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                    {currentOpenVideoPlaylist.name}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAddVideosModalPlaylistId(currentOpenVideoPlaylist.id)}
+                    className="min-h-[36px] px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ListPlus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Add Videos</span>
+                  </button>
+
+                  {visibleBaseVideos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handlePlayVideoPlaylistFolder(currentOpenVideoPlaylist.id)}
+                      className="min-h-[36px] px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Play Folder</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {filteredVideos.length === 0 ? (
+              <div className="py-12 px-6 text-center space-y-3">
+                <Video className="w-10 h-10 text-slate-400 dark:text-slate-700 mx-auto" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  {videoLibraryFilter === 'playlists' && selectedVideoPlaylistId
+                    ? `No videos in "${currentOpenVideoPlaylist?.name || 'Playlist'}" yet`
+                    : videos.length === 0
+                    ? 'No videos loaded yet'
+                    : videoLibraryFilter === 'favorites'
+                    ? 'No favorite videos yet'
+                    : videoLibraryFilter === 'hidden'
+                    ? 'No hidden videos'
+                    : 'No matching videos'}
+                </p>
+                {videoLibraryFilter === 'playlists' && selectedVideoPlaylistId && currentOpenVideoPlaylist && (
+                  <button
+                    type="button"
+                    onClick={() => setAddVideosModalPlaylistId(currentOpenVideoPlaylist.id)}
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <ListPlus className="w-4 h-4" />
+                    <span>Add Videos to {currentOpenVideoPlaylist.name}</span>
+                  </button>
+                )}
+                {!isNativeAndroid() && videos.length === 0 && (
+                  <button
+                    type="button"
+                    onClick={() => webFileInputRef.current?.click()}
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-400 dark:hover:bg-emerald-300 text-white dark:text-slate-950 text-xs font-bold inline-flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <FolderPlus className="w-4 h-4" />
+                    <span>Choose Video Files</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 p-3 sm:p-4">
+                {filteredVideos.map((vid) => (
+                  <VideoThumbnailCard
+                    key={vid.id}
+                    video={vid}
+                    isSelected={currentVideo?.id === vid.id}
+                    isFavorite={videoFavoriteIds.includes(vid.id)}
+                    isHidden={
+                      videoHiddenIds.includes(vid.id) ||
+                      (Boolean(vid.uri) && videoHiddenIds.includes(vid.uri))
+                    }
+                    onSelect={(selected) => {
+                      if (videoLibraryFilter === 'playlists' && selectedVideoPlaylistId) {
+                        void playVideoItem(selected, {
+                          type: 'playlist',
+                          playlistId: selectedVideoPlaylistId,
+                        });
+                      } else {
+                        void playVideoItem(selected);
+                      }
+                    }}
+                    onOpenMenu={(v) => setMenuVideo(v)}
+                    onUnhide={(v) => handleToggleVideoHidden(v)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </section>
+
+      {/* Video 3-Dots Organization Sheet */}
+      <VideoActionSheetModal
+        video={menuVideo}
+        thumbUrl={
+          menuVideo
+            ? videoThumbnailCache.get(menuVideo.id) || menuVideo.thumbnailUrl || ''
+            : ''
+        }
+        isFavorite={menuVideo ? videoFavoriteIds.includes(menuVideo.id) : false}
+        isHidden={
+          menuVideo
+            ? videoHiddenIds.includes(menuVideo.id) ||
+              (Boolean(menuVideo.uri) && videoHiddenIds.includes(menuVideo.uri))
+            : false
+        }
+        isInsidePlaylist={
+          videoLibraryFilter === 'playlists' && Boolean(selectedVideoPlaylistId)
+        }
+        onClose={() => setMenuVideo(null)}
+        onToggleFavorite={handleToggleVideoFavorite}
+        onOpenAddToPlaylist={(v) => setPlaylistModalVideo(v)}
+        onToggleHide={handleToggleVideoHidden}
+        onRemoveFromPlaylist={(v) => {
+          if (selectedVideoPlaylistId) {
+            handleRemoveVideoFromPlaylist(selectedVideoPlaylistId, v.id);
+          }
+        }}
+      />
+
+      {/* Single Video -> Add to Playlist Modal */}
+      <VideoAddToPlaylistModal
+        video={playlistModalVideo}
+        playlists={videoPlaylists}
+        onClose={() => setPlaylistModalVideo(null)}
+        onToggleVideoInPlaylist={(playlistId, videoId) => {
+          setVideoPlaylists((prev) =>
+            prev.map((pl) => {
+              if (pl.id !== playlistId) return pl;
+              const exists = pl.trackIds.includes(videoId);
+              return {
+                ...pl,
+                trackIds: exists
+                  ? pl.trackIds.filter((id) => id !== videoId)
+                  : [...pl.trackIds, videoId],
+              };
+            })
+          );
+        }}
+        onCreatePlaylist={(name, initialVideoId) => {
+          const newPl: VideoPlaylist = {
+            id: `vpl-${Date.now()}`,
+            name,
+            trackIds: initialVideoId ? [initialVideoId] : [],
+            createdAt: Date.now(),
+          };
+          setVideoPlaylists((prev) => [newPl, ...prev]);
+          showVideoToast(`Created playlist "${name}"`);
+        }}
+      />
+
+      {/* Batch Add Videos to Playlist Folder Modal */}
+      <VideoPlaylistAddVideosModal
+        playlist={
+          addVideosModalPlaylistId
+            ? videoPlaylists.find((p) => p.id === addVideosModalPlaylistId) ?? null
+            : null
+        }
+        videos={nonHiddenVideos}
+        getThumbnail={(id, fallback) =>
+          videoThumbnailCache.get(id) || fallback || ''
+        }
+        onClose={() => setAddVideosModalPlaylistId(null)}
+        onSavePlaylistTracks={(playlistId, trackIds) => {
+          setVideoPlaylists((prev) =>
+            prev.map((pl) => (pl.id === playlistId ? { ...pl, trackIds } : pl))
+          );
+          const plName =
+            videoPlaylists.find((p) => p.id === playlistId)?.name || 'playlist';
+          showVideoToast(
+            `Updated "${plName}" (${trackIds.length} ${trackIds.length === 1 ? 'video' : 'videos'})`
+          );
+        }}
+      />
     </div>
   );
 };

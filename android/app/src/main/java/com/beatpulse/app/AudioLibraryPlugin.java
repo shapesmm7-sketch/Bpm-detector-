@@ -2,12 +2,14 @@ package com.beatpulse.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.RecoverableSecurityException;
 import android.content.ActivityNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -22,6 +24,7 @@ import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
 import android.media.MediaScannerConnection;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -39,9 +42,13 @@ import android.webkit.WebView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.content.pm.ShortcutInfoCompat;
+import androidx.core.content.pm.ShortcutManagerCompat;
+import androidx.core.graphics.drawable.IconCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
@@ -62,6 +69,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -77,11 +85,21 @@ public class AudioLibraryPlugin extends Plugin {
     private static final String PROBE_AUDIO_FILENAME = "beatpulse_default_setup_probe.mp3";
     private static final String PROBE_VIDEO_FILENAME = "beatpulse_default_setup_probe.mp4";
 
+    private static final String EXTRA_SHORTCUT_TRACK_URI = "movibe_shortcut_track_uri";
+    private static final String EXTRA_SHORTCUT_TRACK_TITLE = "movibe_shortcut_track_title";
+    private static final String EXTRA_SHORTCUT_TRACK_ARTIST = "movibe_shortcut_track_artist";
+    private static final String EXTRA_SHORTCUT_TRACK_DISPLAY_NAME = "movibe_shortcut_track_display_name";
+    private static final String EXTRA_SHORTCUT_TRACK_ID = "movibe_shortcut_track_id";
+
     private ActivityResultLauncher<String> permissionLauncher;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
+    private ActivityResultLauncher<IntentSenderRequest> mediaConsentLauncher;
     private boolean hasRequestedNotifications = false;
     private String pendingCallId;
     private String pendingPermissionType = "audio";
+    private String pendingConsentCallId;
+    private Runnable pendingConsentAction;
+    private String pendingConsentMode = "delete";
     private File lastTempAudioFile;
     private File lastPlayerAudioFile;
     private File lastPlayerVideoFile;
@@ -147,6 +165,34 @@ public class AudioLibraryPlugin extends Plugin {
             }
         );
 
+        mediaConsentLauncher = bridge.registerForActivityResult(
+            new ActivityResultContracts.StartIntentSenderForResult(),
+            result -> {
+                PluginCall savedCall = pendingConsentCallId != null ? bridge.getSavedCall(pendingConsentCallId) : null;
+                Runnable action = pendingConsentAction;
+                String mode = pendingConsentMode;
+                pendingConsentCallId = null;
+                pendingConsentAction = null;
+                pendingConsentMode = "delete";
+
+                if (result != null && result.getResultCode() == Activity.RESULT_OK && action != null) {
+                    executor.execute(action);
+                } else if (savedCall != null) {
+                    JSObject cancelledRes = new JSObject();
+                    if ("rename".equals(mode)) {
+                        cancelledRes.put("renamed", false);
+                    } else if ("move".equals(mode)) {
+                        cancelledRes.put("success", false);
+                    } else {
+                        cancelledRes.put("deleted", false);
+                    }
+                    cancelledRes.put("cancelled", true);
+                    savedCall.resolve(cancelledRes);
+                    bridge.releaseCall(savedCall);
+                }
+            }
+        );
+
         MusicPlaybackService.setStateListener(state ->
             notifyListeners("musicPlaybackStateChanged", state)
         );
@@ -159,6 +205,31 @@ public class AudioLibraryPlugin extends Plugin {
 
     public void handleNavigationIntent(Intent intent) {
         if (intent == null) return;
+        String shortcutUri = intent.getStringExtra(EXTRA_SHORTCUT_TRACK_URI);
+        if (shortcutUri != null && !shortcutUri.isEmpty()) {
+            String scTitle = intent.getStringExtra(EXTRA_SHORTCUT_TRACK_TITLE);
+            String scArtist = intent.getStringExtra(EXTRA_SHORTCUT_TRACK_ARTIST);
+            String scDisplay = intent.getStringExtra(EXTRA_SHORTCUT_TRACK_DISPLAY_NAME);
+            intent.removeExtra(EXTRA_SHORTCUT_TRACK_URI);
+
+            JSObject mediaPayload = new JSObject();
+            mediaPayload.put("requestId", UUID.randomUUID().toString());
+            mediaPayload.put("mediaKind", "audio");
+            mediaPayload.put("title", scTitle != null && !scTitle.isEmpty() ? scTitle : "Audio Track");
+            mediaPayload.put("displayName", scDisplay != null && !scDisplay.isEmpty() ? scDisplay : (scTitle != null ? scTitle : "track.mp3"));
+            mediaPayload.put("mimeType", "audio/*");
+            mediaPayload.put("size", 0);
+            mediaPayload.put("durationMs", 0);
+            mediaPayload.put("uri", shortcutUri);
+            mediaPayload.put("localUrl", shortcutUri);
+            if (scArtist != null) mediaPayload.put("artist", scArtist);
+
+            synchronized (pendingMediaLock) {
+                pendingExternalMedia = mediaPayload;
+            }
+            notifyListeners("externalMediaOpened", mediaPayload);
+        }
+
         String targetSection = intent.getStringExtra(MusicPlaybackService.EXTRA_OPEN_SECTION);
         if (targetSection == null || targetSection.isEmpty()) return;
         intent.removeExtra(MusicPlaybackService.EXTRA_OPEN_SECTION);
@@ -3007,6 +3078,650 @@ public class AudioLibraryPlugin extends Plugin {
         info.uri = savedUri;
         info.displayPath = savedDisplayPath;
         return info;
+    }
+
+    @PluginMethod
+    public void getAudioDetails(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String displayName = call.getString("displayName", "");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.resolve(new JSObject());
+            return;
+        }
+        executor.execute(() -> {
+            JSObject out = new JSObject();
+            Uri uri = Uri.parse(uriStr);
+            ContentResolver resolver = getContext().getContentResolver();
+
+            MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+            try {
+                try {
+                    mmr.setDataSource(getContext(), uri);
+                } catch (Exception ignored) {
+                    try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(uri, "r")) {
+                        if (pfd != null) mmr.setDataSource(pfd.getFileDescriptor());
+                    }
+                }
+                String br = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+                if (br != null) {
+                    long bps = Long.parseLong(br.trim());
+                    out.put("bitrateKbps", Math.round(bps / 1000.0));
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    String sr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE);
+                    if (sr != null) out.put("sampleRateHz", Integer.parseInt(sr.trim()));
+                }
+                String title = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                String artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                String album = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+                String dur = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                String mime = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE);
+                if (title != null && !title.isEmpty()) out.put("title", title);
+                if (artist != null && !artist.isEmpty()) out.put("artist", artist);
+                if (album != null && !album.isEmpty()) out.put("album", album);
+                if (dur != null) out.put("durationMs", Long.parseLong(dur.trim()));
+                if (mime != null && !mime.isEmpty()) out.put("mimeType", mime);
+            } catch (Exception ignored) {
+                // ignore partial metadata error
+            } finally {
+                try { mmr.release(); } catch (Exception ignored) {}
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && "content".equals(uri.getScheme())) {
+                try (Cursor c = resolver.query(
+                    uri,
+                    new String[] { MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.MIME_TYPE },
+                    null, null, null
+                )) {
+                    if (c != null && c.moveToFirst()) {
+                        int rp = c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH);
+                        int sz = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
+                        int mt = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
+                        if (rp >= 0 && c.getString(rp) != null) out.put("folderPath", c.getString(rp));
+                        if (sz >= 0 && !c.isNull(sz)) out.put("size", c.getLong(sz));
+                        if (mt >= 0 && c.getString(mt) != null) out.put("mimeType", c.getString(mt));
+                    }
+                } catch (Exception ignored) {}
+            } else if ("file".equals(uri.getScheme()) && uri.getPath() != null) {
+                File f = new File(uri.getPath());
+                if (f.getParentFile() != null) out.put("folderPath", f.getParentFile().getName());
+                out.put("size", f.length());
+            }
+            if (!out.has("folderPath") && displayName != null) {
+                out.put("folderPath", "Phone Storage");
+            }
+            call.resolve(out);
+        });
+    }
+
+    @PluginMethod
+    public void setAsRingtone(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String title = call.getString("title", "Mo Vibe Ringtone");
+        String displayName = call.getString("displayName", "ringtone.mp3");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(getContext())) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+            } catch (Exception ignored) {}
+            JSObject res = new JSObject();
+            res.put("status", "permission_required");
+            res.put("message", "Allow 'Modify system settings' for Mo Vibe, then tap Set as ringtone again.");
+            call.resolve(res);
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                Uri srcUri = Uri.parse(uriStr);
+                ContentResolver resolver = getContext().getContentResolver();
+                Uri ringtoneUri = null;
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    String safeName = sanitizeOutputFileName(
+                        (title != null && !title.isEmpty() ? title : "ringtone"),
+                        extractExtWithDot(displayName, ".mp3")
+                    );
+                    String mime = inferMimeFromExtension(extractExtWithDot(safeName, ".mp3"));
+                    if (mime.isEmpty()) mime = "audio/mpeg";
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Audio.Media.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.Audio.Media.TITLE, title);
+                    values.put(MediaStore.Audio.Media.MIME_TYPE, mime);
+                    values.put(MediaStore.Audio.Media.IS_RINGTONE, 1);
+                    values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_RINGTONES + "/Mo Vibe");
+                    values.put(MediaStore.Audio.Media.IS_PENDING, 1);
+
+                    ringtoneUri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                    if (ringtoneUri != null) {
+                        try (InputStream in = openUriInputStream(resolver, srcUri);
+                             OutputStream out = resolver.openOutputStream(ringtoneUri)) {
+                            if (in == null || out == null) throw new IllegalStateException("Stream unavailable");
+                            byte[] buf = new byte[65536];
+                            int len;
+                            while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                            out.flush();
+                        }
+                        ContentValues done = new ContentValues();
+                        done.put(MediaStore.Audio.Media.IS_PENDING, 0);
+                        done.put(MediaStore.Audio.Media.IS_RINGTONE, 1);
+                        resolver.update(ringtoneUri, done, null, null);
+                    }
+                } else {
+                    ringtoneUri = srcUri;
+                }
+
+                if (ringtoneUri == null) ringtoneUri = srcUri;
+                RingtoneManager.setActualDefaultRingtoneUri(getContext(), RingtoneManager.TYPE_RINGTONE, ringtoneUri);
+                JSObject res = new JSObject();
+                res.put("status", "set");
+                res.put("message", "\"" + title + "\" set as phone ringtone.");
+                call.resolve(res);
+            } catch (Exception e) {
+                JSObject res = new JSObject();
+                res.put("status", "failed");
+                res.put("message", "Could not set ringtone: " + e.getMessage());
+                call.resolve(res);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void shareAudioFile(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String title = call.getString("title", "Audio Track");
+        String displayName = call.getString("displayName", "audio.mp3");
+        String mimeType = call.getString("mimeType", "audio/*");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                Uri srcUri = Uri.parse(uriStr);
+                Uri shareUri = srcUri;
+                if ("file".equals(srcUri.getScheme()) && srcUri.getPath() != null) {
+                    File f = new File(srcUri.getPath());
+                    shareUri = FileProvider.getUriForFile(
+                        getContext(),
+                        getContext().getPackageName() + ".fileprovider",
+                        f
+                    );
+                }
+                Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                shareIntent.setType(mimeType != null && !mimeType.isEmpty() ? mimeType : "audio/*");
+                shareIntent.putExtra(Intent.EXTRA_STREAM, shareUri);
+                shareIntent.putExtra(Intent.EXTRA_SUBJECT, title != null && !title.isEmpty() ? title : displayName);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                Intent chooser = Intent.createChooser(shareIntent, "Share \"" + title + "\"");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(chooser);
+
+                JSObject res = new JSObject();
+                res.put("shared", true);
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not share audio: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void deleteAudioFile(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+        Uri targetUri = Uri.parse(uriStr);
+        ContentResolver resolver = getContext().getContentResolver();
+
+        if ("file".equals(targetUri.getScheme()) && targetUri.getPath() != null) {
+            File f = new File(targetUri.getPath());
+            boolean deleted = !f.exists() || f.delete();
+            JSObject res = new JSObject();
+            res.put("deleted", deleted);
+            call.resolve(res);
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                int rows = resolver.delete(targetUri, null, null);
+                JSObject res = new JSObject();
+                res.put("deleted", rows > 0);
+                call.resolve(res);
+            } catch (SecurityException secEx) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getActivity() != null) {
+                    bridge.saveCall(call);
+                    pendingConsentCallId = call.getCallbackId();
+                    pendingConsentMode = "delete";
+                    pendingConsentAction = () -> {
+                        JSObject done = new JSObject();
+                        done.put("deleted", true);
+                        call.resolve(done);
+                        bridge.releaseCall(call);
+                    };
+                    IntentSender sender = MediaStore.createDeleteRequest(
+                        resolver,
+                        Collections.singletonList(targetUri)
+                    ).getIntentSender();
+                    getActivity().runOnUiThread(() ->
+                        mediaConsentLauncher.launch(new IntentSenderRequest.Builder(sender).build())
+                    );
+                } else {
+                    call.reject("Cannot delete protected audio file: " + secEx.getMessage(), secEx);
+                }
+            } catch (Exception e) {
+                call.reject("Failed to delete audio: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void renameAudioFile(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String newTitle = call.getString("newTitle", "").trim();
+        String newDisplayName = call.getString("newDisplayName", "").trim();
+        String newArtist = call.getString("newArtist", null);
+        String newAlbum = call.getString("newAlbum", null);
+        if (uriStr == null || uriStr.isEmpty() || newTitle.isEmpty()) {
+            call.reject("Missing audio URI or title");
+            return;
+        }
+        Uri targetUri = Uri.parse(uriStr);
+        ContentResolver resolver = getContext().getContentResolver();
+        String finalDisplay = !newDisplayName.isEmpty() ? newDisplayName : newTitle;
+
+        Runnable performUpdate = () -> {
+            ContentValues cv = new ContentValues();
+            cv.put(MediaStore.Audio.Media.TITLE, newTitle);
+            cv.put(MediaStore.Audio.Media.DISPLAY_NAME, finalDisplay);
+            if (newArtist != null) cv.put(MediaStore.Audio.Media.ARTIST, newArtist);
+            if (newAlbum != null) cv.put(MediaStore.Audio.Media.ALBUM, newAlbum);
+            resolver.update(targetUri, cv, null, null);
+        };
+
+        executor.execute(() -> {
+            try {
+                if ("file".equals(targetUri.getScheme()) && targetUri.getPath() != null) {
+                    File oldFile = new File(targetUri.getPath());
+                    File newFile = new File(oldFile.getParentFile(), finalDisplay);
+                    if (oldFile.exists() && !oldFile.getName().equals(finalDisplay)) {
+                        //noinspection ResultOfMethodCallIgnored
+                        oldFile.renameTo(newFile);
+                    }
+                    JSObject res = new JSObject();
+                    res.put("renamed", true);
+                    res.put("title", newTitle);
+                    res.put("displayName", finalDisplay);
+                    if (newArtist != null) res.put("artist", newArtist);
+                    if (newAlbum != null) res.put("album", newAlbum);
+                    call.resolve(res);
+                    return;
+                }
+
+                performUpdate.run();
+                JSObject res = new JSObject();
+                res.put("renamed", true);
+                res.put("title", newTitle);
+                res.put("displayName", finalDisplay);
+                if (newArtist != null) res.put("artist", newArtist);
+                if (newAlbum != null) res.put("album", newAlbum);
+                call.resolve(res);
+            } catch (SecurityException secEx) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getActivity() != null) {
+                    bridge.saveCall(call);
+                    pendingConsentCallId = call.getCallbackId();
+                    pendingConsentMode = "rename";
+                    pendingConsentAction = () -> {
+                        try {
+                            performUpdate.run();
+                            JSObject done = new JSObject();
+                            done.put("renamed", true);
+                            done.put("title", newTitle);
+                            done.put("displayName", finalDisplay);
+                            if (newArtist != null) done.put("artist", newArtist);
+                            if (newAlbum != null) done.put("album", newAlbum);
+                            call.resolve(done);
+                        } catch (Exception ex) {
+                            call.reject("Rename failed: " + ex.getMessage(), ex);
+                        } finally {
+                            bridge.releaseCall(call);
+                        }
+                    };
+                    IntentSender sender = MediaStore.createWriteRequest(
+                        resolver,
+                        Collections.singletonList(targetUri)
+                    ).getIntentSender();
+                    getActivity().runOnUiThread(() ->
+                        mediaConsentLauncher.launch(new IntentSenderRequest.Builder(sender).build())
+                    );
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && secEx instanceof RecoverableSecurityException && getActivity() != null) {
+                    bridge.saveCall(call);
+                    pendingConsentCallId = call.getCallbackId();
+                    pendingConsentMode = "rename";
+                    pendingConsentAction = () -> {
+                        try {
+                            performUpdate.run();
+                            JSObject done = new JSObject();
+                            done.put("renamed", true);
+                            done.put("title", newTitle);
+                            done.put("displayName", finalDisplay);
+                            call.resolve(done);
+                        } catch (Exception ex) {
+                            call.reject("Rename failed: " + ex.getMessage(), ex);
+                        } finally {
+                            bridge.releaseCall(call);
+                        }
+                    };
+                    IntentSender sender = ((RecoverableSecurityException) secEx).getUserAction().getActionIntent().getIntentSender();
+                    getActivity().runOnUiThread(() ->
+                        mediaConsentLauncher.launch(new IntentSenderRequest.Builder(sender).build())
+                    );
+                } else {
+                    call.reject("Permission required to edit this song: " + secEx.getMessage(), secEx);
+                }
+            } catch (Exception e) {
+                call.reject("Rename failed: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void moveOrCopyAudioFile(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String displayName = call.getString("displayName", "audio.mp3");
+        String title = call.getString("title", displayName);
+        String artist = call.getString("artist", "Unknown Artist");
+        String album = call.getString("album", "");
+        long durationMs = call.getInt("durationMs", 0);
+        String mimeType = call.getString("mimeType", "audio/mpeg");
+        String targetFolder = call.getString("targetFolder", "Music/Mo Vibe");
+        String mode = call.getString("mode", "copy");
+
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                Uri srcUri = Uri.parse(uriStr);
+                ContentResolver resolver = getContext().getContentResolver();
+                String resolvedMime = (mimeType != null && !mimeType.isEmpty() && !"audio/*".equals(mimeType))
+                    ? mimeType
+                    : inferMimeFromExtension(extractExtWithDot(displayName, ".mp3"));
+                if (resolvedMime.isEmpty()) resolvedMime = "audio/mpeg";
+
+                String relPath = targetFolder != null && !targetFolder.isEmpty() ? targetFolder : "Music/Mo Vibe";
+                Uri destCollection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                if (relPath.startsWith("Download")) {
+                    destCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                        ? MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                        : MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                }
+
+                Uri newUri = null;
+                long outSize = 0;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName);
+                    cv.put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime);
+                    cv.put(MediaStore.MediaColumns.RELATIVE_PATH, relPath);
+                    cv.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                    if (destCollection.equals(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)) {
+                        cv.put(MediaStore.Audio.Media.TITLE, title);
+                        cv.put(MediaStore.Audio.Media.ARTIST, artist);
+                        cv.put(MediaStore.Audio.Media.ALBUM, album);
+                        if (durationMs > 0) cv.put(MediaStore.Audio.Media.DURATION, durationMs);
+                    }
+                    newUri = resolver.insert(destCollection, cv);
+                    if (newUri == null) throw new IllegalStateException("Could not create destination file");
+
+                    try (InputStream in = openUriInputStream(resolver, srcUri);
+                         OutputStream out = resolver.openOutputStream(newUri)) {
+                        if (in == null || out == null) throw new IllegalStateException("Could not copy audio stream");
+                        byte[] buf = new byte[65536];
+                        int len;
+                        while ((len = in.read(buf)) != -1) {
+                            out.write(buf, 0, len);
+                            outSize += len;
+                        }
+                        out.flush();
+                    }
+
+                    ContentValues done = new ContentValues();
+                    done.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                    resolver.update(newUri, done, null, null);
+                } else {
+                    File dir = new File(Environment.getExternalStorageDirectory(), relPath);
+                    if (!dir.exists()) //noinspection ResultOfMethodCallIgnored
+                        dir.mkdirs();
+                    File outFile = new File(dir, displayName);
+                    try (InputStream in = openUriInputStream(resolver, srcUri);
+                         OutputStream out = new FileOutputStream(outFile)) {
+                        if (in == null) throw new IllegalStateException("Could not open source file");
+                        byte[] buf = new byte[65536];
+                        int len;
+                        while ((len = in.read(buf)) != -1) {
+                            out.write(buf, 0, len);
+                            outSize += len;
+                        }
+                        out.flush();
+                    }
+                    newUri = Uri.fromFile(outFile);
+                    MediaScannerConnection.scanFile(getContext(), new String[] { outFile.getAbsolutePath() }, new String[] { resolvedMime }, null);
+                }
+
+                if ("move".equals(mode)) {
+                    try {
+                        if ("file".equals(srcUri.getScheme()) && srcUri.getPath() != null) {
+                            //noinspection ResultOfMethodCallIgnored
+                            new File(srcUri.getPath()).delete();
+                        } else {
+                            resolver.delete(srcUri, null, null);
+                        }
+                    } catch (SecurityException ignored) {
+                        // Copied safely; original delete may require user consent on scoped storage
+                    }
+                }
+
+                JSObject song = new JSObject();
+                String newId = newUri.getLastPathSegment() != null ? newUri.getLastPathSegment() : String.valueOf(System.currentTimeMillis());
+                song.put("id", newId);
+                song.put("title", title);
+                song.put("displayName", displayName);
+                song.put("artist", artist);
+                song.put("album", album);
+                song.put("durationMs", durationMs);
+                song.put("size", outSize);
+                song.put("mimeType", resolvedMime);
+                song.put("uri", newUri.toString());
+
+                JSObject res = new JSObject();
+                res.put("success", true);
+                res.put("newUri", newUri.toString());
+                res.put("displayPath", relPath + "/" + displayName);
+                res.put("song", song);
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not " + mode + " audio: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void moveToSecureFolder(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String title = call.getString("title", "Audio Track");
+        String displayName = call.getString("displayName", "audio.mp3");
+        String mimeType = call.getString("mimeType", "audio/*");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                Uri srcUri = Uri.parse(uriStr);
+                Uri shareUri = srcUri;
+                if ("file".equals(srcUri.getScheme()) && srcUri.getPath() != null) {
+                    File f = new File(srcUri.getPath());
+                    shareUri = FileProvider.getUriForFile(
+                        getContext(),
+                        getContext().getPackageName() + ".fileprovider",
+                        f
+                    );
+                }
+
+                String resolvedMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "audio/*";
+                Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                sendIntent.setType(resolvedMime);
+                sendIntent.putExtra(Intent.EXTRA_STREAM, shareUri);
+                sendIntent.putExtra(Intent.EXTRA_SUBJECT, (title != null && !title.isEmpty()) ? title : displayName);
+                sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                PackageManager pm = getContext().getPackageManager();
+                List<ResolveInfo> candidates = pm.queryIntentActivities(sendIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                ResolveInfo secureMatch = null;
+                if (candidates != null) {
+                    for (ResolveInfo info : candidates) {
+                        if (info == null || info.activityInfo == null) continue;
+                        String pkg = info.activityInfo.packageName != null
+                            ? info.activityInfo.packageName.toLowerCase(Locale.US)
+                            : "";
+                        String label = info.loadLabel(pm) != null
+                            ? info.loadLabel(pm).toString().toLowerCase(Locale.US)
+                            : "";
+                        if (pkg.contains("securefolder")
+                            || pkg.contains("knox.foldercontainer")
+                            || label.contains("secure folder")
+                            || label.contains("private space")) {
+                            secureMatch = info;
+                            break;
+                        }
+                    }
+                }
+
+                if (secureMatch != null) {
+                    Intent targeted = new Intent(sendIntent);
+                    targeted.setClassName(secureMatch.activityInfo.packageName, secureMatch.activityInfo.name);
+                    getContext().startActivity(targeted);
+                    JSObject res = new JSObject();
+                    res.put("launched", true);
+                    res.put("usedSystemSecureFolder", true);
+                    res.put("message", "Opened Secure Folder to store \"" + ((title != null && !title.isEmpty()) ? title : displayName) + "\".");
+                    call.resolve(res);
+                    return;
+                }
+
+                Intent chooser = Intent.createChooser(sendIntent, "Move \"" + ((title != null && !title.isEmpty()) ? title : displayName) + "\" to Secure folder");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(chooser);
+
+                JSObject res = new JSObject();
+                res.put("launched", true);
+                res.put("usedSystemSecureFolder", false);
+                res.put("message", "Choose Secure folder / Private space from the Android sheet.");
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not open Android Secure Folder: " + e.getMessage(), e);
+            }
+        });
+    }
+
+
+    @PluginMethod
+    public void pinAudioShortcut(PluginCall call) {
+        String id = call.getString("id", "");
+        String uriStr = call.getString("uri", "");
+        String title = call.getString("title", "Audio Track");
+        String artist = call.getString("artist", "");
+        String displayName = call.getString("displayName", title);
+
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+        Context ctx = getContext();
+        if (!ShortcutManagerCompat.isRequestPinShortcutSupported(ctx)) {
+            JSObject res = new JSObject();
+            res.put("pinned", false);
+            res.put("supported", false);
+            call.resolve(res);
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                Bitmap artBmp = AudioArtworkHelper.loadBitmapForNotification(ctx, id, uriStr, title, artist);
+                IconCompat icon = artBmp != null
+                    ? IconCompat.createWithBitmap(artBmp)
+                    : IconCompat.createWithResource(ctx, R.mipmap.ic_launcher);
+
+                Intent launchIntent = new Intent(ctx, MainActivity.class);
+                launchIntent.setAction(Intent.ACTION_VIEW);
+                launchIntent.putExtra(MusicPlaybackService.EXTRA_OPEN_SECTION, "audio");
+                launchIntent.putExtra(EXTRA_SHORTCUT_TRACK_ID, id);
+                launchIntent.putExtra(EXTRA_SHORTCUT_TRACK_URI, uriStr);
+                launchIntent.putExtra(EXTRA_SHORTCUT_TRACK_TITLE, title);
+                launchIntent.putExtra(EXTRA_SHORTCUT_TRACK_ARTIST, artist);
+                launchIntent.putExtra(EXTRA_SHORTCUT_TRACK_DISPLAY_NAME, displayName);
+
+                String scId = "movibe_track_" + (id != null && !id.isEmpty() ? id : Math.abs(uriStr.hashCode()));
+                ShortcutInfoCompat shortcut = new ShortcutInfoCompat.Builder(ctx, scId)
+                    .setShortLabel(title != null && !title.isEmpty() ? title : "Play Song")
+                    .setLongLabel(title + (artist != null && !artist.isEmpty() ? " - " + artist : ""))
+                    .setIcon(icon)
+                    .setIntent(launchIntent)
+                    .build();
+
+                boolean ok = ShortcutManagerCompat.requestPinShortcut(ctx, shortcut, null);
+                JSObject res = new JSObject();
+                res.put("pinned", ok);
+                res.put("supported", true);
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not pin shortcut: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private InputStream openUriInputStream(ContentResolver resolver, Uri uri) throws Exception {
+        if ("file".equals(uri.getScheme()) && uri.getPath() != null) {
+            return new FileInputStream(new File(uri.getPath()));
+        }
+        return resolver.openInputStream(uri);
+    }
+
+    private String extractExtWithDot(String fileName, String fallback) {
+        if (fileName == null) return fallback;
+        int dot = fileName.lastIndexOf('.');
+        if (dot >= 0 && dot < fileName.length() - 1) {
+            return fileName.substring(dot).toLowerCase(Locale.US);
+        }
+        return fallback;
+    }
+
+    private String sanitizeOutputFileName(String baseName, String extWithDot) {
+        String safeBase = (baseName != null ? baseName : "audio")
+            .replaceAll("[\\\\/:*?\"<>|]", "_")
+            .trim();
+        if (safeBase.isEmpty()) {
+            safeBase = "audio";
+        }
+        String ext = (extWithDot != null && extWithDot.startsWith(".")) ? extWithDot : ".mp3";
+        if (safeBase.toLowerCase(Locale.US).endsWith(ext.toLowerCase(Locale.US))) {
+            return safeBase;
+        }
+        return safeBase + ext;
     }
 
     @Override
