@@ -59,9 +59,18 @@ import {
 import {
   VideoActionSheetModal,
   VideoAddToPlaylistModal,
+  VideoMenuActionId,
   VideoPlaylist,
   VideoPlaylistAddVideosModal,
 } from './VideoLibraryOrganizationModals';
+import {
+  VideoConverterModal,
+  VideoDeleteConfirmModal,
+  VideoMoveCopyModal,
+  VideoPlayAsAudioBar,
+  VideoRenameModal,
+  VideoToAudioModal,
+} from './VideoActionModals';
 import {
   exportVideoSegmentsBlobLossless,
   splitVideoBlobLossless,
@@ -836,6 +845,19 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
   );
   const [menuVideo, setMenuVideo] = useState<VideoTrackItem | null>(null);
   const [playlistModalVideo, setPlaylistModalVideo] = useState<VideoTrackItem | null>(null);
+  const [deleteTargetVideo, setDeleteTargetVideo] = useState<VideoTrackItem | null>(null);
+  const [renameTargetVideo, setRenameTargetVideo] = useState<VideoTrackItem | null>(null);
+  const [moveCopyTarget, setMoveCopyTarget] = useState<{
+    mode: 'move' | 'copy';
+    video: VideoTrackItem;
+  } | null>(null);
+  const [phoneFolders, setPhoneFolders] = useState<string[]>([]);
+  const [isLoadingPhoneFolders, setIsLoadingPhoneFolders] = useState<boolean>(false);
+  const [videoToAudioTarget, setVideoToAudioTarget] = useState<VideoTrackItem | null>(null);
+  const [videoConverterTarget, setVideoConverterTarget] = useState<VideoTrackItem | null>(null);
+  const [playAsAudioVideo, setPlayAsAudioVideo] = useState<VideoTrackItem | null>(null);
+  const [isActionBusy, setIsActionBusy] = useState<boolean>(false);
+  const pendingOpenEditModeRef = useRef<'trim' | 'split' | null>(null);
   const [videoToast, setVideoToast] = useState<string | null>(null);
   const videoToastTimerRef = useRef<number | null>(null);
 
@@ -1243,14 +1265,36 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     const updateSize = () => {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        setSplitStageSize({ w: rect.width, h: rect.height });
+        setSplitStageSize((prev) =>
+          Math.abs(prev.w - rect.width) < 0.5 && Math.abs(prev.h - rect.height) < 0.5
+            ? prev
+            : { w: rect.width, h: rect.height }
+        );
       }
     };
     updateSize();
+    const raf = window.requestAnimationFrame(updateSize);
     const ro = new ResizeObserver(updateSize);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener('resize', updateSize);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
   }, [editMode]);
+
+  useEffect(() => {
+    if (editMode !== 'split') return;
+    const el = activeSplitDeck === 'A' ? videoRef.current : standbyVideoRef.current;
+    if (el && el.videoWidth > 0 && el.videoHeight > 0) {
+      setMainMediaDims((prev) =>
+        prev.w === el.videoWidth && prev.h === el.videoHeight
+          ? prev
+          : { w: el.videoWidth, h: el.videoHeight }
+      );
+    }
+  }, [editMode, activeSplitDeck, activeSplitSegAtPlayhead?.id]);
 
   const trimBoundsRef = useRef({
     editMode,
@@ -2563,7 +2607,322 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isPlayerOpen, editMode, isPreviewingTrim, activeSplitPicker, showAddMediaMenu, isTextEditorOpen, isMainCropActive]);
 
+  const openVideoMoveCopyModal = async (mode: 'move' | 'copy', video: VideoTrackItem) => {
+    setMoveCopyTarget({ mode, video });
+    if (!isNativeAndroid()) return;
+    setIsLoadingPhoneFolders(true);
+    try {
+      const res = await AudioLibrary.getPhoneFolders();
+      if (Array.isArray(res.folders)) {
+        setPhoneFolders(res.folders);
+      }
+    } catch {
+      // ignore folder scan error, defaults remain visible
+    } finally {
+      setIsLoadingPhoneFolders(false);
+    }
+  };
+
+  const handleConfirmDeleteVideo = async () => {
+    const target = deleteTargetVideo;
+    if (!target) return;
+    setIsActionBusy(true);
+    try {
+      if (isNativeAndroid()) {
+        const res = await AudioLibrary.deleteAudioFile({ uri: target.uri, id: target.id });
+        if (res.cancelled) {
+          setIsActionBusy(false);
+          return;
+        }
+      }
+      setVideos((prev) => prev.filter((v) => v.id !== target.id));
+      setVideoFavoriteIds((prev) => prev.filter((id) => id !== target.id));
+      setVideoHiddenIds((prev) => prev.filter((id) => id !== target.id && id !== target.uri));
+      setVideoPlaylists((prev) =>
+        prev.map((pl) => ({
+          ...pl,
+          trackIds: pl.trackIds.filter((id) => id !== target.id),
+        }))
+      );
+      if (playAsAudioVideo?.id === target.id) {
+        setPlayAsAudioVideo(null);
+      }
+      if (currentVideo?.id === target.id) {
+        await closePlayer();
+        setCurrentVideo(null);
+      }
+      setDeleteTargetVideo(null);
+      showVideoToast(`Deleted "${target.title || target.displayName}"`);
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : 'Could not delete video.');
+    } finally {
+      setIsActionBusy(false);
+    }
+  };
+
+  const handleConfirmRenameVideo = async (newTitle: string) => {
+    const target = renameTargetVideo;
+    if (!target || !newTitle.trim()) return;
+    setIsActionBusy(true);
+    try {
+      const cleanTitle = newTitle.trim();
+      const origExtMatch = target.displayName?.match(/(\.[^/.]+)$/);
+      const origExt = origExtMatch ? origExtMatch[1] : '.mp4';
+      const newDisplayName = `${cleanTitle}${origExt}`;
+
+      if (isNativeAndroid()) {
+        const res = await AudioLibrary.renameAudioFile({
+          uri: target.uri,
+          id: target.id,
+          newTitle: cleanTitle,
+          newDisplayName,
+        });
+        if (res.cancelled) {
+          setIsActionBusy(false);
+          return;
+        }
+      }
+
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === target.id
+            ? { ...v, title: cleanTitle, displayName: newDisplayName }
+            : v
+        )
+      );
+      if (currentVideo?.id === target.id) {
+        setCurrentVideo((prev) =>
+          prev ? { ...prev, title: cleanTitle, displayName: newDisplayName } : prev
+        );
+      }
+      if (playAsAudioVideo?.id === target.id) {
+        setPlayAsAudioVideo((prev) =>
+          prev ? { ...prev, title: cleanTitle, displayName: newDisplayName } : prev
+        );
+      }
+      setRenameTargetVideo(null);
+      showVideoToast(`Renamed to "${cleanTitle}"`);
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : 'Could not rename video.');
+    } finally {
+      setIsActionBusy(false);
+    }
+  };
+
+  const handleConfirmMoveCopyVideo = async (targetFolder: string) => {
+    if (!moveCopyTarget) return;
+    const { mode, video } = moveCopyTarget;
+    if (!isNativeAndroid()) {
+      setMoveCopyTarget(null);
+      showVideoToast('Moving or copying between phone folders requires the Android app.');
+      return;
+    }
+    setIsActionBusy(true);
+    try {
+      const res = await AudioLibrary.moveOrCopyAudioFile({
+        uri: video.uri,
+        id: video.id,
+        displayName: video.displayName || `${video.title || 'video'}.mp4`,
+        title: video.title || video.displayName,
+        durationMs: video.durationMs,
+        mimeType: video.mimeType || 'video/mp4',
+        targetFolder,
+        mode,
+      });
+      if (res.cancelled) {
+        setIsActionBusy(false);
+        return;
+      }
+      if (mode === 'move' && res.newUri) {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === video.id ? { ...v, uri: res.newUri! } : v))
+        );
+      }
+      setMoveCopyTarget(null);
+      showVideoToast(
+        `${mode === 'move' ? 'Moved' : 'Copied'} to ${res.displayPath || targetFolder}`
+      );
+      if (mode === 'copy') {
+        void loadDeviceVideos();
+      }
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : `Could not ${mode} video.`);
+    } finally {
+      setIsActionBusy(false);
+    }
+  };
+
+  const handleBrowsePhoneFoldersForVideo = async () => {
+    if (!moveCopyTarget || !isNativeAndroid()) return;
+    const { mode, video } = moveCopyTarget;
+    setIsActionBusy(true);
+    try {
+      const res = await AudioLibrary.pickFolderAndMoveOrCopyAudioFile({
+        uri: video.uri,
+        id: video.id,
+        displayName: video.displayName || `${video.title || 'video'}.mp4`,
+        title: video.title || video.displayName,
+        durationMs: video.durationMs,
+        mimeType: video.mimeType || 'video/mp4',
+        mode,
+      });
+      if (res.cancelled) {
+        setIsActionBusy(false);
+        return;
+      }
+      if (mode === 'move' && res.newUri) {
+        setVideos((prev) =>
+          prev.map((v) => (v.id === video.id ? { ...v, uri: res.newUri! } : v))
+        );
+      }
+      setMoveCopyTarget(null);
+      showVideoToast(
+        `${mode === 'move' ? 'Moved' : 'Copied'} to ${res.displayPath || 'selected folder'}`
+      );
+      if (mode === 'copy') {
+        void loadDeviceVideos();
+      }
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : `Could not ${mode} video.`);
+    } finally {
+      setIsActionBusy(false);
+    }
+  };
+
+  const handleShareVideo = async (video: VideoTrackItem) => {
+    try {
+      if (isNativeAndroid()) {
+        await AudioLibrary.shareAudioFile({
+          uri: video.uri,
+          title: video.title || video.displayName,
+          displayName: video.displayName,
+          mimeType: video.mimeType || 'video/*',
+        });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({
+          title: video.title || video.displayName,
+          text: video.title || video.displayName,
+        });
+        return;
+      }
+      showVideoToast('Share sheet is available on mobile or supported browsers.');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      showVideoToast(err instanceof Error ? err.message : 'Could not share video.');
+    }
+  };
+
+  const handleSetVideoAsRingtone = async (video: VideoTrackItem) => {
+    if (!isNativeAndroid()) {
+      showVideoToast('Setting a phone ringtone requires the Android app.');
+      return;
+    }
+    showVideoToast('Preparing audio ringtone from video...');
+    try {
+      const res = await AudioLibrary.extractVideoAudio({
+        uri: video.uri,
+        title: video.title || video.displayName,
+        displayName: video.displayName,
+        setAsRingtone: true,
+      });
+      showVideoToast(res.message || 'Ringtone updated.', 4500);
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : 'Could not set ringtone.');
+    }
+  };
+
+  const handleMoveVideoToSecureFolder = async (video: VideoTrackItem) => {
+    if (!isNativeAndroid()) {
+      showVideoToast('Secure Folder is available on Android devices.');
+      return;
+    }
+    try {
+      const res = await AudioLibrary.moveToSecureFolder({
+        uri: video.uri,
+        id: video.id,
+        title: video.title || video.displayName,
+        displayName: video.displayName || 'video.mp4',
+        mimeType: video.mimeType || 'video/*',
+      });
+      showVideoToast(res.message || 'Opened Secure Folder.', 4000);
+    } catch (err) {
+      showVideoToast(err instanceof Error ? err.message : 'Could not open Secure Folder.');
+    }
+  };
+
+  const handleVideoMenuAction = (action: VideoMenuActionId, video: VideoTrackItem) => {
+    setMenuVideo(null);
+    switch (action) {
+      case 'add_to_playlist':
+        setPlaylistModalVideo(video);
+        break;
+      case 'add_to_favorites':
+        handleToggleVideoFavorite(video);
+        break;
+      case 'hide_from_phone':
+        handleToggleVideoHidden(video);
+        break;
+      case 'remove_from_playlist':
+        if (selectedVideoPlaylistId) {
+          handleRemoveVideoFromPlaylist(selectedVideoPlaylistId, video.id);
+        }
+        break;
+      case 'play_as_audio':
+        if (isPlayerOpen) {
+          void closePlayer();
+        }
+        setPlayAsAudioVideo(video);
+        break;
+      case 'video_to_audio':
+        setVideoToAudioTarget(video);
+        break;
+      case 'video_converter':
+        setVideoConverterTarget(video);
+        break;
+      case 'trim':
+        if (currentVideo?.id === video.id && isPlayerOpen && getLiveDuration() > 0.4) {
+          if (editMode !== 'trim') openTrimEditor();
+        } else {
+          pendingOpenEditModeRef.current = 'trim';
+          void playVideoItem(video);
+        }
+        break;
+      case 'edit':
+        if (currentVideo?.id === video.id && isPlayerOpen && getLiveDuration() > 0.6) {
+          if (editMode !== 'split') openSplitEditor();
+        } else {
+          pendingOpenEditModeRef.current = 'split';
+          void playVideoItem(video);
+        }
+        break;
+      case 'rename':
+        setRenameTargetVideo(video);
+        break;
+      case 'share':
+        void handleShareVideo(video);
+        break;
+      case 'move':
+        void openVideoMoveCopyModal('move', video);
+        break;
+      case 'copy':
+        void openVideoMoveCopyModal('copy', video);
+        break;
+      case 'move_to_secure_folder':
+        void handleMoveVideoToSecureFolder(video);
+        break;
+      case 'set_as_ringtone':
+        void handleSetVideoAsRingtone(video);
+        break;
+      case 'delete':
+        setDeleteTargetVideo(video);
+        break;
+    }
+  };
+
   const playVideoItem = async (item: VideoTrackItem, explicitScope?: VideoPlaybackScope) => {
+    setPlayAsAudioVideo(null);
     const targetScope: VideoPlaybackScope =
       explicitScope ??
       (videoLibraryFilter === 'playlists' && selectedVideoPlaylistId
@@ -2678,6 +3037,25 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
       setIsLoadingVideo(false);
     }
   };
+
+  // Trigger queued Trim or Edit (Split) automatically once the target video opens & metadata loads
+  useEffect(() => {
+    const pending = pendingOpenEditModeRef.current;
+    if (!pending || !isPlayerOpen || !currentVideo) return;
+    const total =
+      videoRef.current?.duration && isFinite(videoRef.current.duration) && videoRef.current.duration > 0
+        ? videoRef.current.duration
+        : duration;
+    if (pending === 'trim' && total > 0.4) {
+      pendingOpenEditModeRef.current = null;
+      openTrimEditor();
+    } else if (pending === 'split' && total > 0.6) {
+      pendingOpenEditModeRef.current = null;
+      openSplitEditor();
+    }
+    // openTrimEditor / openSplitEditor use latest render state on trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlayerOpen, currentVideo?.id, duration]);
 
   // Auto-open VLC-style player and start playback when an external video is opened in BeatPulse
   useEffect(() => {
@@ -4752,11 +5130,13 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
             const cropAppliedView =
               editMode === 'split' && !isMainCropActive && isCropModified(mainVideoCrop);
 
-            let croppedFrameStyle: React.CSSProperties | undefined;
-            if (cropAppliedView && splitStageSize.w > 0 && splitStageSize.h > 0) {
-              const targetAspect =
-                ((mainMediaDims.w || 16) * cropWFrac) /
-                Math.max(1, (mainMediaDims.h || 9) * cropHFrac);
+            let splitFrameStyle: React.CSSProperties | undefined;
+            if (editMode === 'split' && splitStageSize.w > 0 && splitStageSize.h > 0) {
+              const rawW = Math.max(1, mainMediaDims.w || 16);
+              const rawH = Math.max(1, mainMediaDims.h || 9);
+              const targetAspect = cropAppliedView
+                ? (rawW * cropWFrac) / Math.max(1, rawH * cropHFrac)
+                : rawW / rawH;
               const availAspect = splitStageSize.w / Math.max(1, splitStageSize.h);
               const frameW =
                 targetAspect > availAspect
@@ -4766,9 +5146,9 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 targetAspect > availAspect
                   ? splitStageSize.w / targetAspect
                   : splitStageSize.h;
-              croppedFrameStyle = {
-                width: `${Math.max(60, Math.round(frameW))}px`,
-                height: `${Math.max(60, Math.round(frameH))}px`,
+              splitFrameStyle = {
+                width: `${Math.max(48, Math.floor(frameW))}px`,
+                height: `${Math.max(48, Math.floor(frameH))}px`,
               };
             }
 
@@ -4919,18 +5299,10 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                     : 'w-full h-full flex items-center justify-center'
                 }
               >
-                {/* Tight media wrapper in Split mode so WYSIWYG overlay/text coordinates match exported video */}
+                {/* Tight media wrapper in Split mode so full video fits inside viewport and WYSIWYG overlay/text coordinates match exported video */}
                 <div
                   ref={mediaFrameRef}
-                  style={
-                    croppedFrameStyle ||
-                    (editMode === 'split' && splitStageSize.w > 0 && splitStageSize.h > 0
-                      ? {
-                          maxWidth: `${Math.floor(splitStageSize.w)}px`,
-                          maxHeight: `${Math.floor(splitStageSize.h)}px`,
-                        }
-                      : undefined)
-                  }
+                  style={editMode === 'split' ? splitFrameStyle : undefined}
                   onClick={(e) => {
                     if (editMode === 'split') {
                       e.stopPropagation();
@@ -4941,9 +5313,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                   }}
                   className={
                     editMode === 'split'
-                      ? `relative inline-flex items-center justify-center max-w-full max-h-full overflow-hidden rounded-xl ${
-                          isMainCropActive ? 'cursor-default' : 'cursor-pointer'
-                        }`
+                      ? `${
+                          splitFrameStyle
+                            ? 'relative shrink-0 overflow-hidden rounded-xl'
+                            : 'relative w-full h-full flex items-center justify-center overflow-hidden rounded-xl'
+                        } ${isMainCropActive ? 'cursor-default' : 'cursor-pointer'}`
                       : 'w-full h-full flex items-center justify-center'
                   }
                 >
@@ -4977,11 +5351,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                             setMainMediaDims({ w: img.naturalWidth, h: img.naturalHeight });
                           }
                         }}
-                        className={
-                          cropAppliedView
-                            ? 'relative z-10 block w-full h-full object-contain rounded-xl'
-                            : 'relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain'
-                        }
+                        className="relative z-10 block w-full h-full object-contain rounded-xl"
                       />
                     )}
 
@@ -5125,9 +5495,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                       className={`bg-black ${
                         editMode === 'split'
                           ? activeSplitSegAtPlayhead?.mediaType !== 'image' && activeSplitDeck === 'A'
-                            ? cropAppliedView
-                              ? 'relative z-10 block w-full h-full rounded-xl object-contain opacity-100'
-                              : 'relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain opacity-100'
+                            ? 'relative z-10 block w-full h-full rounded-xl object-contain opacity-100'
                             : 'absolute inset-0 z-0 w-full h-full rounded-xl object-contain opacity-0 pointer-events-none'
                           : `transition-opacity duration-75 w-full h-full ${
                               fitMode === 'cover' ? 'object-cover' : 'object-contain'
@@ -5204,9 +5572,7 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                         }}
                         className={`bg-black ${
                           activeSplitSegAtPlayhead?.mediaType !== 'image' && activeSplitDeck === 'B'
-                            ? cropAppliedView
-                              ? 'relative z-10 block w-full h-full rounded-xl object-contain opacity-100'
-                              : 'relative z-10 block max-w-full max-h-full w-auto h-auto rounded-xl object-contain opacity-100'
+                            ? 'relative z-10 block w-full h-full rounded-xl object-contain opacity-100'
                             : 'absolute inset-0 z-0 w-full h-full rounded-xl object-contain opacity-0 pointer-events-none'
                         }`}
                       />
@@ -5986,11 +6352,11 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
                 onClick={openSplitEditor}
                 disabled={isProcessingEdit}
                 className="min-h-[44px] px-2 sm:px-3 rounded-lg border text-[11px] sm:text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 bg-black/55 hover:bg-white/15 border-white/15 text-white"
-                title="Split Video (Original Quality)"
-                aria-label="Split Video"
+                title="Edit Video (Original Quality)"
+                aria-label="Edit Video"
               >
                 <SplitSquareHorizontal className="w-3.5 h-3.5 shrink-0" />
-                <span>Split</span>
+                <span>Edit</span>
               </button>
 
               <button
@@ -9670,6 +10036,19 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         )}
       </div>
 
+      {playAsAudioVideo && (
+        <VideoPlayAsAudioBar
+          video={playAsAudioVideo}
+          thumbUrl={
+            videoThumbnailCache.get(playAsAudioVideo.id) || playAsAudioVideo.thumbnailUrl || ''
+          }
+          pauseSignal={pauseSignal}
+          onPlaybackStarted={onPlaybackStarted}
+          onOpenAsVideo={(vid) => void playVideoItem(vid)}
+          onClose={() => setPlayAsAudioVideo(null)}
+        />
+      )}
+
       {/* Phone Video Library List */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl min-w-0">
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 space-y-4">
@@ -10138,12 +10517,50 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
           videoLibraryFilter === 'playlists' && Boolean(selectedVideoPlaylistId)
         }
         onClose={() => setMenuVideo(null)}
-        onToggleFavorite={handleToggleVideoFavorite}
-        onOpenAddToPlaylist={(v) => setPlaylistModalVideo(v)}
-        onToggleHide={handleToggleVideoHidden}
-        onRemoveFromPlaylist={(v) => {
-          if (selectedVideoPlaylistId) {
-            handleRemoveVideoFromPlaylist(selectedVideoPlaylistId, v.id);
+        onAction={handleVideoMenuAction}
+      />
+
+      <VideoDeleteConfirmModal
+        video={deleteTargetVideo}
+        isBusy={isActionBusy}
+        onClose={() => setDeleteTargetVideo(null)}
+        onConfirm={() => void handleConfirmDeleteVideo()}
+      />
+
+      <VideoRenameModal
+        video={renameTargetVideo}
+        isBusy={isActionBusy}
+        onClose={() => setRenameTargetVideo(null)}
+        onConfirm={(name) => void handleConfirmRenameVideo(name)}
+      />
+
+      <VideoMoveCopyModal
+        mode={moveCopyTarget?.mode ?? null}
+        video={moveCopyTarget?.video ?? null}
+        folders={phoneFolders}
+        isLoadingFolders={isLoadingPhoneFolders}
+        isNativeAndroid={isNativeAndroid()}
+        isBusy={isActionBusy}
+        onClose={() => setMoveCopyTarget(null)}
+        onConfirm={(folder) => void handleConfirmMoveCopyVideo(folder)}
+        onBrowsePhoneFolders={() => void handleBrowsePhoneFoldersForVideo()}
+      />
+
+      <VideoToAudioModal
+        video={videoToAudioTarget}
+        onClose={() => setVideoToAudioTarget(null)}
+        onSuccess={(msg) => showVideoToast(msg, 4500)}
+      />
+
+      <VideoConverterModal
+        video={videoConverterTarget}
+        onClose={() => setVideoConverterTarget(null)}
+        onConverted={(msg, savedVid) => {
+          showVideoToast(msg, 4500);
+          if (savedVid) {
+            setVideos((prev) => [savedVid, ...prev.filter((v) => v.id !== savedVid.id)]);
+          } else if (isNativeAndroid()) {
+            void loadDeviceVideos();
           }
         }}
       />
@@ -10153,29 +10570,41 @@ export const StandaloneVideoPlayer: React.FC<StandaloneVideoPlayerProps> = ({
         video={playlistModalVideo}
         playlists={videoPlaylists}
         onClose={() => setPlaylistModalVideo(null)}
-        onToggleVideoInPlaylist={(playlistId, videoId) => {
+        onSaveVideoPlaylists={(videoId, selectedPlaylistIds) => {
+          const selectedSet = new Set(selectedPlaylistIds);
           setVideoPlaylists((prev) =>
             prev.map((pl) => {
-              if (pl.id !== playlistId) return pl;
-              const exists = pl.trackIds.includes(videoId);
+              const hasVideo = pl.trackIds.includes(videoId);
+              const shouldHaveVideo = selectedSet.has(pl.id);
+              if (hasVideo === shouldHaveVideo) return pl;
               return {
                 ...pl,
-                trackIds: exists
-                  ? pl.trackIds.filter((id) => id !== videoId)
-                  : [...pl.trackIds, videoId],
+                trackIds: shouldHaveVideo
+                  ? [...pl.trackIds, videoId]
+                  : pl.trackIds.filter((id) => id !== videoId),
               };
             })
           );
+          if (selectedPlaylistIds.length > 0) {
+            showVideoToast(
+              `Saved to ${selectedPlaylistIds.length} ${selectedPlaylistIds.length === 1 ? 'playlist' : 'playlists'}`
+            );
+          } else {
+            showVideoToast('Updated video playlist folders');
+          }
+          setPlaylistModalVideo(null);
         }}
         onCreatePlaylist={(name, initialVideoId) => {
+          const newId = `vpl-${Date.now()}`;
           const newPl: VideoPlaylist = {
-            id: `vpl-${Date.now()}`,
+            id: newId,
             name,
             trackIds: initialVideoId ? [initialVideoId] : [],
             createdAt: Date.now(),
           };
           setVideoPlaylists((prev) => [newPl, ...prev]);
           showVideoToast(`Created playlist "${name}"`);
+          return newId;
         }}
       />
 

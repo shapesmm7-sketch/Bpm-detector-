@@ -18,20 +18,27 @@ import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioManager;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaMuxer;
+import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.os.SystemClock;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyCallback;
+import android.telephony.TelephonyManager;
 import android.util.Base64;
 import android.util.Size;
 import android.view.View;
@@ -60,6 +67,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -71,13 +79,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @CapacitorPlugin(name = "AudioLibrary")
 public class AudioLibraryPlugin extends Plugin {
@@ -94,12 +107,17 @@ public class AudioLibraryPlugin extends Plugin {
     private ActivityResultLauncher<String> permissionLauncher;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     private ActivityResultLauncher<IntentSenderRequest> mediaConsentLauncher;
+    private ActivityResultLauncher<Intent> folderPickerLauncher;
+    private ActivityResultLauncher<String[]> recordPermissionsLauncher;
     private boolean hasRequestedNotifications = false;
     private String pendingCallId;
     private String pendingPermissionType = "audio";
     private String pendingConsentCallId;
     private Runnable pendingConsentAction;
     private String pendingConsentMode = "delete";
+    private String pendingFolderCallId;
+    private String pendingRecordCallId;
+    private String pendingRecordAction = "start";
     private File lastTempAudioFile;
     private File lastPlayerAudioFile;
     private File lastPlayerVideoFile;
@@ -110,6 +128,36 @@ public class AudioLibraryPlugin extends Plugin {
     private final Map<String, File> pendingExports = new ConcurrentHashMap<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ExecutorService thumbExecutor = Executors.newFixedThreadPool(3);
+    private final ScheduledExecutorService expiryScheduler = Executors.newSingleThreadScheduledExecutor();
+
+    // Voice & Call Recorder state
+    private static final String PREF_AUTO_CALL_REC = "movibe_auto_call_recording";
+    private static final String PREF_AUTO_CALL_SPEAKERPHONE = "movibe_auto_call_speakerphone";
+    private static final String PREF_CALL_DISAPPEAR_MS = "movibe_call_disappear_ms";
+    private static final String PREF_CALL_EXPIRY_ENTRIES = "movibe_call_expiry_entries";
+    private final Object recorderLock = new Object();
+    private final Object expiryLock = new Object();
+    private MediaRecorder activeRecorder;
+    private File activeRecordingFile;
+    private String activeRecordingMode = "voice";
+    private String activeRecordingTitle = "";
+    private boolean isRecordingAudio = false;
+    private boolean isRecordingPaused = false;
+    private boolean isAutoCallRecordingActive = false;
+    private boolean autoCallSpeakerphone = true;
+    private long callDisappearAfterMs = 0L;
+    private boolean autoCallStartedThisRecording = false;
+    private long recordingStartElapsedMs = 0L;
+    private long recordingPausedAtMs = 0L;
+    private long recordingPausedAccumulatedMs = 0L;
+    private boolean savedSpeakerphoneRestore = false;
+    private boolean prevSpeakerphoneState = false;
+    private int prevAudioMode = AudioManager.MODE_NORMAL;
+    private int lastTelephonyState = TelephonyManager.CALL_STATE_IDLE;
+    private TelephonyManager telephonyManager;
+    private Object activeTelephonyCallback;
+    @SuppressWarnings("deprecation")
+    private PhoneStateListener legacyPhoneStateListener;
 
     @Override
     public void load() {
@@ -193,8 +241,99 @@ public class AudioLibraryPlugin extends Plugin {
             }
         );
 
+        folderPickerLauncher = bridge.registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                PluginCall savedCall = pendingFolderCallId != null ? bridge.getSavedCall(pendingFolderCallId) : null;
+                pendingFolderCallId = null;
+                if (savedCall == null) return;
+
+                Intent data = result != null ? result.getData() : null;
+                Uri treeUri = (result != null && result.getResultCode() == Activity.RESULT_OK && data != null)
+                    ? data.getData()
+                    : null;
+                if (treeUri == null) {
+                    JSObject cancelledRes = new JSObject();
+                    cancelledRes.put("success", false);
+                    cancelledRes.put("cancelled", true);
+                    savedCall.resolve(cancelledRes);
+                    bridge.releaseCall(savedCall);
+                    return;
+                }
+
+                try {
+                    int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                    if (flags != 0) {
+                        getContext().getContentResolver().takePersistableUriPermission(treeUri, flags);
+                    }
+                } catch (Exception ignored) {
+                    // non-persistable grants are still valid for this immediate copy/move
+                }
+
+                executor.execute(() -> {
+                    executeMoveOrCopyIntoTreeUri(savedCall, treeUri);
+                    bridge.releaseCall(savedCall);
+                });
+            }
+        );
+
+        recordPermissionsLauncher = bridge.registerForActivityResult(
+            new ActivityResultContracts.RequestMultiplePermissions(),
+            grants -> {
+                PluginCall savedCall = pendingRecordCallId != null ? bridge.getSavedCall(pendingRecordCallId) : null;
+                String action = pendingRecordAction != null ? pendingRecordAction : "start";
+                pendingRecordCallId = null;
+                pendingRecordAction = "start";
+                if (savedCall == null) return;
+
+                boolean micGranted = grants != null && Boolean.TRUE.equals(grants.get(Manifest.permission.RECORD_AUDIO));
+                if (!micGranted) {
+                    micGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+                }
+                if (!micGranted) {
+                    savedCall.reject("Microphone permission is required for recording.");
+                    bridge.releaseCall(savedCall);
+                    return;
+                }
+
+                if ("auto_call".equals(action) || "call_settings".equals(action)) {
+                    boolean phoneGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+                    if (!phoneGranted) {
+                        savedCall.reject("Phone permission is required for automatic call recording.");
+                        bridge.releaseCall(savedCall);
+                        return;
+                    }
+                    if ("call_settings".equals(action)) {
+                        applyCallRecorderSettingsInternal(savedCall, true);
+                    } else {
+                        applyAutoCallRecordingState(savedCall, true);
+                    }
+                    bridge.releaseCall(savedCall);
+                } else {
+                    startRecordingWithPermissions(savedCall);
+                    bridge.releaseCall(savedCall);
+                }
+            }
+        );
+
         MusicPlaybackService.setStateListener(state ->
             notifyListeners("musicPlaybackStateChanged", state)
+        );
+
+        SharedPreferences recPrefs = getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE);
+        autoCallSpeakerphone = recPrefs.getBoolean(PREF_AUTO_CALL_SPEAKERPHONE, true);
+        callDisappearAfterMs = Math.max(0L, recPrefs.getLong(PREF_CALL_DISAPPEAR_MS, 0L));
+        if (recPrefs.getBoolean(PREF_AUTO_CALL_REC, false)
+            && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            isAutoCallRecordingActive = true;
+            registerCallStateMonitor();
+        }
+        expiryScheduler.scheduleWithFixedDelay(
+            () -> purgeExpiredCallRecordingsInternal(true),
+            2L,
+            30L,
+            TimeUnit.SECONDS
         );
 
         if (getActivity() != null) {
@@ -944,6 +1083,7 @@ public class AudioLibraryPlugin extends Plugin {
 
     private void loadAudioFiles(PluginCall call, boolean releaseAfter) {
         executor.execute(() -> {
+            purgeExpiredCallRecordingsInternal(false);
             JSArray songs = new JSArray();
             ContentResolver contentResolver = getContext().getContentResolver();
 
@@ -3437,6 +3577,237 @@ public class AudioLibraryPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getPhoneFolders(PluginCall call) {
+        executor.execute(() -> {
+            try {
+                TreeSet<String> sortedFolders = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+
+                String[] standardDefaults = new String[] {
+                    "Music/Mo Vibe",
+                    "Music",
+                    "Download",
+                    "Download/Mo Vibe",
+                    "Documents",
+                    "Recordings",
+                    "Podcasts",
+                    "Audiobooks",
+                    "Ringtones",
+                    "Alarms",
+                    "Notifications",
+                    "DCIM",
+                    "Pictures",
+                    "Movies"
+                };
+                Collections.addAll(sortedFolders, standardDefaults);
+
+                File storageRoot = Environment.getExternalStorageDirectory();
+                if (storageRoot != null && storageRoot.exists()) {
+                    collectStorageFolders(storageRoot, "", 0, 3, sortedFolders, 400);
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentResolver resolver = getContext().getContentResolver();
+                    Uri filesUri = MediaStore.Files.getContentUri("external");
+                    String[] proj = new String[] { MediaStore.MediaColumns.RELATIVE_PATH };
+                    try (Cursor cursor = resolver.query(filesUri, proj, null, null, null)) {
+                        if (cursor != null) {
+                            int relCol = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH);
+                            while (cursor.moveToNext() && sortedFolders.size() < 500) {
+                                if (relCol >= 0) {
+                                    String rel = cursor.getString(relCol);
+                                    if (rel != null) {
+                                        String cleaned = rel.replaceAll("^/+|/+$", "").trim();
+                                        if (!cleaned.isEmpty() && !cleaned.startsWith("Android/data") && !cleaned.startsWith("Android/obb")) {
+                                            sortedFolders.add(cleaned);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // Ignore MediaStore query restriction on older ROMs
+                    }
+                }
+
+                Set<String> ordered = new LinkedHashSet<>();
+                if (sortedFolders.contains("Music/Mo Vibe")) {
+                    ordered.add("Music/Mo Vibe");
+                }
+                for (String f : sortedFolders) {
+                    ordered.add(f);
+                }
+
+                JSArray arr = new JSArray();
+                for (String folder : ordered) {
+                    arr.put(folder);
+                }
+                JSObject res = new JSObject();
+                res.put("folders", arr);
+                call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not list phone folders: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    private void collectStorageFolders(
+        File dir,
+        String prefix,
+        int depth,
+        int maxDepth,
+        Set<String> out,
+        int limit
+    ) {
+        if (depth > maxDepth || out.size() >= limit) return;
+        File[] children = dir.listFiles();
+        if (children == null) return;
+        for (File child : children) {
+            if (out.size() >= limit) break;
+            if (child == null || !child.isDirectory()) continue;
+            String name = child.getName();
+            if (name == null || name.isEmpty() || name.startsWith(".")) continue;
+            if (depth == 0 && ("Android".equalsIgnoreCase(name) || "lost+found".equalsIgnoreCase(name))) {
+                continue;
+            }
+            String rel = prefix.isEmpty() ? name : (prefix + "/" + name);
+            out.add(rel);
+            if (depth + 1 <= maxDepth) {
+                collectStorageFolders(child, rel, depth + 1, maxDepth, out, limit);
+            }
+        }
+    }
+
+    @PluginMethod
+    public void pickFolderAndMoveOrCopyAudioFile(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing audio URI");
+            return;
+        }
+        String initialFolder = call.getString("initialFolder", "");
+        launchFolderPickerForCall(call, initialFolder);
+    }
+
+    private void launchFolderPickerForCall(PluginCall call, String initialRelPath) {
+        bridge.saveCall(call);
+        pendingFolderCallId = call.getCallbackId();
+
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        );
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialRelPath != null && !initialRelPath.trim().isEmpty()) {
+            String cleaned = initialRelPath.trim().replaceAll("^/+|/+$", "");
+            try {
+                Uri hintUri = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:" + cleaned
+                );
+                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, hintUri);
+            } catch (Exception ignored) {
+                // ignore invalid initial URI hints
+            }
+        }
+
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> folderPickerLauncher.launch(intent));
+        } else {
+            folderPickerLauncher.launch(intent);
+        }
+    }
+
+    private void executeMoveOrCopyIntoTreeUri(PluginCall call, Uri treeUri) {
+        String uriStr = call.getString("uri", "");
+        String displayName = call.getString("displayName", "audio.mp3");
+        String title = call.getString("title", displayName);
+        String artist = call.getString("artist", "Unknown Artist");
+        String album = call.getString("album", "");
+        long durationMs = call.getInt("durationMs", 0);
+        String mimeType = call.getString("mimeType", "audio/mpeg");
+        String mode = call.getString("mode", "copy");
+
+        try {
+            Uri srcUri = Uri.parse(uriStr);
+            ContentResolver resolver = getContext().getContentResolver();
+            String resolvedMime = (mimeType != null && !mimeType.isEmpty() && !"audio/*".equals(mimeType))
+                ? mimeType
+                : inferMimeFromExtension(extractExtWithDot(displayName, ".mp3"));
+            if (resolvedMime.isEmpty()) resolvedMime = "audio/mpeg";
+
+            String treeDocId = DocumentsContract.getTreeDocumentId(treeUri);
+            Uri parentDocUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId);
+            Uri destUri = DocumentsContract.createDocument(resolver, parentDocUri, resolvedMime, displayName);
+            if (destUri == null) {
+                throw new IllegalStateException("Could not create file in chosen folder");
+            }
+
+            long outSize = 0;
+            try (InputStream in = openUriInputStream(resolver, srcUri);
+                 OutputStream out = resolver.openOutputStream(destUri)) {
+                if (in == null || out == null) throw new IllegalStateException("Could not copy audio stream");
+                byte[] buf = new byte[65536];
+                int len;
+                while ((len = in.read(buf)) != -1) {
+                    out.write(buf, 0, len);
+                    outSize += len;
+                }
+                out.flush();
+            }
+
+            if ("move".equals(mode)) {
+                try {
+                    if ("file".equals(srcUri.getScheme()) && srcUri.getPath() != null) {
+                        //noinspection ResultOfMethodCallIgnored
+                        new File(srcUri.getPath()).delete();
+                    } else {
+                        resolver.delete(srcUri, null, null);
+                    }
+                } catch (SecurityException ignored) {
+                    // Copied safely; original delete may require user consent on scoped storage
+                }
+            }
+
+            String friendlyFolder = treeDocId != null ? treeDocId.replaceFirst("^primary:", "") : "Selected Folder";
+            if (friendlyFolder.isEmpty()) friendlyFolder = "Phone Storage";
+
+            JSObject song = new JSObject();
+            String newId = destUri.getLastPathSegment() != null ? destUri.getLastPathSegment() : String.valueOf(System.currentTimeMillis());
+            song.put("id", newId);
+            song.put("title", title);
+            song.put("displayName", displayName);
+            song.put("artist", artist);
+            song.put("album", album);
+            song.put("durationMs", durationMs);
+            song.put("size", outSize);
+            song.put("mimeType", resolvedMime);
+            song.put("uri", destUri.toString());
+
+            JSObject res = new JSObject();
+            res.put("success", true);
+            res.put("newUri", destUri.toString());
+            res.put("displayPath", friendlyFolder + "/" + displayName);
+            res.put("song", song);
+            call.resolve(res);
+        } catch (Exception e) {
+            call.reject("Could not " + mode + " audio to chosen folder: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isMediaAudioRelativePathAllowed(String relPath) {
+        if (relPath == null || relPath.isEmpty()) return false;
+        String lower = relPath.toLowerCase(Locale.US);
+        return lower.equals("music") || lower.startsWith("music/")
+            || lower.equals("alarms") || lower.startsWith("alarms/")
+            || lower.equals("audiobooks") || lower.startsWith("audiobooks/")
+            || lower.equals("notifications") || lower.startsWith("notifications/")
+            || lower.equals("podcasts") || lower.startsWith("podcasts/")
+            || lower.equals("recordings") || lower.startsWith("recordings/")
+            || lower.equals("ringtones") || lower.startsWith("ringtones/");
+    }
+
+    @PluginMethod
     public void moveOrCopyAudioFile(PluginCall call) {
         String uriStr = call.getString("uri", "");
         String displayName = call.getString("displayName", "audio.mp3");
@@ -3462,46 +3833,101 @@ public class AudioLibraryPlugin extends Plugin {
                     : inferMimeFromExtension(extractExtWithDot(displayName, ".mp3"));
                 if (resolvedMime.isEmpty()) resolvedMime = "audio/mpeg";
 
-                String relPath = targetFolder != null && !targetFolder.isEmpty() ? targetFolder : "Music/Mo Vibe";
-                Uri destCollection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-                if (relPath.startsWith("Download")) {
-                    destCollection = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                        ? MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                        : MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-                }
+                String relPath = (targetFolder != null && !targetFolder.trim().isEmpty())
+                    ? targetFolder.trim().replaceAll("^/+|/+$", "")
+                    : "Music/Mo Vibe";
+                String relLower = relPath.toLowerCase(Locale.US);
 
                 Uri newUri = null;
                 long outSize = 0;
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ContentValues cv = new ContentValues();
-                    cv.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName);
-                    cv.put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime);
-                    cv.put(MediaStore.MediaColumns.RELATIVE_PATH, relPath);
-                    cv.put(MediaStore.MediaColumns.IS_PENDING, 1);
-                    if (destCollection.equals(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)) {
-                        cv.put(MediaStore.Audio.Media.TITLE, title);
-                        cv.put(MediaStore.Audio.Media.ARTIST, artist);
-                        cv.put(MediaStore.Audio.Media.ALBUM, album);
-                        if (durationMs > 0) cv.put(MediaStore.Audio.Media.DURATION, durationMs);
-                    }
-                    newUri = resolver.insert(destCollection, cv);
-                    if (newUri == null) throw new IllegalStateException("Could not create destination file");
+                    boolean isDownloads = relLower.equals("download") || relLower.startsWith("download/") || relLower.equals("downloads") || relLower.startsWith("downloads/");
+                    boolean isDocuments = relLower.equals("documents") || relLower.startsWith("documents/");
+                    boolean isAudioAllowed = isMediaAudioRelativePathAllowed(relPath);
+                    boolean isVideoMime = resolvedMime != null && resolvedMime.startsWith("video/");
+                    boolean isVideoAllowed = relLower.equals("movies") || relLower.startsWith("movies/") || relLower.equals("dcim") || relLower.startsWith("dcim/");
 
-                    try (InputStream in = openUriInputStream(resolver, srcUri);
-                         OutputStream out = resolver.openOutputStream(newUri)) {
-                        if (in == null || out == null) throw new IllegalStateException("Could not copy audio stream");
-                        byte[] buf = new byte[65536];
-                        int len;
-                        while ((len = in.read(buf)) != -1) {
-                            out.write(buf, 0, len);
-                            outSize += len;
+                    if (isDownloads || isDocuments || isAudioAllowed || (isVideoMime && isVideoAllowed)) {
+                        Uri destCollection = isDownloads
+                            ? MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                            : isDocuments
+                            ? MediaStore.Files.getContentUri("external")
+                            : (isVideoMime && isVideoAllowed)
+                            ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                            : MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+
+                        if (isDownloads && relLower.startsWith("downloads")) {
+                            relPath = "Download" + relPath.substring("downloads".length());
                         }
-                        out.flush();
+
+                        ContentValues cv = new ContentValues();
+                        cv.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName);
+                        cv.put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime);
+                        cv.put(MediaStore.MediaColumns.RELATIVE_PATH, relPath);
+                        cv.put(MediaStore.MediaColumns.IS_PENDING, 1);
+                        if (destCollection.equals(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)) {
+                            cv.put(MediaStore.Audio.Media.TITLE, title);
+                            cv.put(MediaStore.Audio.Media.ARTIST, artist);
+                            cv.put(MediaStore.Audio.Media.ALBUM, album);
+                            if (durationMs > 0) cv.put(MediaStore.Audio.Media.DURATION, durationMs);
+                        } else if (destCollection.equals(MediaStore.Video.Media.EXTERNAL_CONTENT_URI)) {
+                            cv.put(MediaStore.Video.Media.TITLE, title);
+                            if (durationMs > 0) cv.put(MediaStore.Video.Media.DURATION, durationMs);
+                        }
+                        newUri = resolver.insert(destCollection, cv);
+                        if (newUri != null) {
+                            try (InputStream in = openUriInputStream(resolver, srcUri);
+                                 OutputStream out = resolver.openOutputStream(newUri)) {
+                                if (in == null || out == null) throw new IllegalStateException("Could not copy file stream");
+                                byte[] buf = new byte[65536];
+                                int len;
+                                while ((len = in.read(buf)) != -1) {
+                                    out.write(buf, 0, len);
+                                    outSize += len;
+                                }
+                                out.flush();
+                            }
+
+                            ContentValues done = new ContentValues();
+                            done.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                            resolver.update(newUri, done, null, null);
+                        }
                     }
 
-                    ContentValues done = new ContentValues();
-                    done.put(MediaStore.MediaColumns.IS_PENDING, 0);
-                    resolver.update(newUri, done, null, null);
+                    // For any other phone folder (e.g. DCIM, Movies, Pictures, custom root folders),
+                    // try direct File write first; if Scoped Storage blocks direct write, prompt SAF folder grant cleanly.
+                    if (newUri == null) {
+                        boolean wroteDirect = false;
+                        try {
+                            File dir = new File(Environment.getExternalStorageDirectory(), relPath);
+                            if (dir.exists() || dir.mkdirs()) {
+                                File outFile = new File(dir, displayName);
+                                try (InputStream in = openUriInputStream(resolver, srcUri);
+                                     OutputStream out = new FileOutputStream(outFile)) {
+                                    if (in != null) {
+                                        byte[] buf = new byte[65536];
+                                        int len;
+                                        while ((len = in.read(buf)) != -1) {
+                                            out.write(buf, 0, len);
+                                            outSize += len;
+                                        }
+                                        out.flush();
+                                        newUri = Uri.fromFile(outFile);
+                                        MediaScannerConnection.scanFile(getContext(), new String[] { outFile.getAbsolutePath() }, new String[] { resolvedMime }, null);
+                                        wroteDirect = true;
+                                    }
+                                }
+                            }
+                        } catch (Exception ignoredDirect) {
+                            wroteDirect = false;
+                        }
+
+                        if (!wroteDirect) {
+                            launchFolderPickerForCall(call, relPath);
+                            return;
+                        }
+                    }
                 } else {
                     File dir = new File(Environment.getExternalStorageDirectory(), relPath);
                     if (!dir.exists()) //noinspection ResultOfMethodCallIgnored
@@ -3694,6 +4120,973 @@ public class AudioLibraryPlugin extends Plugin {
         });
     }
 
+    @PluginMethod
+    public void extractVideoAudio(PluginCall call) {
+        String uriStr = call.getString("uri", "");
+        String rawTitle = call.getString("title", "Extracted Audio");
+        boolean setAsRingtone = Boolean.TRUE.equals(call.getBoolean("setAsRingtone", false));
+        if (uriStr == null || uriStr.isEmpty()) {
+            call.reject("Missing video URI");
+            return;
+        }
+
+        if (setAsRingtone && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.System.canWrite(getContext())) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+                intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+            } catch (Exception ignored) {}
+            JSObject res = new JSObject();
+            res.put("status", "permission_required");
+            res.put("saved", false);
+            res.put("message", "Allow 'Modify system settings' for Mo Vibe, then tap Set as ringtone again.");
+            call.resolve(res);
+            return;
+        }
+
+        executor.execute(() -> {
+            File tempOutFile = null;
+            MediaExtractor extractor = null;
+            MediaMuxer muxer = null;
+            try {
+                Context ctx = getContext();
+                ContentResolver resolver = ctx.getContentResolver();
+                Uri srcUri = Uri.parse(uriStr);
+
+                extractor = new MediaExtractor();
+                if ("file".equals(srcUri.getScheme()) && srcUri.getPath() != null) {
+                    extractor.setDataSource(srcUri.getPath());
+                } else {
+                    extractor.setDataSource(ctx, srcUri, null);
+                }
+
+                int audioTrackIndex = -1;
+                MediaFormat audioFormat = null;
+                String audioMime = "";
+                for (int i = 0; i < extractor.getTrackCount(); i++) {
+                    MediaFormat fmt = extractor.getTrackFormat(i);
+                    String mime = fmt.getString(MediaFormat.KEY_MIME);
+                    if (mime != null && mime.startsWith("audio/")) {
+                        audioTrackIndex = i;
+                        audioFormat = fmt;
+                        audioMime = mime.toLowerCase(Locale.US);
+                        break;
+                    }
+                }
+
+                if (audioTrackIndex < 0 || audioFormat == null) {
+                    JSObject res = new JSObject();
+                    res.put("status", "failed");
+                    res.put("saved", false);
+                    res.put("message", "This video does not contain an audio track.");
+                    call.resolve(res);
+                    return;
+                }
+
+                boolean isWebmAudio = audioMime.contains("opus") || audioMime.contains("vorbis");
+                String ext = isWebmAudio ? ".webm" : ".m4a";
+                String outMime = isWebmAudio ? "audio/webm" : "audio/mp4";
+                int muxerFmt = isWebmAudio
+                    ? MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM
+                    : MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4;
+
+                tempOutFile = File.createTempFile("movibe_ext_audio_", ext, ctx.getCacheDir());
+                muxer = new MediaMuxer(tempOutFile.getAbsolutePath(), muxerFmt);
+                int outTrack = muxer.addTrack(audioFormat);
+                muxer.start();
+
+                extractor.selectTrack(audioTrackIndex);
+                ByteBuffer buffer = ByteBuffer.allocate(512 * 1024);
+                MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+                while (true) {
+                    int sampleSize = extractor.readSampleData(buffer, 0);
+                    if (sampleSize < 0) break;
+                    bufferInfo.offset = 0;
+                    bufferInfo.size = sampleSize;
+                    bufferInfo.presentationTimeUs = Math.max(0L, extractor.getSampleTime());
+                    bufferInfo.flags = extractor.getSampleFlags();
+                    muxer.writeSampleData(outTrack, buffer, bufferInfo);
+                    extractor.advance();
+                }
+
+                muxer.stop();
+                muxer.release();
+                muxer = null;
+                extractor.release();
+                extractor = null;
+
+                String safeTitle = (rawTitle != null && !rawTitle.trim().isEmpty())
+                    ? rawTitle.trim()
+                    : "Extracted Audio";
+                String finalFileName = sanitizeOutputFileName(safeTitle, ext);
+                String targetRelDir = setAsRingtone
+                    ? (Environment.DIRECTORY_RINGTONES + "/Mo Vibe")
+                    : (Environment.DIRECTORY_MUSIC + "/Mo Vibe");
+
+                Uri savedUri = null;
+                String displayPath = targetRelDir + "/" + finalFileName;
+                long outSize = tempOutFile.length();
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Audio.Media.DISPLAY_NAME, finalFileName);
+                    values.put(MediaStore.Audio.Media.TITLE, safeTitle);
+                    values.put(MediaStore.Audio.Media.MIME_TYPE, outMime);
+                    values.put(MediaStore.Audio.Media.RELATIVE_PATH, targetRelDir);
+                    values.put(MediaStore.Audio.Media.IS_PENDING, 1);
+                    if (setAsRingtone) {
+                        values.put(MediaStore.Audio.Media.IS_RINGTONE, 1);
+                    } else {
+                        values.put(MediaStore.Audio.Media.IS_MUSIC, 1);
+                    }
+
+                    savedUri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                    if (savedUri == null) throw new IllegalStateException("Could not create destination audio file");
+
+                    try (InputStream in = new FileInputStream(tempOutFile);
+                         OutputStream out = resolver.openOutputStream(savedUri)) {
+                        if (out == null) throw new IllegalStateException("Output stream unavailable");
+                        byte[] buf = new byte[65536];
+                        int len;
+                        while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                        out.flush();
+                    }
+
+                    ContentValues done = new ContentValues();
+                    done.put(MediaStore.Audio.Media.IS_PENDING, 0);
+                    if (setAsRingtone) done.put(MediaStore.Audio.Media.IS_RINGTONE, 1);
+                    resolver.update(savedUri, done, null, null);
+                } else {
+                    File baseDir = Environment.getExternalStoragePublicDirectory(
+                        setAsRingtone ? Environment.DIRECTORY_RINGTONES : Environment.DIRECTORY_MUSIC
+                    );
+                    File destDir = new File(baseDir, "Mo Vibe");
+                    if (!destDir.exists()) //noinspection ResultOfMethodCallIgnored
+                        destDir.mkdirs();
+                    File destFile = new File(destDir, finalFileName);
+                    try (InputStream in = new FileInputStream(tempOutFile);
+                         OutputStream out = new FileOutputStream(destFile)) {
+                        byte[] buf = new byte[65536];
+                        int len;
+                        while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                        out.flush();
+                    }
+                    savedUri = Uri.fromFile(destFile);
+                    MediaScannerConnection.scanFile(ctx, new String[] { destFile.getAbsolutePath() }, new String[] { outMime }, null);
+                }
+
+                if (setAsRingtone) {
+                    RingtoneManager.setActualDefaultRingtoneUri(ctx, RingtoneManager.TYPE_RINGTONE, savedUri);
+                    JSObject res = new JSObject();
+                    res.put("status", "set");
+                    res.put("saved", true);
+                    res.put("uri", savedUri.toString());
+                    res.put("displayPath", displayPath);
+                    res.put("message", "\"" + safeTitle + "\" set as phone ringtone.");
+                    call.resolve(res);
+                } else {
+                    JSObject res = new JSObject();
+                    res.put("status", "saved");
+                    res.put("saved", true);
+                    res.put("uri", savedUri.toString());
+                    res.put("displayPath", displayPath);
+                    res.put("size", outSize);
+                    res.put("mimeType", outMime);
+                    res.put("message", "Saved audio to " + displayPath);
+                    call.resolve(res);
+                }
+            } catch (Exception e) {
+                JSObject res = new JSObject();
+                res.put("status", "failed");
+                res.put("saved", false);
+                res.put("message", "Audio extraction failed: " + e.getMessage());
+                call.resolve(res);
+            } finally {
+                if (muxer != null) {
+                    try { muxer.release(); } catch (Exception ignored) {}
+                }
+                if (extractor != null) {
+                    try { extractor.release(); } catch (Exception ignored) {}
+                }
+                if (tempOutFile != null && tempOutFile.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    tempOutFile.delete();
+                }
+            }
+        });
+    }
+
+    @PluginMethod
+    public void startAudioRecording(PluginCall call) {
+        String mode = call.getString("mode", "voice");
+        boolean micGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        boolean needPhone = "call".equals(mode)
+            && ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED;
+
+        if (!micGranted || needPhone) {
+            bridge.saveCall(call);
+            pendingRecordCallId = call.getCallbackId();
+            pendingRecordAction = "start";
+            List<String> perms = new ArrayList<>();
+            if (!micGranted) perms.add(Manifest.permission.RECORD_AUDIO);
+            if (needPhone) perms.add(Manifest.permission.READ_PHONE_STATE);
+            recordPermissionsLauncher.launch(perms.toArray(new String[0]));
+            return;
+        }
+        startRecordingWithPermissions(call);
+    }
+
+    private void startRecordingWithPermissions(PluginCall call) {
+        String mode = call.getString("mode", "voice");
+        if (!"call".equals(mode)) mode = "voice";
+        String customTitle = call.getString("title", "").trim();
+        boolean speakerphone = Boolean.TRUE.equals(call.getBoolean("speakerphone", false));
+
+        try {
+            synchronized (recorderLock) {
+                if (isRecordingAudio) {
+                    call.reject("A recording is already in progress.");
+                    return;
+                }
+                startMediaRecorderLocked(mode, customTitle, speakerphone, false);
+            }
+            JSObject res = new JSObject();
+            res.put("recording", true);
+            res.put("mode", mode);
+            res.put("startedAt", System.currentTimeMillis());
+            call.resolve(res);
+            emitRecordingStateEvent("started", null, null);
+        } catch (Exception e) {
+            cleanupActiveRecorderLocked();
+            call.reject("Could not start recording: " + e.getMessage(), e);
+        }
+    }
+
+    private void startMediaRecorderLocked(String mode, String title, boolean speakerphone, boolean fromAutoCall) throws Exception {
+        Context ctx = getContext();
+        String defaultTitle = "call".equals(mode)
+            ? ("Call Recording " + android.text.format.DateFormat.format("yyyy-MM-dd HH-mm-ss", System.currentTimeMillis()))
+            : ("Voice Recording " + android.text.format.DateFormat.format("yyyy-MM-dd HH-mm-ss", System.currentTimeMillis()));
+        String resolvedTitle = (title != null && !title.isEmpty()) ? title : defaultTitle;
+
+        File outFile = File.createTempFile("movibe_rec_", ".m4a", ctx.getCacheDir());
+        if (outFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            outFile.delete();
+        }
+
+        if ("call".equals(mode) && speakerphone) {
+            try {
+                AudioManager am = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    prevAudioMode = am.getMode();
+                    prevSpeakerphoneState = am.isSpeakerphoneOn();
+                    savedSpeakerphoneRestore = true;
+                    am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                    am.setSpeakerphoneOn(true);
+                }
+            } catch (Exception ignored) {
+                savedSpeakerphoneRestore = false;
+            }
+        }
+
+        int[] audioSources = "call".equals(mode)
+            ? new int[] {
+                MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                MediaRecorder.AudioSource.MIC
+            }
+            : new int[] {
+                MediaRecorder.AudioSource.MIC,
+                MediaRecorder.AudioSource.DEFAULT
+            };
+
+        MediaRecorder startedRecorder = null;
+        Exception lastErr = null;
+        for (int src : audioSources) {
+            MediaRecorder mr = null;
+            try {
+                mr = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    ? new MediaRecorder(ctx)
+                    : new MediaRecorder();
+                mr.setAudioSource(src);
+                mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                mr.setAudioSamplingRate(44100);
+                mr.setAudioEncodingBitRate(192000);
+                mr.setAudioChannels(1);
+                mr.setOutputFile(outFile.getAbsolutePath());
+                mr.prepare();
+                mr.start();
+                startedRecorder = mr;
+                break;
+            } catch (Exception err) {
+                lastErr = err;
+                if (mr != null) {
+                    try { mr.reset(); } catch (Exception ignored) {}
+                    try { mr.release(); } catch (Exception ignored) {}
+                }
+            }
+        }
+
+        if (startedRecorder == null) {
+            throw (lastErr != null ? lastErr : new IllegalStateException("Microphone unavailable"));
+        }
+
+        activeRecorder = startedRecorder;
+        activeRecordingFile = outFile;
+        activeRecordingMode = mode;
+        activeRecordingTitle = resolvedTitle;
+        isRecordingAudio = true;
+        isRecordingPaused = false;
+        autoCallStartedThisRecording = fromAutoCall;
+        recordingStartElapsedMs = SystemClock.elapsedRealtime();
+        recordingPausedAtMs = 0L;
+        recordingPausedAccumulatedMs = 0L;
+    }
+
+    @PluginMethod
+    public void pauseAudioRecording(PluginCall call) {
+        synchronized (recorderLock) {
+            if (!isRecordingAudio || activeRecorder == null) {
+                call.reject("No active recording to pause.");
+                return;
+            }
+            if (!isRecordingPaused) {
+                try {
+                    activeRecorder.pause();
+                    isRecordingPaused = true;
+                    recordingPausedAtMs = SystemClock.elapsedRealtime();
+                } catch (Exception e) {
+                    call.reject("Could not pause recording: " + e.getMessage(), e);
+                    return;
+                }
+            }
+        }
+        JSObject res = new JSObject();
+        res.put("paused", true);
+        call.resolve(res);
+        emitRecordingStateEvent("paused", null, null);
+    }
+
+    @PluginMethod
+    public void resumeAudioRecording(PluginCall call) {
+        synchronized (recorderLock) {
+            if (!isRecordingAudio || activeRecorder == null) {
+                call.reject("No active recording to resume.");
+                return;
+            }
+            if (isRecordingPaused) {
+                try {
+                    activeRecorder.resume();
+                    if (recordingPausedAtMs > 0) {
+                        recordingPausedAccumulatedMs += Math.max(0L, SystemClock.elapsedRealtime() - recordingPausedAtMs);
+                    }
+                    recordingPausedAtMs = 0L;
+                    isRecordingPaused = false;
+                } catch (Exception e) {
+                    call.reject("Could not resume recording: " + e.getMessage(), e);
+                    return;
+                }
+            }
+        }
+        JSObject res = new JSObject();
+        res.put("paused", false);
+        call.resolve(res);
+        emitRecordingStateEvent("resumed", null, null);
+    }
+
+    @PluginMethod
+    public void getRecordingStatus(PluginCall call) {
+        JSObject res = buildRecordingStatusObject();
+        call.resolve(res);
+    }
+
+    private JSObject buildRecordingStatusObject() {
+        JSObject res = new JSObject();
+        synchronized (recorderLock) {
+            long elapsed = 0L;
+            int amplitude = 0;
+            if (isRecordingAudio) {
+                long refNow = isRecordingPaused && recordingPausedAtMs > 0
+                    ? recordingPausedAtMs
+                    : SystemClock.elapsedRealtime();
+                elapsed = Math.max(0L, refNow - recordingStartElapsedMs - recordingPausedAccumulatedMs);
+                if (!isRecordingPaused && activeRecorder != null) {
+                    try {
+                        int rawAmp = activeRecorder.getMaxAmplitude();
+                        amplitude = Math.min(100, Math.max(0, Math.round((rawAmp / 32767f) * 100f)));
+                    } catch (Exception ignored) {
+                        amplitude = 0;
+                    }
+                }
+            }
+            res.put("isRecording", isRecordingAudio);
+            res.put("isPaused", isRecordingPaused);
+            res.put("mode", activeRecordingMode);
+            res.put("title", activeRecordingTitle);
+            res.put("elapsedMs", elapsed);
+            res.put("amplitude", amplitude);
+            res.put("autoCallRecording", isAutoCallRecordingActive);
+            res.put("speakerphone", autoCallSpeakerphone);
+            res.put("disappearAfterMs", callDisappearAfterMs);
+            res.put("callState", callStateLabel(lastTelephonyState));
+        }
+        return res;
+    }
+
+    private String callStateLabel(int state) {
+        switch (state) {
+            case TelephonyManager.CALL_STATE_RINGING:
+                return "ringing";
+            case TelephonyManager.CALL_STATE_OFFHOOK:
+                return "in_call";
+            default:
+                return "idle";
+        }
+    }
+
+    @PluginMethod
+    public void stopAudioRecording(PluginCall call) {
+        boolean discard = Boolean.TRUE.equals(call.getBoolean("discard", false));
+        String overrideTitle = call.getString("customTitle", "").trim();
+
+        executor.execute(() -> {
+            JSObject result = stopAndSaveRecordingInternal(discard, overrideTitle);
+            if (result.has("error")) {
+                call.reject(result.getString("error"));
+            } else {
+                call.resolve(result);
+            }
+        });
+    }
+
+    private JSObject stopAndSaveRecordingInternal(boolean discard, String overrideTitle) {
+        MediaRecorder rec;
+        File tempFile;
+        String mode;
+        String title;
+        long durationMs;
+
+        synchronized (recorderLock) {
+            rec = activeRecorder;
+            tempFile = activeRecordingFile;
+            mode = activeRecordingMode;
+            title = (overrideTitle != null && !overrideTitle.isEmpty()) ? overrideTitle : activeRecordingTitle;
+            long refNow = isRecordingPaused && recordingPausedAtMs > 0
+                ? recordingPausedAtMs
+                : SystemClock.elapsedRealtime();
+            durationMs = isRecordingAudio
+                ? Math.max(0L, refNow - recordingStartElapsedMs - recordingPausedAccumulatedMs)
+                : 0L;
+
+            activeRecorder = null;
+            activeRecordingFile = null;
+            isRecordingAudio = false;
+            isRecordingPaused = false;
+            autoCallStartedThisRecording = false;
+            recordingStartElapsedMs = 0L;
+            recordingPausedAtMs = 0L;
+            recordingPausedAccumulatedMs = 0L;
+        }
+
+        restoreAudioManagerAfterCallLocked();
+
+        if (rec != null) {
+            try { rec.stop(); } catch (Exception ignored) {}
+            try { rec.reset(); } catch (Exception ignored) {}
+            try { rec.release(); } catch (Exception ignored) {}
+        }
+
+        if (discard || tempFile == null || !tempFile.exists() || tempFile.length() == 0) {
+            if (tempFile != null && tempFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                tempFile.delete();
+            }
+            JSObject res = new JSObject();
+            res.put("saved", false);
+            res.put("discarded", true);
+            emitRecordingStateEvent("discarded", null, null);
+            return res;
+        }
+
+        try {
+            Context ctx = getContext();
+            ContentResolver resolver = ctx.getContentResolver();
+            String safeTitle = (title != null && !title.isEmpty())
+                ? title
+                : ("call".equals(mode) ? "Call Recording" : "Voice Recording");
+            String finalFileName = sanitizeOutputFileName(safeTitle, ".m4a");
+            String folderSub = "call".equals(mode) ? "Mo Vibe/Call Recordings" : "Mo Vibe/Voice Recordings";
+            String artistLabel = "call".equals(mode) ? "Call Recording" : "Voice Recording";
+            String albumLabel = "call".equals(mode) ? "Mo Vibe Calls" : "Mo Vibe Voice Notes";
+
+            Uri savedUri;
+            String displayPath = "Music/" + folderSub + "/" + finalFileName;
+            long sizeBytes = tempFile.length();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Audio.Media.DISPLAY_NAME, finalFileName);
+                values.put(MediaStore.Audio.Media.TITLE, safeTitle);
+                values.put(MediaStore.Audio.Media.ARTIST, artistLabel);
+                values.put(MediaStore.Audio.Media.ALBUM, albumLabel);
+                values.put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4");
+                values.put(MediaStore.Audio.Media.IS_MUSIC, 1);
+                if (durationMs > 0) values.put(MediaStore.Audio.Media.DURATION, durationMs);
+                values.put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/" + folderSub);
+                values.put(MediaStore.Audio.Media.IS_PENDING, 1);
+
+                savedUri = resolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values);
+                if (savedUri == null) throw new IllegalStateException("Could not save recording to Music folder");
+
+                try (InputStream in = new FileInputStream(tempFile);
+                     OutputStream out = resolver.openOutputStream(savedUri)) {
+                    if (out == null) throw new IllegalStateException("Output stream unavailable");
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                    out.flush();
+                }
+
+                ContentValues done = new ContentValues();
+                done.put(MediaStore.Audio.Media.IS_PENDING, 0);
+                resolver.update(savedUri, done, null, null);
+            } else {
+                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), folderSub);
+                if (!dir.exists()) //noinspection ResultOfMethodCallIgnored
+                    dir.mkdirs();
+                File destFile = new File(dir, finalFileName);
+                try (InputStream in = new FileInputStream(tempFile);
+                     OutputStream out = new FileOutputStream(destFile)) {
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                    out.flush();
+                }
+                savedUri = Uri.fromFile(destFile);
+                MediaScannerConnection.scanFile(ctx, new String[] { destFile.getAbsolutePath() }, new String[] { "audio/mp4" }, null);
+            }
+
+            long durFinal = durationMs;
+            if (durFinal <= 0) {
+                try {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(ctx, savedUri);
+                    String dStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    if (dStr != null) durFinal = Long.parseLong(dStr);
+                    mmr.release();
+                } catch (Exception ignored) {}
+            }
+
+            long nowMs = System.currentTimeMillis();
+            long expiresAtMs = ("call".equals(mode) && callDisappearAfterMs > 0L)
+                ? (nowMs + callDisappearAfterMs)
+                : 0L;
+
+            JSObject song = new JSObject();
+            String recId = savedUri.getLastPathSegment() != null ? savedUri.getLastPathSegment() : String.valueOf(nowMs);
+            song.put("id", recId);
+            song.put("title", safeTitle);
+            song.put("displayName", finalFileName);
+            song.put("artist", artistLabel);
+            song.put("album", albumLabel);
+            song.put("durationMs", durFinal);
+            song.put("size", sizeBytes);
+            song.put("mimeType", "audio/mp4");
+            song.put("uri", savedUri.toString());
+
+            if ("call".equals(mode)) {
+                trackCallExpiryEntry(recId, savedUri.toString(), safeTitle, nowMs, expiresAtMs);
+            }
+
+            JSObject res = new JSObject();
+            res.put("saved", true);
+            res.put("displayPath", displayPath);
+            res.put("uri", savedUri.toString());
+            if (expiresAtMs > 0L) {
+                res.put("expiresAt", expiresAtMs);
+            }
+            res.put("song", song);
+            emitRecordingStateEvent("saved", displayPath, song);
+            return res;
+        } catch (Exception e) {
+            JSObject errRes = new JSObject();
+            errRes.put("saved", false);
+            errRes.put("error", "Could not save recording: " + e.getMessage());
+            return errRes;
+        } finally {
+            if (tempFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                tempFile.delete();
+            }
+        }
+    }
+
+    private void cleanupActiveRecorderLocked() {
+        synchronized (recorderLock) {
+            if (activeRecorder != null) {
+                try { activeRecorder.stop(); } catch (Exception ignored) {}
+                try { activeRecorder.reset(); } catch (Exception ignored) {}
+                try { activeRecorder.release(); } catch (Exception ignored) {}
+                activeRecorder = null;
+            }
+            if (activeRecordingFile != null && activeRecordingFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                activeRecordingFile.delete();
+            }
+            activeRecordingFile = null;
+            isRecordingAudio = false;
+            isRecordingPaused = false;
+            autoCallStartedThisRecording = false;
+        }
+        restoreAudioManagerAfterCallLocked();
+    }
+
+    private void restoreAudioManagerAfterCallLocked() {
+        if (!savedSpeakerphoneRestore) return;
+        savedSpeakerphoneRestore = false;
+        try {
+            AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+            if (am != null) {
+                am.setSpeakerphoneOn(prevSpeakerphoneState);
+                am.setMode(prevAudioMode);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @PluginMethod
+    public void setAutoCallRecording(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        Boolean speakerOpt = call.getBoolean("speakerphone");
+        if (speakerOpt != null) {
+            autoCallSpeakerphone = speakerOpt;
+            getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_AUTO_CALL_SPEAKERPHONE, autoCallSpeakerphone)
+                .apply();
+        }
+        if (enabled) {
+            boolean micGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            boolean phoneGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+            if (!micGranted || !phoneGranted) {
+                bridge.saveCall(call);
+                pendingRecordCallId = call.getCallbackId();
+                pendingRecordAction = "auto_call";
+                List<String> perms = new ArrayList<>();
+                if (!micGranted) perms.add(Manifest.permission.RECORD_AUDIO);
+                if (!phoneGranted) perms.add(Manifest.permission.READ_PHONE_STATE);
+                recordPermissionsLauncher.launch(perms.toArray(new String[0]));
+                return;
+            }
+        }
+        applyAutoCallRecordingState(call, enabled);
+    }
+
+    private void applyAutoCallRecordingState(PluginCall call, boolean enabled) {
+        getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_AUTO_CALL_REC, enabled)
+            .apply();
+        isAutoCallRecordingActive = enabled;
+        if (enabled) {
+            registerCallStateMonitor();
+        } else {
+            unregisterCallStateMonitor();
+        }
+        JSObject res = new JSObject();
+        res.put("autoCallRecording", enabled);
+        res.put("speakerphone", autoCallSpeakerphone);
+        call.resolve(res);
+        emitRecordingStateEvent(enabled ? "auto_call_enabled" : "auto_call_disabled", null, null);
+    }
+
+    @PluginMethod
+    public void getCallRecorderSettings(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE);
+        int trackedCount = 0;
+        synchronized (expiryLock) {
+            try {
+                JSONArray arr = new JSONArray(prefs.getString(PREF_CALL_EXPIRY_ENTRIES, "[]"));
+                trackedCount = arr.length();
+            } catch (Exception ignored) {
+                trackedCount = 0;
+            }
+        }
+        JSObject res = new JSObject();
+        res.put("autoCallRecording", isAutoCallRecordingActive);
+        res.put("speakerphone", autoCallSpeakerphone);
+        res.put("disappearAfterMs", callDisappearAfterMs);
+        res.put("trackedCount", trackedCount);
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void setCallRecorderSettings(PluginCall call) {
+        Boolean autoOpt = call.getBoolean("autoCallRecording");
+        if (Boolean.TRUE.equals(autoOpt)) {
+            boolean micGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            boolean phoneGranted = ContextCompat.checkSelfPermission(getContext(), Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+            if (!micGranted || !phoneGranted) {
+                bridge.saveCall(call);
+                pendingRecordCallId = call.getCallbackId();
+                pendingRecordAction = "call_settings";
+                List<String> perms = new ArrayList<>();
+                if (!micGranted) perms.add(Manifest.permission.RECORD_AUDIO);
+                if (!phoneGranted) perms.add(Manifest.permission.READ_PHONE_STATE);
+                recordPermissionsLauncher.launch(perms.toArray(new String[0]));
+                return;
+            }
+        }
+        applyCallRecorderSettingsInternal(call, false);
+    }
+
+    private void applyCallRecorderSettingsInternal(PluginCall call, boolean forceAutoTrue) {
+        SharedPreferences prefs = getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor ed = prefs.edit();
+
+        Boolean autoOpt = forceAutoTrue ? Boolean.TRUE : call.getBoolean("autoCallRecording");
+        if (autoOpt != null) {
+            isAutoCallRecordingActive = autoOpt;
+            ed.putBoolean(PREF_AUTO_CALL_REC, isAutoCallRecordingActive);
+            if (isAutoCallRecordingActive) {
+                registerCallStateMonitor();
+            } else {
+                unregisterCallStateMonitor();
+            }
+        }
+
+        Boolean speakerOpt = call.getBoolean("speakerphone");
+        if (speakerOpt != null) {
+            autoCallSpeakerphone = speakerOpt;
+            ed.putBoolean(PREF_AUTO_CALL_SPEAKERPHONE, autoCallSpeakerphone);
+        }
+
+        if (call.hasOption("disappearAfterMs")) {
+            Double rawMs = call.getDouble("disappearAfterMs", 0.0);
+            callDisappearAfterMs = rawMs != null ? Math.max(0L, Math.round(rawMs)) : 0L;
+            ed.putLong(PREF_CALL_DISAPPEAR_MS, callDisappearAfterMs);
+        }
+
+        ed.apply();
+
+        boolean applyToExisting = Boolean.TRUE.equals(call.getBoolean("applyToExisting", false));
+        int trackedCount = 0;
+        synchronized (expiryLock) {
+            try {
+                JSONArray arr = new JSONArray(prefs.getString(PREF_CALL_EXPIRY_ENTRIES, "[]"));
+                if (applyToExisting) {
+                    long now = System.currentTimeMillis();
+                    JSONArray updated = new JSONArray();
+                    for (int i = 0; i < arr.length(); i++) {
+                        JSONObject obj = arr.optJSONObject(i);
+                        if (obj == null) continue;
+                        long created = obj.optLong("createdAt", now);
+                        obj.put("expiresAt", callDisappearAfterMs <= 0L ? 0L : Math.max(now + 1500L, created + callDisappearAfterMs));
+                        updated.put(obj);
+                    }
+                    arr = updated;
+                    prefs.edit().putString(PREF_CALL_EXPIRY_ENTRIES, arr.toString()).apply();
+                }
+                trackedCount = arr.length();
+            } catch (Exception ignored) {
+                trackedCount = 0;
+            }
+        }
+
+        JSObject res = new JSObject();
+        res.put("autoCallRecording", isAutoCallRecordingActive);
+        res.put("speakerphone", autoCallSpeakerphone);
+        res.put("disappearAfterMs", callDisappearAfterMs);
+        res.put("trackedCount", trackedCount);
+        call.resolve(res);
+        emitRecordingStateEvent("settings_updated", null, null);
+    }
+
+    @PluginMethod
+    public void purgeExpiredCallRecordings(PluginCall call) {
+        executor.execute(() -> {
+            List<String> removed = purgeExpiredCallRecordingsInternal(true);
+            JSArray idsArr = new JSArray();
+            for (String id : removed) {
+                idsArr.put(id);
+            }
+            JSObject res = new JSObject();
+            res.put("removedIds", idsArr);
+            res.put("removedCount", removed.size());
+            call.resolve(res);
+        });
+    }
+
+    private void trackCallExpiryEntry(String id, String uri, String title, long createdAt, long expiresAt) {
+        synchronized (expiryLock) {
+            try {
+                SharedPreferences prefs = getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE);
+                JSONArray arr = new JSONArray(prefs.getString(PREF_CALL_EXPIRY_ENTRIES, "[]"));
+                JSONArray next = new JSONArray();
+                JSONObject entry = new JSONObject();
+                entry.put("id", id);
+                entry.put("uri", uri);
+                entry.put("title", title);
+                entry.put("createdAt", createdAt);
+                entry.put("expiresAt", expiresAt);
+                next.put(entry);
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject existing = arr.optJSONObject(i);
+                    if (existing != null && !id.equals(existing.optString("id"))) {
+                        next.put(existing);
+                    }
+                }
+                prefs.edit().putString(PREF_CALL_EXPIRY_ENTRIES, next.toString()).apply();
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private List<String> purgeExpiredCallRecordingsInternal(boolean emitEvent) {
+        List<String> removedIds = new ArrayList<>();
+        synchronized (expiryLock) {
+            try {
+                SharedPreferences prefs = getContext().getSharedPreferences("movibe_prefs", Context.MODE_PRIVATE);
+                String raw = prefs.getString(PREF_CALL_EXPIRY_ENTRIES, "[]");
+                JSONArray arr = new JSONArray(raw);
+                if (arr.length() == 0) {
+                    return removedIds;
+                }
+                long now = System.currentTimeMillis();
+                JSONArray remaining = new JSONArray();
+                ContentResolver resolver = getContext().getContentResolver();
+                boolean changed = false;
+
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject obj = arr.optJSONObject(i);
+                    if (obj == null) continue;
+                    long expiresAt = obj.optLong("expiresAt", 0L);
+                    String id = obj.optString("id", "");
+                    String uriStr = obj.optString("uri", "");
+                    if (expiresAt > 0L && now >= expiresAt) {
+                        changed = true;
+                        try {
+                            if (!uriStr.isEmpty()) {
+                                Uri targetUri = Uri.parse(uriStr);
+                                if ("file".equals(targetUri.getScheme()) && targetUri.getPath() != null) {
+                                    File f = new File(targetUri.getPath());
+                                    if (f.exists()) {
+                                        //noinspection ResultOfMethodCallIgnored
+                                        f.delete();
+                                    }
+                                } else {
+                                    resolver.delete(targetUri, null, null);
+                                }
+                            }
+                        } catch (Exception ignored) {
+                            // Even if file already removed externally, drop tracking entry
+                        }
+                        if (!id.isEmpty()) {
+                            removedIds.add(id);
+                        }
+                    } else {
+                        remaining.put(obj);
+                    }
+                }
+
+                if (changed) {
+                    prefs.edit().putString(PREF_CALL_EXPIRY_ENTRIES, remaining.toString()).apply();
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (emitEvent && !removedIds.isEmpty()) {
+            JSObject payload = buildRecordingStatusObject();
+            payload.put("event", "expired_cleaned");
+            JSArray idsArr = new JSArray();
+            for (String id : removedIds) idsArr.put(id);
+            payload.put("removedIds", idsArr);
+            notifyListeners("recordingStateChanged", payload);
+        }
+        return removedIds;
+    }
+
+    private void onPhoneCallStateChanged(int state) {
+        lastTelephonyState = state;
+        if (!isAutoCallRecordingActive) return;
+        if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
+            synchronized (recorderLock) {
+                if (!isRecordingAudio) {
+                    try {
+                        startMediaRecorderLocked("call", "", autoCallSpeakerphone, true);
+                        emitRecordingStateEvent("started", null, null);
+                    } catch (Exception ignored) {
+                        cleanupActiveRecorderLocked();
+                    }
+                }
+            }
+        } else if (state == TelephonyManager.CALL_STATE_IDLE) {
+            boolean shouldStopAuto;
+            synchronized (recorderLock) {
+                shouldStopAuto = isRecordingAudio && autoCallStartedThisRecording;
+            }
+            if (shouldStopAuto) {
+                executor.execute(() -> stopAndSaveRecordingInternal(false, ""));
+            }
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void registerCallStateMonitor() {
+        try {
+            unregisterCallStateMonitor();
+            TelephonyManager tm = (TelephonyManager) getContext().getSystemService(Context.TELEPHONY_SERVICE);
+            if (tm == null) return;
+            telephonyManager = tm;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                class CallStateCb extends TelephonyCallback implements TelephonyCallback.CallStateListener {
+                    @Override
+                    public void onCallStateChanged(int state) {
+                        onPhoneCallStateChanged(state);
+                    }
+                }
+                CallStateCb cb = new CallStateCb();
+                activeTelephonyCallback = cb;
+                tm.registerTelephonyCallback(ContextCompat.getMainExecutor(getContext()), cb);
+            } else {
+                PhoneStateListener listener = new PhoneStateListener() {
+                    @Override
+                    public void onCallStateChanged(int state, String phoneNumber) {
+                        onPhoneCallStateChanged(state);
+                    }
+                };
+                legacyPhoneStateListener = listener;
+                tm.listen(listener, PhoneStateListener.LISTEN_CALL_STATE);
+            }
+        } catch (Exception ignored) {
+            // Device may restrict telephony state callbacks without permission
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void unregisterCallStateMonitor() {
+        try {
+            if (telephonyManager == null) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activeTelephonyCallback instanceof TelephonyCallback) {
+                telephonyManager.unregisterTelephonyCallback((TelephonyCallback) activeTelephonyCallback);
+                activeTelephonyCallback = null;
+            } else if (legacyPhoneStateListener != null) {
+                telephonyManager.listen(legacyPhoneStateListener, PhoneStateListener.LISTEN_NONE);
+                legacyPhoneStateListener = null;
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void emitRecordingStateEvent(String eventType, String displayPath, JSObject song) {
+        JSObject payload = buildRecordingStatusObject();
+        payload.put("event", eventType);
+        if (displayPath != null) payload.put("displayPath", displayPath);
+        if (song != null) payload.put("song", song);
+        notifyListeners("recordingStateChanged", payload);
+    }
+
     private InputStream openUriInputStream(ContentResolver resolver, Uri uri) throws Exception {
         if ("file".equals(uri.getScheme()) && uri.getPath() != null) {
             return new FileInputStream(new File(uri.getPath()));
@@ -3728,6 +5121,8 @@ public class AudioLibraryPlugin extends Plugin {
     protected void handleOnDestroy() {
         super.handleOnDestroy();
         MusicPlaybackService.setStateListener(null);
+        unregisterCallStateMonitor();
+        cleanupActiveRecorderLocked();
         if (lastTempAudioFile != null && lastTempAudioFile.exists()) {
             //noinspection ResultOfMethodCallIgnored
             lastTempAudioFile.delete();
@@ -3753,5 +5148,6 @@ public class AudioLibraryPlugin extends Plugin {
         pendingExports.clear();
         executor.shutdownNow();
         thumbExecutor.shutdownNow();
+        expiryScheduler.shutdownNow();
     }
 }

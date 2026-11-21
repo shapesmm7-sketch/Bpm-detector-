@@ -279,6 +279,9 @@ interface AudioLibraryPluginInterface {
     artist?: string;
     album?: string;
   }>;
+  getPhoneFolders(): Promise<{
+    folders: string[];
+  }>;
   moveOrCopyAudioFile(options: {
     uri: string;
     id?: string;
@@ -290,6 +293,24 @@ interface AudioLibraryPluginInterface {
     mimeType?: string;
     targetFolder: string;
     mode: 'move' | 'copy';
+  }): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    newUri?: string;
+    displayPath?: string;
+    song?: AudioTrackItem;
+  }>;
+  pickFolderAndMoveOrCopyAudioFile(options: {
+    uri: string;
+    id?: string;
+    displayName: string;
+    title?: string;
+    artist?: string;
+    album?: string;
+    durationMs?: number;
+    mimeType?: string;
+    mode: 'move' | 'copy';
+    initialFolder?: string;
   }): Promise<{
     success: boolean;
     cancelled?: boolean;
@@ -318,6 +339,101 @@ interface AudioLibraryPluginInterface {
     pinned: boolean;
     supported: boolean;
   }>;
+  extractVideoAudio(options: {
+    uri: string;
+    title?: string;
+    displayName?: string;
+    setAsRingtone?: boolean;
+  }): Promise<{
+    status: 'set' | 'saved' | 'permission_required' | 'failed';
+    saved: boolean;
+    uri?: string;
+    displayPath?: string;
+    size?: number;
+    mimeType?: string;
+    message?: string;
+  }>;
+  startAudioRecording(options: {
+    mode: 'voice' | 'call';
+    title?: string;
+    speakerphone?: boolean;
+  }): Promise<{
+    recording: boolean;
+    mode: 'voice' | 'call';
+    startedAt: number;
+  }>;
+  pauseAudioRecording(): Promise<{ paused: boolean }>;
+  resumeAudioRecording(): Promise<{ paused: boolean }>;
+  stopAudioRecording(options?: {
+    discard?: boolean;
+    customTitle?: string;
+  }): Promise<{
+    saved: boolean;
+    discarded?: boolean;
+    displayPath?: string;
+    uri?: string;
+    expiresAt?: number;
+    song?: AudioTrackItem;
+  }>;
+  getRecordingStatus(): Promise<{
+    isRecording: boolean;
+    isPaused: boolean;
+    mode: 'voice' | 'call';
+    title: string;
+    elapsedMs: number;
+    amplitude: number;
+    autoCallRecording: boolean;
+    speakerphone: boolean;
+    disappearAfterMs: number;
+    callState: 'idle' | 'ringing' | 'in_call';
+  }>;
+  setAutoCallRecording(options: {
+    enabled: boolean;
+    speakerphone?: boolean;
+  }): Promise<{
+    autoCallRecording: boolean;
+    speakerphone: boolean;
+  }>;
+  getCallRecorderSettings(): Promise<{
+    autoCallRecording: boolean;
+    speakerphone: boolean;
+    disappearAfterMs: number;
+    trackedCount: number;
+  }>;
+  setCallRecorderSettings(options: {
+    autoCallRecording?: boolean;
+    speakerphone?: boolean;
+    disappearAfterMs?: number;
+    applyToExisting?: boolean;
+  }): Promise<{
+    autoCallRecording: boolean;
+    speakerphone: boolean;
+    disappearAfterMs: number;
+    trackedCount: number;
+  }>;
+  purgeExpiredCallRecordings(): Promise<{
+    removedIds: string[];
+    removedCount: number;
+  }>;
+  addListener(
+    eventName: 'recordingStateChanged',
+    listenerFunc: (payload: {
+      event: string;
+      isRecording: boolean;
+      isPaused: boolean;
+      mode: 'voice' | 'call';
+      title: string;
+      elapsedMs: number;
+      amplitude: number;
+      autoCallRecording: boolean;
+      speakerphone?: boolean;
+      disappearAfterMs?: number;
+      callState: 'idle' | 'ringing' | 'in_call';
+      displayPath?: string;
+      song?: AudioTrackItem;
+      removedIds?: string[];
+    }) => void
+  ): Promise<PluginListenerHandle>;
   addListener(
     eventName: 'externalMediaOpened',
     listenerFunc: (payload: ExternalMediaPayload) => void
@@ -397,7 +513,7 @@ export async function saveExportedAudioBlob(
   blob: Blob,
   fileName: string,
   onProgress?: (percent: number) => void
-): Promise<{ displayPath: string }> {
+): Promise<{ displayPath: string; uri?: string }> {
   if (isNativeAndroid()) {
     const { exportId } = await AudioLibrary.beginAudioExport();
     try {
@@ -419,7 +535,10 @@ export async function saveExportedAudioBlob(
         mimeType: blob.type || 'audio/wav',
       });
       onProgress?.(100);
-      return { displayPath: result.displayPath || `Music/Mo Vibe/${fileName}` };
+      return {
+        displayPath: result.displayPath || `Music/Mo Vibe/${fileName}`,
+        uri: result.uri,
+      };
     } catch (err) {
       try {
         await AudioLibrary.cancelAudioExport({ exportId });

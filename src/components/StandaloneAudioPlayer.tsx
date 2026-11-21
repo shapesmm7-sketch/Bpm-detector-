@@ -12,6 +12,7 @@ import {
 import { AudioArtwork } from './AudioArtwork';
 import { ExportFormatModal } from './ExportFormatModal';
 import {
+  AddLockInfoSavePayload,
   AudioAddLockInfoModal,
   AudioDeleteConfirmModal,
   AudioDetailsModal,
@@ -26,6 +27,12 @@ import {
   LockedTrackInfo,
   PlaylistAddSongsModal,
 } from './AudioTrackActionModals';
+import {
+  DEFAULT_TRACK_PLAYBACK_OPTIONS,
+  EQUALIZER_PRESETS,
+  PlayerTrackOptionsPanel,
+  TrackPlaybackOptions,
+} from './PlayerTrackOptionsPanel';
 import {
   extractWebAudioCoverArt,
   getGeneratedAudioArtworkUrl,
@@ -65,7 +72,19 @@ import {
   Pencil,
   Check,
   CheckCircle2,
+  Mic,
+  PhoneCall,
 } from 'lucide-react';
+import { AudioRecorderModal, RecorderMode } from './AudioRecorderModal';
+import {
+  CallRecorderSettings,
+  formatDisappearDuration,
+  readCallRecorderSettings,
+  readTrackedCallRecordings,
+  removeTrackedCallRecordings,
+  saveCallRecorderSettings,
+  trackCallRecordingExpiry,
+} from '../utils/callRecordingSettings';
 
 type LibraryFilterTab = 'all' | 'favorites' | 'playlists' | 'hidden';
 type PlaybackScope =
@@ -78,6 +97,8 @@ const PLAYLISTS_STORAGE_KEY = 'movibe_audio_playlists';
 const FAVORITES_STORAGE_KEY = 'movibe_favorite_audio_ids';
 const HIDDEN_STORAGE_KEY = 'movibe_hidden_audio_ids';
 const LOCKED_INFO_STORAGE_KEY = 'movibe_locked_audio_info';
+const TRACK_OPTIONS_STORAGE_KEY = 'movibe_track_playback_options';
+const TRACK_RESUME_POSITIONS_KEY = 'movibe_audio_resume_positions';
 
 function readJsonStorage<T>(key: string, fallback: T): T {
   try {
@@ -166,6 +187,156 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
   useEffect(() => {
     playbackSpeedRef.current = playbackSpeed;
   }, [playbackSpeed]);
+
+  const [trackOptionsMap, setTrackOptionsMap] = useState<Record<string, TrackPlaybackOptions>>(() =>
+    readJsonStorage<Record<string, TrackPlaybackOptions>>(TRACK_OPTIONS_STORAGE_KEY, {})
+  );
+  const trackOptionsMapRef = useRef<Record<string, TrackPlaybackOptions>>(trackOptionsMap);
+  useEffect(() => {
+    trackOptionsMapRef.current = trackOptionsMap;
+    try {
+      localStorage.setItem(TRACK_OPTIONS_STORAGE_KEY, JSON.stringify(trackOptionsMap));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [trackOptionsMap]);
+
+  const trackResumePositionsRef = useRef<Record<string, number>>(
+    readJsonStorage<Record<string, number>>(TRACK_RESUME_POSITIONS_KEY, {})
+  );
+  const lastResumeSavedAtRef = useRef<number>(0);
+  const pendingInitialSeekRef = useRef<{ trackId: string; sec: number } | null>(null);
+  const stopTriggeredTrackRef = useRef<string | null>(null);
+  const [showTrackOptionsPanel, setShowTrackOptionsPanel] = useState<boolean>(true);
+
+  const webFxCtxRef = useRef<AudioContext | null>(null);
+  const webFxSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const webFxLowRef = useRef<BiquadFilterNode | null>(null);
+  const webFxMidRef = useRef<BiquadFilterNode | null>(null);
+  const webFxHighRef = useRef<BiquadFilterNode | null>(null);
+  const webFxGainRef = useRef<GainNode | null>(null);
+
+  const getTrackOptions = (trackId?: string | null): TrackPlaybackOptions => {
+    if (!trackId) return DEFAULT_TRACK_PLAYBACK_OPTIONS;
+    const existing = trackOptionsMapRef.current[trackId];
+    return existing ? { ...DEFAULT_TRACK_PLAYBACK_OPTIONS, ...existing } : DEFAULT_TRACK_PLAYBACK_OPTIONS;
+  };
+
+  const applyEffectiveGainAndEq = (
+    vol: number,
+    muted: boolean,
+    opts: TrackPlaybackOptions
+  ) => {
+    const pct = opts.volumeAdjustmentPct || 0;
+    const factor = pct <= 0 ? Math.max(0, 1 + pct / 100) : 1 + pct / 100;
+    const baseGain = muted ? 0 : vol;
+    const finalGain = Math.max(0, Math.min(2.0, baseGain * factor));
+
+    const audioEl = audioRef.current;
+    if (audioEl) {
+      const needsWebFx =
+        opts.equalizerPreset !== 'None' ||
+        pct > 0 ||
+        webFxSourceRef.current !== null;
+
+      if (needsWebFx) {
+        try {
+          if (!webFxCtxRef.current || webFxCtxRef.current.state === 'closed') {
+            const AudioCtx =
+              window.AudioContext ||
+              (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            webFxCtxRef.current = new AudioCtx();
+          }
+          const ctx = webFxCtxRef.current;
+          if (ctx.state === 'suspended') {
+            void ctx.resume().catch(() => {});
+          }
+          if (!webFxSourceRef.current) {
+            const src = ctx.createMediaElementSource(audioEl);
+            const low = ctx.createBiquadFilter();
+            low.type = 'lowshelf';
+            low.frequency.value = 120;
+            const mid = ctx.createBiquadFilter();
+            mid.type = 'peaking';
+            mid.frequency.value = 1000;
+            mid.Q.value = 1.0;
+            const high = ctx.createBiquadFilter();
+            high.type = 'highshelf';
+            high.frequency.value = 4000;
+            const gainNode = ctx.createGain();
+            src.connect(low);
+            low.connect(mid);
+            mid.connect(high);
+            high.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            webFxSourceRef.current = src;
+            webFxLowRef.current = low;
+            webFxMidRef.current = mid;
+            webFxHighRef.current = high;
+            webFxGainRef.current = gainNode;
+          }
+          const preset =
+            EQUALIZER_PRESETS.find((p) => p.name === opts.equalizerPreset) ||
+            EQUALIZER_PRESETS[0];
+          if (webFxLowRef.current) webFxLowRef.current.gain.value = preset.lowDb;
+          if (webFxMidRef.current) webFxMidRef.current.gain.value = preset.midDb;
+          if (webFxHighRef.current) webFxHighRef.current.gain.value = preset.highDb;
+          if (webFxGainRef.current) webFxGainRef.current.gain.value = finalGain;
+          audioEl.volume = 1.0;
+        } catch {
+          audioEl.volume = Math.max(0, Math.min(1, finalGain));
+        }
+      } else {
+        audioEl.volume = Math.max(0, Math.min(1, finalGain));
+      }
+    }
+
+    if (isNativeAndroid() && currentTrackRef.current && shouldUseNativeService(currentTrackRef.current)) {
+      const nativeVol = Math.max(0, Math.min(1, vol * factor));
+      void AudioLibrary.updateMusicSettings({
+        isShuffle,
+        repeatMode,
+        volume: nativeVol,
+        isMuted: muted,
+        playbackSpeed: playbackSpeedRef.current,
+      }).catch(() => {});
+    }
+  };
+
+  const persistResumePosition = (trackId: string, sec: number, force: boolean = false) => {
+    const now = Date.now();
+    if (!force && now - lastResumeSavedAtRef.current < 1500) return;
+    lastResumeSavedAtRef.current = now;
+    trackResumePositionsRef.current = {
+      ...trackResumePositionsRef.current,
+      [trackId]: Number(Math.max(0, sec).toFixed(2)),
+    };
+    try {
+      localStorage.setItem(
+        TRACK_RESUME_POSITIONS_KEY,
+        JSON.stringify(trackResumePositionsRef.current)
+      );
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    const opts = getTrackOptions(currentTrack.id);
+    applyEffectiveGainAndEq(volume, isMuted, opts);
+    // Re-apply track gain/EQ whenever track or its options change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id, trackOptionsMap]);
+
+  useEffect(() => {
+    return () => {
+      if (webFxCtxRef.current && webFxCtxRef.current.state !== 'closed') {
+        void webFxCtxRef.current.close().catch(() => {});
+        webFxCtxRef.current = null;
+      }
+    };
+  }, []);
 
   const onPlaybackStartedRef = useRef(onPlaybackStarted);
   useEffect(() => {
@@ -299,16 +470,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     };
   }, []);
 
-  // Re-enrich currentTrack with full library metadata if song list loads after service hydration
-  useEffect(() => {
-    if (!currentTrack || songs.length === 0) return;
-    const matched = songs.find(
-      (s) => s.id === currentTrack.id || (s.uri && s.uri === currentTrack.uri)
-    );
-    if (matched && (matched.size !== currentTrack.size || matched.thumbnailUrl !== currentTrack.thumbnailUrl)) {
-      setCurrentTrack(matched);
-    }
-  }, [songs, currentTrack]);
+
 
   // Pause standalone audio player ONLY if another section (Home BPM Analyzer or Video Player) starts playing
   useEffect(() => {
@@ -404,7 +566,37 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     mode: 'move' | 'copy';
     song: AudioTrackItem;
   } | null>(null);
+  const [phoneFolders, setPhoneFolders] = useState<string[]>([
+    'Music/Mo Vibe',
+    'Music',
+    'Download',
+    'Download/Mo Vibe',
+    'Documents',
+    'Recordings',
+    'Podcasts',
+    'Audiobooks',
+    'Ringtones',
+    'Alarms',
+    'Notifications',
+    'DCIM',
+    'Pictures',
+    'Movies',
+  ]);
+  const [isLoadingFolders, setIsLoadingFolders] = useState<boolean>(false);
   const [isMovingOrCopying, setIsMovingOrCopying] = useState<boolean>(false);
+  const [recorderModalOpen, setRecorderModalOpen] = useState<boolean>(false);
+  const [recorderMode, setRecorderMode] = useState<RecorderMode>('voice');
+  const [callRecSettings, setCallRecSettings] = useState<CallRecorderSettings>(() =>
+    readCallRecorderSettings()
+  );
+  const callRecSettingsRef = useRef<CallRecorderSettings>(callRecSettings);
+  useEffect(() => {
+    callRecSettingsRef.current = callRecSettings;
+  }, [callRecSettings]);
+  const [liveRecordingStatus, setLiveRecordingStatus] = useState<{
+    isRecording: boolean;
+    mode: RecorderMode;
+  }>({ isRecording: false, mode: 'voice' });
   const [actionToast, setActionToast] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -418,6 +610,152 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       toastTimerRef.current = null;
     }, durationMs);
   };
+
+  const removeExpiredTracksFromLibrary = (removedIds: string[]) => {
+    if (removedIds.length === 0) return;
+    const idSet = new Set(removedIds);
+    removeTrackedCallRecordings(removedIds);
+
+    const activeTrack = currentTrackRef.current;
+    if (activeTrack && idSet.has(activeTrack.id)) {
+      if (isNativeAndroid() && !activeTrack.uri.startsWith('blob:')) {
+        void AudioLibrary.stopMusicPlayback().catch(() => {});
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setCurrentTrack(null);
+    }
+
+    setSongs((prev) => {
+      const removedTracks = prev.filter((s) => idSet.has(s.id));
+      removedTracks.forEach((s) => {
+        if (s.webUrl?.startsWith('blob:')) {
+          URL.revokeObjectURL(s.webUrl);
+        }
+      });
+      const next = prev.filter((s) => !idSet.has(s.id));
+      if (next.length !== prev.length) {
+        onSongsLoaded(next);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const runExpirySweep = async () => {
+      if (isNativeAndroid()) {
+        try {
+          const purge = await AudioLibrary.purgeExpiredCallRecordings();
+          if (purge.removedIds && purge.removedIds.length > 0) {
+            removeExpiredTracksFromLibrary(purge.removedIds);
+          }
+        } catch {
+          // ignore
+        }
+      }
+      const now = Date.now();
+      const expiredEntries = readTrackedCallRecordings().filter(
+        (entry) => entry.expiresAt > 0 && now >= entry.expiresAt
+      );
+      if (expiredEntries.length > 0) {
+        removeExpiredTracksFromLibrary(expiredEntries.map((e) => e.id));
+      }
+    };
+
+    void runExpirySweep();
+    const sweepTimer = window.setInterval(() => {
+      void runExpirySweep();
+    }, 15_000);
+
+    return () => window.clearInterval(sweepTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+    let active = true;
+
+    void AudioLibrary.getRecordingStatus()
+      .then((st) => {
+        if (!active) return;
+        const merged: CallRecorderSettings = {
+          ...callRecSettingsRef.current,
+          alwaysAutoRecord: Boolean(st.autoCallRecording),
+          speakerphoneBoost:
+            typeof st.speakerphone === 'boolean'
+              ? st.speakerphone
+              : callRecSettingsRef.current.speakerphoneBoost,
+          disappearAfterMs:
+            typeof st.disappearAfterMs === 'number'
+              ? st.disappearAfterMs
+              : callRecSettingsRef.current.disappearAfterMs,
+        };
+        setCallRecSettings(merged);
+        saveCallRecorderSettings(merged);
+        setLiveRecordingStatus({
+          isRecording: Boolean(st.isRecording),
+          mode: st.mode === 'call' ? 'call' : 'voice',
+        });
+      })
+      .catch(() => {
+        // ignore
+      });
+
+    void AudioLibrary.addListener('recordingStateChanged', (payload) => {
+      if (!active) return;
+      const merged: CallRecorderSettings = {
+        ...callRecSettingsRef.current,
+        alwaysAutoRecord: Boolean(payload.autoCallRecording),
+        speakerphoneBoost:
+          typeof payload.speakerphone === 'boolean'
+            ? payload.speakerphone
+            : callRecSettingsRef.current.speakerphoneBoost,
+        disappearAfterMs:
+          typeof payload.disappearAfterMs === 'number'
+            ? payload.disappearAfterMs
+            : callRecSettingsRef.current.disappearAfterMs,
+      };
+      setCallRecSettings(merged);
+      saveCallRecorderSettings(merged);
+      setLiveRecordingStatus({
+        isRecording: Boolean(payload.isRecording),
+        mode: payload.mode === 'call' ? 'call' : 'voice',
+      });
+      if (payload.event === 'expired_cleaned' && payload.removedIds?.length) {
+        removeExpiredTracksFromLibrary(payload.removedIds);
+        return;
+      }
+      if (payload.event === 'saved' && payload.song) {
+        const savedSong = payload.song;
+        if (payload.mode === 'call') {
+          trackCallRecordingExpiry(savedSong, merged.disappearAfterMs);
+        }
+        setSongs((prev) => {
+          if (prev.some((s) => s.id === savedSong.id)) return prev;
+          const next = [savedSong, ...prev];
+          onSongsLoaded(next);
+          return next;
+        });
+        showToast(`Saved "${savedSong.title || savedSong.displayName}"`, 4000);
+      }
+    }).then((handle) => {
+      listenerHandle = handle;
+    });
+
+    return () => {
+      active = false;
+      if (listenerHandle) {
+        void listenerHandle.remove();
+      }
+    };
+    // Register native recording status listener once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     try {
@@ -460,9 +798,28 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         title: override.title || s.title,
         artist: override.artist || s.artist,
         album: override.album !== undefined ? override.album : s.album,
+        thumbnailUrl: override.artworkDataUrl || s.thumbnailUrl,
       };
     });
   }, [songs, lockedInfoMap]);
+
+  // Re-enrich currentTrack with full library metadata & custom locked artwork/tags
+  useEffect(() => {
+    if (!currentTrack || enrichedSongs.length === 0) return;
+    const matched = enrichedSongs.find(
+      (s) => s.id === currentTrack.id || (s.uri && s.uri === currentTrack.uri)
+    );
+    if (
+      matched &&
+      (matched.size !== currentTrack.size ||
+        matched.thumbnailUrl !== currentTrack.thumbnailUrl ||
+        matched.title !== currentTrack.title ||
+        matched.artist !== currentTrack.artist ||
+        matched.album !== currentTrack.album)
+    ) {
+      setCurrentTrack(matched);
+    }
+  }, [enrichedSongs, currentTrack]);
 
   const enrichedSongsRef = useRef<AudioTrackItem[]>(enrichedSongs);
   enrichedSongsRef.current = enrichedSongs;
@@ -574,6 +931,36 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     setIsLoadingTrack(true);
     onPlaybackStarted();
 
+    // Persist previous track's playback position if Remember playback position is enabled
+    const prevTrack = currentTrackRef.current;
+    if (prevTrack && prevTrack.id !== track.id) {
+      const prevOpts = getTrackOptions(prevTrack.id);
+      if (prevOpts.rememberPosition && currentTime > 0) {
+        persistResumePosition(prevTrack.id, currentTime, true);
+      }
+    }
+
+    stopTriggeredTrackRef.current = null;
+    const nextOpts = getTrackOptions(track.id);
+    const totalSec = track.durationMs > 0 ? track.durationMs / 1000 : 0;
+    const stopCap =
+      nextOpts.stopTimeEnabled && nextOpts.stopTimeSec !== undefined
+        ? nextOpts.stopTimeSec
+        : totalSec;
+    const savedResume = trackResumePositionsRef.current[track.id] || 0;
+    let initialSeekSec = 0;
+    if (
+      nextOpts.rememberPosition &&
+      savedResume > 0.5 &&
+      (stopCap <= 0 || savedResume < stopCap - 0.5)
+    ) {
+      initialSeekSec = savedResume;
+    } else if (nextOpts.startTimeEnabled && nextOpts.startTimeSec > 0) {
+      initialSeekSec = nextOpts.startTimeSec;
+    }
+    pendingInitialSeekRef.current =
+      initialSeekSec > 0 ? { trackId: track.id, sec: initialSeekSec } : null;
+
     const targetScope: PlaybackScope =
       explicitScope ??
       (libraryFilter === 'playlists' && selectedPlaylistId
@@ -611,8 +998,14 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           )
         );
 
+        const factor =
+          nextOpts.volumeAdjustmentPct <= 0
+            ? Math.max(0, 1 + nextOpts.volumeAdjustmentPct / 100)
+            : 1 + nextOpts.volumeAdjustmentPct / 100;
+        const effectiveVol = Math.max(0, Math.min(1, volume * factor));
+
         setCurrentTrack(track);
-        setCurrentTime(0);
+        setCurrentTime(initialSeekSec);
         setDuration(track.durationMs > 0 ? track.durationMs / 1000 : 0);
 
         await AudioLibrary.startMusicPlayback({
@@ -620,10 +1013,15 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           startIndex,
           isShuffle,
           repeatMode,
-          volume,
+          volume: effectiveVol,
           isMuted,
           playbackSpeed: playbackSpeedRef.current,
         });
+        if (initialSeekSec > 0.2) {
+          void AudioLibrary.seekMusicPlayback({
+            positionMs: Math.round(initialSeekSec * 1000),
+          }).catch(() => {});
+        }
       } catch (err) {
         console.error('Native background audio playback failed:', err);
         setErrorMessage(`Could not play "${track.title || track.displayName}".`);
@@ -643,16 +1041,24 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       if (!audioEl) return;
 
       setCurrentTrack(track);
-      setCurrentTime(0);
+      setCurrentTime(initialSeekSec);
       setDuration(track.durationMs > 0 ? track.durationMs / 1000 : 0);
 
       audioEl.src = playableUrl;
-      audioEl.volume = isMuted ? 0 : volume;
+      applyEffectiveGainAndEq(volume, isMuted, nextOpts);
       audioEl.playbackRate = playbackSpeedRef.current;
       audioEl.preservesPitch = true;
       audioEl.load();
       audioEl.playbackRate = playbackSpeedRef.current;
       await audioEl.play();
+      if (initialSeekSec > 0 && pendingInitialSeekRef.current?.trackId === track.id) {
+        try {
+          audioEl.currentTime = initialSeekSec;
+          pendingInitialSeekRef.current = null;
+        } catch {
+          // Will apply cleanly inside onLoadedMetadata
+        }
+      }
       setIsPlaying(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
@@ -805,7 +1211,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     if (pool.length === 0) return;
 
     if (isShuffle && pool.length > 1) {
-      const candidates = pool.filter((s) => s.id !== currentTrack.id);
+      const others = pool.filter((s) => s.id !== currentTrack.id);
+      const unskipped = others.filter((s) => !getTrackOptions(s.id).skipWhenShuffling);
+      const candidates = unskipped.length > 0 ? unskipped : others;
       const next = candidates[Math.floor(Math.random() * candidates.length)];
       if (next) void playTrack(next, scope);
       return;
@@ -818,9 +1226,20 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
   };
 
   const handleTrackEnded = () => {
+    const active = currentTrackRef.current || currentTrack;
+    if (active) {
+      const opts = getTrackOptions(active.id);
+      if (opts.rememberPosition) {
+        persistResumePosition(active.id, 0, true);
+      }
+    }
+
     const audioEl = audioRef.current;
     if (repeatMode === 'one' && audioEl) {
-      audioEl.currentTime = 0;
+      const opts = getTrackOptions(active?.id);
+      const startAt = opts.startTimeEnabled ? opts.startTimeSec : 0;
+      stopTriggeredTrackRef.current = null;
+      audioEl.currentTime = startAt;
       void audioEl.play().catch(() => {});
       return;
     }
@@ -843,16 +1262,55 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       return;
     }
 
-    const idx = currentTrack ? pool.findIndex((s) => s.id === currentTrack.id) : -1;
+    const idx = active ? pool.findIndex((s) => s.id === active.id) : -1;
     if (idx >= 0 && idx < pool.length - 1) {
       void playTrack(pool[idx + 1], scope);
     } else if (repeatMode === 'all') {
       void playTrack(pool[0], scope);
     } else {
+      if (audioEl) {
+        audioEl.pause();
+      }
       setIsPlaying(false);
       setCurrentTime(0);
     }
   };
+
+  // Enforce Remember Playback Position & Stop Time for Native Android playback too
+  useEffect(() => {
+    if (!currentTrack || !isPlaying || currentTime <= 0 || !shouldUseNativeService(currentTrack)) {
+      return;
+    }
+    const opts = getTrackOptions(currentTrack.id);
+    if (opts.rememberPosition) {
+      persistResumePosition(currentTrack.id, currentTime);
+    }
+    const startBound = opts.startTimeEnabled ? opts.startTimeSec : 0;
+    if (
+      opts.stopTimeEnabled &&
+      opts.stopTimeSec !== undefined &&
+      opts.stopTimeSec > startBound &&
+      currentTime >= opts.stopTimeSec &&
+      stopTriggeredTrackRef.current !== currentTrack.id
+    ) {
+      stopTriggeredTrackRef.current = currentTrack.id;
+      if (opts.rememberPosition) {
+        persistResumePosition(currentTrack.id, 0, true);
+      }
+      if (repeatMode === 'one') {
+        stopTriggeredTrackRef.current = null;
+        void AudioLibrary.seekMusicPlayback({
+          positionMs: Math.round(startBound * 1000),
+        }).catch(() => {});
+      } else if (repeatMode === 'off') {
+        void AudioLibrary.pauseMusicPlayback().catch(() => {});
+        setIsPlaying(false);
+      } else {
+        handleStepTrack(1);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTime, isPlaying, currentTrack?.id]);
 
   // Web browser MediaSession integration fallback
   const stepTrackRef = useRef(handleStepTrack);
@@ -1215,13 +1673,7 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     }
   };
 
-  const handleSaveLockedInfo = async (data: {
-    title: string;
-    artist: string;
-    album: string;
-    notes: string;
-    locked: boolean;
-  }) => {
+  const handleSaveLockedInfo = async (data: AddLockInfoSavePayload) => {
     const song = infoLockModalSong;
     if (!song) return;
     setIsSavingLockedInfo(true);
@@ -1245,28 +1697,63 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         }
       }
 
+      const resolvedArtworkDataUrl = data.removeCustomArtwork
+        ? undefined
+        : data.artworkDataUrl;
+
       setLockedInfoMap((prev) => ({
         ...prev,
         [song.id]: {
           title: data.title,
           artist: data.artist,
+          albumArtist: data.albumArtist,
           album: data.album,
-          notes: data.notes,
+          grouping: data.grouping,
+          composer: data.composer,
+          comments: data.comments,
+          notes: data.comments,
+          genre: data.genre,
+          year: data.year,
+          trackNumber: data.trackNumber,
+          trackTotal: data.trackTotal,
+          discNumber: data.discNumber,
+          discTotal: data.discTotal,
+          bpm: data.bpm,
+          partOfCompilation: data.partOfCompilation,
+          artworkDataUrl: resolvedArtworkDataUrl,
           locked: data.locked,
           updatedAt: Date.now(),
         },
       }));
-      const nextSongs = songs.map((s) =>
-        s.id === song.id
-          ? { ...s, title: data.title, artist: data.artist, album: data.album, displayName: newDisplayName }
-          : s
-      );
+
+      const nextSongs = songs.map((s) => {
+        if (s.id !== song.id) return s;
+        return {
+          ...s,
+          title: data.title,
+          artist: data.artist,
+          album: data.album,
+          displayName: newDisplayName,
+          thumbnailUrl: data.removeCustomArtwork
+            ? undefined
+            : resolvedArtworkDataUrl || s.thumbnailUrl,
+        };
+      });
       setSongs(nextSongs);
       onSongsLoaded(nextSongs);
       if (currentTrack?.id === song.id) {
         setCurrentTrack((prev) =>
           prev
-            ? { ...prev, title: data.title, artist: data.artist, album: data.album, displayName: newDisplayName }
+            ? {
+                ...prev,
+                title: data.title,
+                artist: data.artist,
+                album: data.album,
+                displayName: newDisplayName,
+                thumbnailUrl: data.removeCustomArtwork
+                  ? undefined
+                  : resolvedArtworkDataUrl || prev.thumbnailUrl,
+              }
             : prev
         );
       }
@@ -1473,6 +1960,28 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (!moveCopyState) return;
+    if (!isNativeAndroid()) return;
+    let cancelled = false;
+    setIsLoadingFolders(true);
+    AudioLibrary.getPhoneFolders()
+      .then((res) => {
+        if (!cancelled && Array.isArray(res?.folders) && res.folders.length > 0) {
+          setPhoneFolders(res.folders);
+        }
+      })
+      .catch(() => {
+        // Keep fallback standard device folders list
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingFolders(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [moveCopyState]);
+
   const handleConfirmMoveOrCopy = async (targetFolder: string) => {
     if (!moveCopyState) return;
     const { mode, song } = moveCopyState;
@@ -1491,6 +2000,9 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           targetFolder,
           mode,
         });
+        if (res.cancelled) {
+          return;
+        }
         if (res.success && res.song) {
           if (mode === 'move') {
             setSongs((prev) => [res.song!, ...prev.filter((s) => s.id !== song.id)]);
@@ -1527,6 +2039,46 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       setMoveCopyState(null);
     } catch {
       showToast(`Could not ${mode} this audio file.`);
+    } finally {
+      setIsMovingOrCopying(false);
+    }
+  };
+
+  const handleBrowseMoveOrCopyFolder = async () => {
+    if (!moveCopyState) return;
+    if (!isNativeAndroid() || !moveCopyState.song.uri || moveCopyState.song.uri.startsWith('blob:')) {
+      return;
+    }
+    const { mode, song } = moveCopyState;
+    setIsMovingOrCopying(true);
+    try {
+      const res = await AudioLibrary.pickFolderAndMoveOrCopyAudioFile({
+        uri: song.uri,
+        id: song.id,
+        displayName: song.displayName,
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        durationMs: song.durationMs,
+        mimeType: song.mimeType,
+        mode,
+      });
+      if (res.cancelled) {
+        return;
+      }
+      if (res.success && res.song) {
+        if (mode === 'move') {
+          setSongs((prev) => [res.song!, ...prev.filter((s) => s.id !== song.id)]);
+        } else {
+          setSongs((prev) => [res.song!, ...prev]);
+        }
+        showToast(
+          `${mode === 'move' ? 'Moved' : 'Copied'} to ${res.displayPath || 'chosen folder'}`
+        );
+        setMoveCopyState(null);
+      }
+    } catch {
+      showToast(`Could not ${mode} audio to the chosen folder.`);
     } finally {
       setIsMovingOrCopying(false);
     }
@@ -1656,7 +2208,26 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         preload="metadata"
         onTimeUpdate={() => {
           if (audioRef.current && !isScrubbingRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
+            const nowSec = audioRef.current.currentTime;
+            setCurrentTime(nowSec);
+            const active = currentTrackRef.current;
+            if (active) {
+              const opts = getTrackOptions(active.id);
+              if (opts.rememberPosition && nowSec > 0) {
+                persistResumePosition(active.id, nowSec);
+              }
+              const startBound = opts.startTimeEnabled ? opts.startTimeSec : 0;
+              if (
+                opts.stopTimeEnabled &&
+                opts.stopTimeSec !== undefined &&
+                opts.stopTimeSec > startBound &&
+                nowSec >= opts.stopTimeSec &&
+                stopTriggeredTrackRef.current !== active.id
+              ) {
+                stopTriggeredTrackRef.current = active.id;
+                handleTrackEnded();
+              }
+            }
           }
         }}
         onLoadedMetadata={() => {
@@ -1666,11 +2237,31 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
             }
             audioRef.current.playbackRate = playbackSpeedRef.current;
             audioRef.current.preservesPitch = true;
+            const pending = pendingInitialSeekRef.current;
+            const active = currentTrackRef.current;
+            if (pending && active && pending.trackId === active.id) {
+              try {
+                audioRef.current.currentTime = pending.sec;
+                setCurrentTime(pending.sec);
+              } catch {
+                // ignore seek error
+              }
+              pendingInitialSeekRef.current = null;
+            }
           }
         }}
         onEnded={handleTrackEnded}
         onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPause={() => {
+          setIsPlaying(false);
+          const active = currentTrackRef.current;
+          if (active && audioRef.current) {
+            const opts = getTrackOptions(active.id);
+            if (opts.rememberPosition && audioRef.current.currentTime > 0) {
+              persistResumePosition(active.id, audioRef.current.currentTime, true);
+            }
+          }
+        }}
       />
 
       <input
@@ -1933,10 +2524,11 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                   onClick={() => {
                     const nextMuted = !isMuted;
                     setIsMuted(nextMuted);
-                    if (audioRef.current) {
-                      audioRef.current.volume = nextMuted ? 0 : volume;
+                    const opts = getTrackOptions(currentTrack.id);
+                    applyEffectiveGainAndEq(volume, nextMuted, opts);
+                    if (!shouldUseNativeService(currentTrack)) {
+                      syncNativeSettings(isShuffle, repeatMode, volume, nextMuted);
                     }
-                    syncNativeSettings(isShuffle, repeatMode, volume, nextMuted);
                   }}
                   className="text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white cursor-pointer p-1"
                   aria-label={isMuted ? 'Unmute' : 'Mute'}
@@ -1958,10 +2550,8 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                     const nextMuted = next === 0;
                     setVolume(next);
                     setIsMuted(nextMuted);
-                    if (audioRef.current) {
-                      audioRef.current.volume = next;
-                    }
-                    syncNativeSettings(isShuffle, repeatMode, next, nextMuted);
+                    const opts = getTrackOptions(currentTrack.id);
+                    applyEffectiveGainAndEq(next, nextMuted, opts);
                   }}
                   aria-label="Audio volume"
                   className="w-24 accent-emerald-500 dark:accent-emerald-400 cursor-pointer"
@@ -1969,6 +2559,29 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Player Track Options (Volume Adj, Equalizer, Media Kind, Rating, Start/Stop, Remember, Skip Shuffle) */}
+          <PlayerTrackOptionsPanel
+            trackTitle={currentTrack.title || currentTrack.displayName}
+            trackDurationSec={
+              duration > 0
+                ? duration
+                : currentTrack.durationMs > 0
+                ? currentTrack.durationMs / 1000
+                : 0
+            }
+            currentPlayheadSec={currentTime}
+            options={getTrackOptions(currentTrack.id)}
+            isExpanded={showTrackOptionsPanel}
+            onToggleExpand={() => setShowTrackOptionsPanel((v) => !v)}
+            onChange={(nextOpts) => {
+              setTrackOptionsMap((prev) => ({
+                ...prev,
+                [currentTrack.id]: nextOpts,
+              }));
+              applyEffectiveGainAndEq(volume, isMuted, nextOpts);
+            }}
+          />
 
           {errorMessage && (
             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 text-xs">
@@ -2021,6 +2634,83 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Voice Recorder & Call Recorder Quick Actions */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setRecorderMode('voice');
+                setRecorderModalOpen(true);
+              }}
+              className={`min-h-[44px] px-3 py-2 rounded-xl border flex items-center justify-between gap-2 text-left cursor-pointer transition-colors ${
+                liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'voice'
+                  ? 'bg-red-500/15 border-red-500/50 text-red-700 dark:text-red-300'
+                  : 'bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/35 text-emerald-800 dark:text-emerald-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">Voice Recorder</div>
+                  <div className="text-[10px] opacity-75 truncate">
+                    {liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'voice'
+                      ? 'Recording live...'
+                      : 'Record voice notes'}
+                  </div>
+                </div>
+              </div>
+              {liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'voice' && (
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRecorderMode('call');
+                setRecorderModalOpen(true);
+              }}
+              className={`min-h-[44px] px-3 py-2 rounded-xl border flex items-center justify-between gap-2 text-left cursor-pointer transition-colors ${
+                liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'call'
+                  ? 'bg-red-500/15 border-red-500/50 text-red-700 dark:text-red-300'
+                  : 'bg-sky-500/10 hover:bg-sky-500/15 border-sky-500/35 text-sky-800 dark:text-sky-200'
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-sky-500 text-white dark:text-slate-950 flex items-center justify-center shrink-0">
+                  <PhoneCall className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold truncate">Call Recorder</div>
+                  <div className="text-[10px] opacity-75 truncate">
+                    {liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'call'
+                      ? 'Recording call...'
+                      : callRecSettings.alwaysAutoRecord && callRecSettings.disappearAfterMs > 0
+                      ? `Auto ON · ${formatDisappearDuration(callRecSettings.disappearAfterMs)}`
+                      : callRecSettings.alwaysAutoRecord
+                      ? 'Auto-record ON'
+                      : callRecSettings.disappearAfterMs > 0
+                      ? `Disappear: ${formatDisappearDuration(callRecSettings.disappearAfterMs)}`
+                      : 'Record phone calls'}
+                  </div>
+                </div>
+              </div>
+              {(callRecSettings.alwaysAutoRecord ||
+                callRecSettings.disappearAfterMs > 0 ||
+                (liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'call')) && (
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${
+                    liveRecordingStatus.isRecording && liveRecordingStatus.mode === 'call'
+                      ? 'bg-red-500 animate-pulse'
+                      : 'bg-emerald-500'
+                  }`}
+                />
+              )}
+            </button>
           </div>
 
           <div className="relative">
@@ -2557,29 +3247,41 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
         song={playlistModalSong}
         playlists={playlists}
         onClose={() => setPlaylistModalSong(null)}
-        onToggleTrackInPlaylist={(playlistId, trackId) => {
+        onSaveTrackPlaylists={(trackId, selectedPlaylistIds) => {
+          const selectedSet = new Set(selectedPlaylistIds);
           setPlaylists((prev) =>
             prev.map((pl) => {
-              if (pl.id !== playlistId) return pl;
-              const exists = pl.trackIds.includes(trackId);
+              const hasTrack = pl.trackIds.includes(trackId);
+              const shouldHaveTrack = selectedSet.has(pl.id);
+              if (hasTrack === shouldHaveTrack) return pl;
               return {
                 ...pl,
-                trackIds: exists
-                  ? pl.trackIds.filter((id) => id !== trackId)
-                  : [...pl.trackIds, trackId],
+                trackIds: shouldHaveTrack
+                  ? [...pl.trackIds, trackId]
+                  : pl.trackIds.filter((id) => id !== trackId),
               };
             })
           );
+          if (selectedPlaylistIds.length > 0) {
+            showToast(
+              `Saved to ${selectedPlaylistIds.length} ${selectedPlaylistIds.length === 1 ? 'playlist' : 'playlists'}`
+            );
+          } else {
+            showToast('Updated playlist folders');
+          }
+          setPlaylistModalSong(null);
         }}
         onCreatePlaylist={(name, initialTrackId) => {
+          const newId = `pl-${Date.now()}`;
           const newPl: AudioPlaylist = {
-            id: `pl-${Date.now()}`,
+            id: newId,
             name,
             trackIds: initialTrackId ? [initialTrackId] : [],
             createdAt: Date.now(),
           };
           setPlaylists((prev) => [newPl, ...prev]);
           showToast(`Created playlist "${name}"`);
+          return newId;
         }}
       />
 
@@ -2652,9 +3354,13 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
       <AudioMoveCopyModal
         mode={moveCopyState?.mode ?? null}
         song={moveCopyState?.song ?? null}
+        folders={phoneFolders}
+        isLoadingFolders={isLoadingFolders}
+        isNativeAndroid={isNativeAndroid()}
         isBusy={isMovingOrCopying}
         onClose={() => setMoveCopyState(null)}
         onConfirm={(folder) => void handleConfirmMoveOrCopy(folder)}
+        onBrowsePhoneFolders={() => void handleBrowseMoveOrCopyFolder()}
       />
 
       {/* Batch Add Songs to Playlist Folder Modal */}
@@ -2673,6 +3379,31 @@ export const StandaloneAudioPlayer: React.FC<StandaloneAudioPlayerProps> = ({
           const plName = playlists.find((p) => p.id === playlistId)?.name || 'playlist';
           showToast(`Updated "${plName}" (${trackIds.length} ${trackIds.length === 1 ? 'song' : 'songs'})`);
         }}
+      />
+
+      {/* Voice / Call Recorder Modal (Single Isolated Mode) */}
+      <AudioRecorderModal
+        isOpen={recorderModalOpen}
+        initialMode={recorderMode}
+        onClose={() => setRecorderModalOpen(false)}
+        onCallSettingsChange={(nextSettings) => setCallRecSettings(nextSettings)}
+        onExpiredRecordingsRemoved={(removedIds) =>
+          removeExpiredTracksFromLibrary(removedIds)
+        }
+        allSongs={songs}
+        onRecordingSaved={(savedSong, displayPath) => {
+          setSongs((prev) => {
+            if (prev.some((s) => s.id === savedSong.id)) return prev;
+            const next = [savedSong, ...prev];
+            onSongsLoaded(next);
+            return next;
+          });
+          showToast(
+            `Saved "${savedSong.title}"${displayPath ? ` to ${displayPath}` : ''}`,
+            4000
+          );
+        }}
+        onPlayRecordedTrack={(song) => void playTrack(song)}
       />
     </div>
   );

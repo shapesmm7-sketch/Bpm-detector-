@@ -1,15 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VideoTrackItem } from '../plugins/audioLibrary';
 import {
+  Bell,
   Check,
-  ChevronRight,
+  Copy,
   Eye,
   EyeOff,
+  FolderInput,
+  Headphones,
   Heart,
   ListMusic,
   ListPlus,
+  Music,
+  Pencil,
   Plus,
+  RefreshCw,
+  Scissors,
   Search,
+  Share2,
+  Shield,
+  SplitSquareHorizontal,
+  Trash2,
   Video,
   X,
 } from 'lucide-react';
@@ -20,6 +31,24 @@ export interface VideoPlaylist {
   trackIds: string[];
   createdAt: number;
 }
+
+export type VideoMenuActionId =
+  | 'add_to_playlist'
+  | 'add_to_favorites'
+  | 'hide_from_phone'
+  | 'play_as_audio'
+  | 'video_to_audio'
+  | 'video_converter'
+  | 'trim'
+  | 'edit'
+  | 'rename'
+  | 'share'
+  | 'move'
+  | 'copy'
+  | 'move_to_secure_folder'
+  | 'set_as_ringtone'
+  | 'delete'
+  | 'remove_from_playlist';
 
 function formatVideoClock(sec: number): string {
   if (!isFinite(sec) || sec <= 0) return '0:00';
@@ -37,10 +66,7 @@ interface VideoActionSheetModalProps {
   isHidden: boolean;
   isInsidePlaylist?: boolean;
   onClose: () => void;
-  onToggleFavorite: (video: VideoTrackItem) => void;
-  onOpenAddToPlaylist: (video: VideoTrackItem) => void;
-  onToggleHide: (video: VideoTrackItem) => void;
-  onRemoveFromPlaylist?: (video: VideoTrackItem) => void;
+  onAction: (action: VideoMenuActionId, video: VideoTrackItem) => void;
 }
 
 export const VideoActionSheetModal: React.FC<VideoActionSheetModalProps> = ({
@@ -50,12 +76,115 @@ export const VideoActionSheetModal: React.FC<VideoActionSheetModalProps> = ({
   isHidden,
   isInsidePlaylist,
   onClose,
-  onToggleFavorite,
-  onOpenAddToPlaylist,
-  onToggleHide,
-  onRemoveFromPlaylist,
+  onAction,
 }) => {
   if (!video) return null;
+
+  const items: Array<{
+    id: VideoMenuActionId;
+    label: string;
+    icon: React.ReactNode;
+    danger?: boolean;
+    highlight?: boolean;
+  }> = [
+    {
+      id: 'add_to_playlist',
+      label: 'Add to Playlist',
+      icon: <ListPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'add_to_favorites',
+      label: isFavorite ? 'Favorited' : 'Add to Favorites',
+      icon: (
+        <Heart
+          className={`w-4 h-4 ${
+            isFavorite ? 'text-rose-500 fill-rose-500' : 'text-rose-500 dark:text-rose-400'
+          }`}
+        />
+      ),
+      highlight: isFavorite,
+    },
+    {
+      id: 'play_as_audio',
+      label: 'Play as audio',
+      icon: <Headphones className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'video_to_audio',
+      label: 'Video to audio',
+      icon: <Music className="w-4 h-4 text-sky-600 dark:text-sky-400" />,
+    },
+    {
+      id: 'video_converter',
+      label: 'Video converter',
+      icon: <RefreshCw className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />,
+    },
+    {
+      id: 'trim',
+      label: 'Trim',
+      icon: <Scissors className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'edit',
+      label: 'Edit',
+      icon: <SplitSquareHorizontal className="w-4 h-4 text-violet-600 dark:text-violet-400" />,
+    },
+    {
+      id: 'rename',
+      label: 'Rename',
+      icon: <Pencil className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'share',
+      label: 'Share',
+      icon: <Share2 className="w-4 h-4 text-sky-600 dark:text-sky-400" />,
+    },
+    {
+      id: 'set_as_ringtone',
+      label: 'Set as ringtone',
+      icon: <Bell className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+    },
+    {
+      id: 'move',
+      label: 'Move',
+      icon: <FolderInput className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+    },
+    {
+      id: 'copy',
+      label: 'Copy',
+      icon: <Copy className="w-4 h-4 text-sky-600 dark:text-sky-400" />,
+    },
+    {
+      id: 'move_to_secure_folder',
+      label: 'Move to secure folder',
+      icon: <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
+    {
+      id: 'hide_from_phone',
+      label: isHidden ? 'Unhide video' : 'Hide from phone',
+      icon: isHidden ? (
+        <Eye className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+      ) : (
+        <EyeOff className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+      ),
+    },
+    ...(isInsidePlaylist
+      ? [
+          {
+            id: 'remove_from_playlist' as VideoMenuActionId,
+            label: 'Remove from playlist',
+            icon: <X className="w-4 h-4 text-red-500 dark:text-red-400" />,
+            danger: true,
+          },
+        ]
+      : []),
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />,
+      danger: true,
+    },
+  ];
 
   return (
     <div
@@ -63,12 +192,12 @@ export const VideoActionSheetModal: React.FC<VideoActionSheetModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[82vh] flex flex-col shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[94vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden flex items-center justify-center shrink-0">
+        <div className="flex items-center justify-between gap-2.5 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-11 h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950 overflow-hidden flex items-center justify-center shrink-0">
               {thumbUrl ? (
                 <img
                   src={thumbUrl}
@@ -80,10 +209,10 @@ export const VideoActionSheetModal: React.FC<VideoActionSheetModalProps> = ({
               )}
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                 {video.title || video.displayName}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                 {video.durationMs > 0 ? formatVideoClock(video.durationMs / 1000) : video.displayName}
               </p>
             </div>
@@ -92,87 +221,40 @@ export const VideoActionSheetModal: React.FC<VideoActionSheetModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="min-w-[38px] min-h-[38px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center cursor-pointer shrink-0"
+            className="min-w-[34px] min-h-[34px] rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center cursor-pointer shrink-0"
             aria-label="Close video options"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="py-1.5 divide-y divide-slate-100 dark:divide-slate-800/60">
-          <button
-            type="button"
-            onClick={() => {
-              onOpenAddToPlaylist(video);
-              onClose();
-            }}
-            className="w-full min-h-[50px] px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-800 dark:text-slate-100 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <ListPlus className="w-4 h-4" />
-              </div>
-              <span className="text-sm font-semibold">Add to Playlist</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              onToggleFavorite(video);
-              onClose();
-            }}
-            className="w-full min-h-[50px] px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-800 dark:text-slate-100 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-rose-500">
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
-              </div>
-              <span className="text-sm font-semibold">
-                {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              onToggleHide(video);
-              onClose();
-            }}
-            className="w-full min-h-[50px] px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/70 text-slate-800 dark:text-slate-100 cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                {isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </div>
-              <span className="text-sm font-semibold">
-                {isHidden ? 'Unhide video' : 'Hide from phone'}
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-          </button>
-
-          {isInsidePlaylist && onRemoveFromPlaylist && (
-            <button
-              type="button"
-              onClick={() => {
-                onRemoveFromPlaylist(video);
-                onClose();
-              }}
-              className="w-full min-h-[50px] px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
-                  <X className="w-4 h-4" />
+        <div className="overflow-y-auto p-2.5 grid grid-cols-2 gap-1.5">
+          {items.map((item, idx) => {
+            const isFullWidthLast = idx === items.length - 1 && items.length % 2 === 1;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onAction(item.id, video)}
+                className={`min-h-[40px] px-2.5 py-1.5 rounded-xl border flex items-center gap-2 text-left transition-colors cursor-pointer ${
+                  isFullWidthLast ? 'col-span-2 justify-center' : ''
+                } ${
+                  item.danger
+                    ? 'bg-red-50/70 hover:bg-red-100/80 dark:bg-red-950/25 dark:hover:bg-red-950/45 border-red-200/80 dark:border-red-900/60 text-red-600 dark:text-red-400'
+                    : item.highlight
+                    ? 'bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-slate-50/80 hover:bg-slate-100 dark:bg-slate-950/80 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100'
+                }`}
+              >
+                <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-center shrink-0">
+                  {item.icon}
                 </div>
-                <span className="text-sm font-semibold">Remove from this playlist</span>
-              </div>
-              <ChevronRight className="w-4 h-4 shrink-0" />
-            </button>
-          )}
+                <span className="text-[12px] font-semibold leading-tight break-words min-w-0">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -184,33 +266,79 @@ interface VideoAddToPlaylistModalProps {
   video: VideoTrackItem | null;
   playlists: VideoPlaylist[];
   onClose: () => void;
-  onToggleVideoInPlaylist: (playlistId: string, videoId: string) => void;
-  onCreatePlaylist: (name: string, initialVideoId?: string) => void;
+  onSaveVideoPlaylists: (videoId: string, selectedPlaylistIds: string[]) => void;
+  onCreatePlaylist: (name: string, initialVideoId?: string) => string | void;
 }
 
 export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = ({
   video,
   playlists,
   onClose,
-  onToggleVideoInPlaylist,
+  onSaveVideoPlaylists,
   onCreatePlaylist,
 }) => {
   const [showNameBox, setShowNameBox] = useState(false);
   const [newName, setNewName] = useState('');
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<string[]>([]);
+  const knownPlaylistIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setShowNameBox(false);
     setNewName('');
-  }, [video]);
+    if (video) {
+      setSelectedPlaylistIds(
+        playlists.filter((pl) => pl.trackIds.includes(video.id)).map((pl) => pl.id)
+      );
+      knownPlaylistIdsRef.current = new Set(playlists.map((pl) => pl.id));
+    } else {
+      setSelectedPlaylistIds([]);
+      knownPlaylistIdsRef.current = new Set();
+    }
+    // Initialize selection when modal opens for a video
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [video?.id]);
+
+  useEffect(() => {
+    if (!video) return;
+    const newlyAdded = playlists.filter((pl) => !knownPlaylistIdsRef.current.has(pl.id));
+    if (newlyAdded.length > 0) {
+      newlyAdded.forEach((pl) => knownPlaylistIdsRef.current.add(pl.id));
+      const autoCheckIds = newlyAdded
+        .filter((pl) => pl.trackIds.includes(video.id))
+        .map((pl) => pl.id);
+      if (autoCheckIds.length > 0) {
+        setSelectedPlaylistIds((prev) => Array.from(new Set([...prev, ...autoCheckIds])));
+      }
+    }
+  }, [playlists, video]);
 
   if (!video) return null;
+
+  const togglePlaylistSelection = (playlistId: string) => {
+    setSelectedPlaylistIds((prev) =>
+      prev.includes(playlistId)
+        ? prev.filter((id) => id !== playlistId)
+        : [...prev, playlistId]
+    );
+  };
 
   const handleCreate = () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
-    onCreatePlaylist(trimmed, video.id);
+    const createdId = onCreatePlaylist(trimmed, video.id);
+    if (typeof createdId === 'string' && createdId) {
+      knownPlaylistIdsRef.current.add(createdId);
+      setSelectedPlaylistIds((prev) =>
+        prev.includes(createdId) ? prev : [...prev, createdId]
+      );
+    }
     setNewName('');
     setShowNameBox(false);
+  };
+
+  const handleDone = () => {
+    onSaveVideoPlaylists(video.id, selectedPlaylistIds);
+    onClose();
   };
 
   return (
@@ -222,7 +350,7 @@ export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = (
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[82vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <ListPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div className="min-w-0">
@@ -243,9 +371,12 @@ export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = (
           </button>
         </div>
 
-        <div className="p-4 space-y-4 overflow-y-auto">
+        <div className="p-4 space-y-4 overflow-y-auto flex-1">
           {!showNameBox ? (
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Select playlist {playlists.length === 1 ? 'folder' : 'folders'}
+              </span>
               <button
                 type="button"
                 onClick={() => setShowNameBox(true)}
@@ -301,12 +432,15 @@ export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = (
           ) : (
             <div className="space-y-2">
               {playlists.map((pl) => {
-                const inList = pl.trackIds.includes(video.id);
+                const originallyInList = pl.trackIds.includes(video.id);
+                const inList = selectedPlaylistIds.includes(pl.id);
+                const displayedCount =
+                  pl.trackIds.length + (inList === originallyInList ? 0 : inList ? 1 : -1);
                 return (
                   <button
                     key={pl.id}
                     type="button"
-                    onClick={() => onToggleVideoInPlaylist(pl.id, video.id)}
+                    onClick={() => togglePlaylistSelection(pl.id)}
                     className={`w-full min-h-[48px] px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-left cursor-pointer transition-colors ${
                       inList
                         ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-800 dark:text-emerald-200'
@@ -316,7 +450,7 @@ export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = (
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{pl.name}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {pl.trackIds.length} {pl.trackIds.length === 1 ? 'video' : 'videos'}
+                        {displayedCount} {displayedCount === 1 ? 'video' : 'videos'}
                       </div>
                     </div>
                     <div
@@ -333,6 +467,28 @@ export const VideoAddToPlaylistModal: React.FC<VideoAddToPlaylistModalProps> = (
               })}
             </div>
           )}
+        </div>
+
+        <div className="px-4 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 shrink-0 bg-white dark:bg-slate-900">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[42px] px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDone}
+            className="min-h-[42px] px-5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-950 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+          >
+            <Check className="w-4 h-4" />
+            <span>
+              {selectedPlaylistIds.length > 0
+                ? `Done (${selectedPlaylistIds.length})`
+                : 'Done'}
+            </span>
+          </button>
         </div>
       </div>
     </div>
