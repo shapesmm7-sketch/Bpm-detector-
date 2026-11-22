@@ -18,6 +18,10 @@ export interface PhoneFileItem {
   mimeType: string;
   category: string;
   isDirectory?: boolean;
+  durationMs?: number;
+  resolution?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface StorageCategoryStat {
@@ -136,11 +140,27 @@ interface PhoneManagerPluginInterface {
     parentPath: string;
     emptyNote?: boolean;
   }>;
-  requestSafFolderAccess(): Promise<{
+  requestSafFolderAccess(options?: {
+    preset?: 'whatsapp' | 'documents' | 'default';
+    initialPath?: string;
+  }): Promise<{
     granted: boolean;
     cancelled?: boolean;
     treeUri?: string;
     label?: string;
+  }>;
+  requestSafDocumentFiles(options?: {
+    preset?: 'documents' | 'downloads';
+  }): Promise<{
+    addedCount: number;
+    cancelled?: boolean;
+  }>;
+  getPdfThumbnail(options: {
+    id?: string;
+    uri: string;
+  }): Promise<{
+    filePath?: string;
+    localUrl: string;
   }>;
   createFolder(options: {
     parentPath?: string;
@@ -231,7 +251,8 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     idx++;
   }
-  return `${value >= 10 || idx === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[idx]}`;
+  const formatted = idx === 0 || value >= 100 ? value.toFixed(0) : value.toFixed(2);
+  return `${formatted} ${units[idx]}`;
 }
 
 export function formatShortDate(ms: number): string {
@@ -242,6 +263,26 @@ export function formatShortDate(ms: number): string {
       month: 'short',
       day: 'numeric',
     });
+  } catch {
+    return 'Unknown date';
+  }
+}
+
+export function formatShortDateTime(ms: number): string {
+  if (!ms || ms <= 0) return 'Unknown date';
+  try {
+    const d = new Date(ms);
+    const now = new Date();
+    const datePart = d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+    });
+    const timePart = d.toLocaleTimeString(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    return `${datePart} ${timePart}`;
   } catch {
     return 'Unknown date';
   }

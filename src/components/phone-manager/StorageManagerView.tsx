@@ -19,8 +19,19 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Play,
 } from 'lucide-react';
 import { AudioLibrary, isNativeAndroid } from '../../plugins/audioLibrary';
+import {
+  AudioCoverThumbnail,
+  DocumentBadgeTile,
+  MediaThumbnail,
+  PdfThumbnail,
+  isAudioFileItem,
+  isImageFileItem,
+  isPdfFileItem,
+  isVideoFileItem,
+} from './MediaThumbnail';
 import {
   DuplicateGroup,
   PhoneFileItem,
@@ -29,6 +40,7 @@ import {
   StorageSummaryResult,
   formatBytes,
   formatShortDate,
+  formatShortDateTime,
 } from '../../plugins/phoneManager';
 import {
   StorageRecommendationItem,
@@ -277,9 +289,9 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
       return;
     }
     try {
-      const res = await PhoneManager.requestSafFolderAccess();
+      const res = await PhoneManager.requestSafFolderAccess({ preset: 'whatsapp' });
       if (res.granted) {
-        setStatusMsg(`Granted access to ${res.label || 'folder'}. Scanning WhatsApp media...`);
+        setStatusMsg(`Granted access to ${res.label || 'WhatsApp Media'}. Scanning WhatsApp media...`);
         await runWhatsAppScan();
       }
     } catch (err) {
@@ -1016,13 +1028,13 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              <span>{isNativeAndroid() ? 'Grant WhatsApp Folder (SAF)' : 'Pick WhatsApp Media Folder'}</span>
+              <span>{isNativeAndroid() ? 'Select WhatsApp Media Folder (SAF)' : 'Pick WhatsApp Media Folder'}</span>
             </button>
           </div>
 
           {waRequiresSafHint && (
             <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs">
-              On Android 11+, select <strong>Android &rarr; media &rarr; com.whatsapp &rarr; WhatsApp &rarr; Media</strong> via the Storage Access Framework button above so Mo Vibe can inspect WhatsApp media without requesting restricted All-Files access.
+              Android restricts selecting the top storage root directly. Tap <strong>Select WhatsApp Media Folder (SAF)</strong> to open directly inside <strong>Android &rarr; media &rarr; com.whatsapp &rarr; WhatsApp &rarr; Media</strong>, then tap <strong>Use this folder</strong>.
             </div>
           )}
 
@@ -1058,6 +1070,8 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
             <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-96 overflow-y-auto">
               {filteredWhatsapp.map((file) => {
                 const checked = selectedUris.has(file.uri);
+                const isImg = isImageFileItem(file);
+                const isVid = isVideoFileItem(file);
                 return (
                   <button
                     key={file.uri}
@@ -1070,6 +1084,16 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
                     ) : (
                       <Square className="w-4 h-4 text-slate-400 shrink-0" />
                     )}
+                    {(isImg || isVid) && (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 relative border border-slate-200 dark:border-slate-800">
+                        <MediaThumbnail item={file} iconSizeClass="w-4 h-4" />
+                        {isVid && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/25 pointer-events-none">
+                            <Play className="w-3 h-3 text-white fill-white" />
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                         {file.name}
@@ -1078,7 +1102,7 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
                         {file.category.replace('_', ' ')} · {formatShortDate(file.dateModified)}
                       </p>
                     </div>
-                    <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                    <span className="text-xs font-mono font-bold tabular-nums text-slate-700 dark:text-slate-200 shrink-0">
                       {formatBytes(file.size)}
                     </span>
                   </button>
@@ -1165,12 +1189,23 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
                     ) : (
                       <Square className="w-4 h-4 text-slate-400 shrink-0" />
                     )}
+                    {isImageFileItem(file) || isVideoFileItem(file) ? (
+                      <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-slate-800">
+                        <MediaThumbnail item={file} iconSizeClass="w-4 h-4" />
+                      </div>
+                    ) : isAudioFileItem(file) ? (
+                      <AudioCoverThumbnail item={file} className="w-10 h-10 rounded-lg" />
+                    ) : isPdfFileItem(file) ? (
+                      <PdfThumbnail item={file} className="w-10 h-10 rounded-lg" />
+                    ) : (
+                      <DocumentBadgeTile item={file} className="w-10 h-10 rounded-lg" />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                         {file.name}
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {file.category.toUpperCase()} · {formatShortDate(file.dateModified)}
+                        {file.dateModified > 0 ? formatShortDateTime(file.dateModified) : 'Unknown date'}
                       </p>
                     </div>
                     <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200 shrink-0">

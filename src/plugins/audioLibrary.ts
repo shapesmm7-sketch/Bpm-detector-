@@ -8,6 +8,7 @@ export interface AudioTrackItem {
   album: string;
   durationMs: number;
   size: number;
+  dateModified?: number;
   mimeType: string;
   uri: string;
   webUrl?: string;
@@ -41,6 +42,7 @@ export interface VideoTrackItem {
   displayName: string;
   durationMs: number;
   size: number;
+  dateModified?: number;
   mimeType: string;
   resolution: string;
   uri: string;
@@ -55,6 +57,7 @@ export interface ImageTrackItem {
   width: number;
   height: number;
   size: number;
+  dateModified?: number;
   mimeType: string;
   uri: string;
   webUrl?: string;

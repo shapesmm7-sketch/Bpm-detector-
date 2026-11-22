@@ -21,16 +21,28 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  FileArchive,
   HardDrive,
+  LayoutGrid,
+  List as ListIcon,
+  Play,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  Download,
 } from 'lucide-react';
-import { AudioLibrary, isNativeAndroid } from '../../plugins/audioLibrary';
+import {
+  AudioLibrary,
+  isNativeAndroid,
+  resolvePlayableAudioUrl,
+} from '../../plugins/audioLibrary';
 import {
   PhoneFileItem,
   PhoneManager,
   StorageRootItem,
   formatBytes,
   formatShortDate,
+  formatShortDateTime,
 } from '../../plugins/phoneManager';
 import {
   createWebZipArchive,
@@ -41,6 +53,17 @@ import {
   pickWebFolderForWorkspace,
   triggerWebBlobDownload,
 } from '../../utils/localStorageAnalyzer';
+import {
+  AudioCoverThumbnail,
+  DocumentBadgeTile,
+  MediaThumbnail,
+  PdfThumbnail,
+  formatVideoDurationShort,
+  isAudioFileItem,
+  isImageFileItem,
+  isPdfFileItem,
+  isVideoFileItem,
+} from './MediaThumbnail';
 
 interface FileManagerViewProps {
   onStorageMutated: () => Promise<void>;
@@ -67,12 +90,18 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
 
   const [items, setItems] = useState<PhoneFileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
+  const [viewLayoutOverride, setViewLayoutOverride] = useState<'auto' | 'grid' | 'list'>('auto');
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+
+  // Gallery Lightbox Preview
+  const [previewItem, setPreviewItem] = useState<PhoneFileItem | null>(null);
+  const [previewSrcUrl, setPreviewSrcUrl] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Modals (Zero window.alert / window.confirm / window.prompt)
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
@@ -98,6 +127,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
 
   useEffect(() => {
     setSelectedUris(new Set());
+    setViewLayoutOverride('auto');
     if (browseMode === 'folder') {
       if (isNativeAndroid() && activeRoot) {
         void loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
@@ -109,6 +139,58 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browseMode, activeRoot?.id]);
+
+  useEffect(() => {
+    if (!previewItem) {
+      setPreviewSrcUrl('');
+      setPreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let createdBlobUrl = '';
+    const mediaKind = isVideoFileItem(previewItem) ? 'video' : 'image';
+    setPreviewLoading(true);
+    setPreviewSrcUrl('');
+
+    const resolveFullMedia = async () => {
+      try {
+        if (!isNativeAndroid()) {
+          const entry = getWebStoredEntry(previewItem.id);
+          if (entry && !cancelled) {
+            createdBlobUrl = URL.createObjectURL(entry.file);
+            setPreviewSrcUrl(createdBlobUrl);
+          }
+          return;
+        }
+        const prepared = await AudioLibrary.prepareMediaFile({
+          uri: previewItem.uri,
+          displayName: previewItem.name,
+          mediaKind,
+          keepAlive: true,
+        });
+        if (!cancelled) {
+          setPreviewSrcUrl(resolvePlayableAudioUrl(prepared));
+        }
+      } catch {
+        if (!cancelled) {
+          setPreviewSrcUrl('');
+        }
+      } finally {
+        if (!cancelled) {
+          setPreviewLoading(false);
+        }
+      }
+    };
+
+    void resolveFullMedia();
+    return () => {
+      cancelled = true;
+      if (createdBlobUrl) {
+        URL.revokeObjectURL(createdBlobUrl);
+      }
+    };
+  }, [previewItem]);
 
   const loadRoots = async () => {
     if (!isNativeAndroid()) {
@@ -171,9 +253,11 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             uri: i.uri,
             path: '',
             size: i.size,
-            dateModified: 0,
+            dateModified: i.dateModified || 0,
             mimeType: i.mimeType,
             category: 'images',
+            width: i.width,
+            height: i.height,
           }))
         );
       } else if (cat === 'videos') {
@@ -185,9 +269,11 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             uri: v.uri,
             path: '',
             size: v.size,
-            dateModified: 0,
+            dateModified: v.dateModified || 0,
             mimeType: v.mimeType,
             category: 'videos',
+            durationMs: v.durationMs,
+            resolution: v.resolution,
           }))
         );
       } else if (cat === 'audio') {
@@ -199,9 +285,10 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             uri: s.uri,
             path: '',
             size: s.size,
-            dateModified: 0,
+            dateModified: s.dateModified || 0,
             mimeType: s.mimeType,
             category: 'audio',
+            durationMs: s.durationMs,
           }))
         );
       } else if (cat === 'downloads') {
@@ -234,14 +321,19 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     }
 
     try {
-      const res = await PhoneManager.requestSafFolderAccess();
+      const targetPreset = browseMode === 'documents' ? 'documents' : 'default';
+      const res = await PhoneManager.requestSafFolderAccess({ preset: targetPreset });
       if (res.granted && res.treeUri) {
         const updatedRoots = await PhoneManager.getStorageRoots();
         setRoots(updatedRoots.roots || []);
         const safRoot =
           (updatedRoots.roots || []).find((r) => r.treeUri === res.treeUri) ||
           (updatedRoots.roots || [])[0];
-        if (safRoot) {
+        if (browseMode === 'documents') {
+          setStatusMsg(`Folder access granted (${res.label || 'Documents'}). Scanning documents...`);
+          await loadCategoryFiles('documents');
+          await onStorageMutated();
+        } else if (safRoot) {
           setBrowseMode('folder');
           setActiveRoot(safRoot);
           setDocStack([]);
@@ -250,6 +342,39 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Could not open Android SAF folder picker.');
+    }
+  };
+
+  const handlePickDocumentFiles = async (preset: 'documents' | 'downloads' = 'documents') => {
+    if (!isNativeAndroid()) {
+      await handleGrantSaf();
+      return;
+    }
+    try {
+      const res = await PhoneManager.requestSafDocumentFiles({ preset });
+      if (!res.cancelled && res.addedCount > 0) {
+        setStatusMsg(`Added ${res.addedCount} file(s) to File Manager.`);
+        await loadCategoryFiles(browseMode === 'downloads' ? 'downloads' : 'documents');
+        await onStorageMutated();
+      }
+    } catch (err) {
+      setErrorMsg((err as Error)?.message || 'Could not open Android file picker.');
+    }
+  };
+
+  const openExternally = async (item: PhoneFileItem) => {
+    try {
+      if (isNativeAndroid()) {
+        await PhoneManager.openFileItem({ uri: item.uri, mimeType: item.mimeType });
+      } else {
+        const entry = getWebStoredEntry(item.id);
+        if (entry) {
+          triggerWebBlobDownload(entry.file, item.name);
+          setStatusMsg(`Opened local file download for ${item.name}.`);
+        }
+      }
+    } catch (err) {
+      setErrorMsg((err as Error)?.message || 'No application available to open this file.');
     }
   };
 
@@ -269,19 +394,12 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       return;
     }
 
-    try {
-      if (isNativeAndroid()) {
-        await PhoneManager.openFileItem({ uri: item.uri, mimeType: item.mimeType });
-      } else {
-        const entry = getWebStoredEntry(item.id);
-        if (entry) {
-          triggerWebBlobDownload(entry.file, item.name);
-          setStatusMsg(`Opened local file download for ${item.name}.`);
-        }
-      }
-    } catch (err) {
-      setErrorMsg((err as Error)?.message || 'No application available to open this file.');
+    if (isImageFileItem(item) || isVideoFileItem(item)) {
+      setPreviewItem(item);
+      return;
     }
+
+    await openExternally(item);
   };
 
   const handleStepUp = async () => {
@@ -514,14 +632,67 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     });
 
   const selectedItems = visibleItems.filter((i) => selectedUris.has(i.uri));
+  const useGalleryGrid =
+    viewLayoutOverride === 'grid' ||
+    (viewLayoutOverride === 'auto' && (browseMode === 'images' || browseMode === 'videos'));
 
-  const getFileIcon = (item: PhoneFileItem) => {
-    if (item.isDirectory) return <Folder className="w-4 h-4 text-amber-500 shrink-0" />;
-    if (item.category === 'images') return <ImageIcon className="w-4 h-4 text-emerald-500 shrink-0" />;
-    if (item.category === 'videos') return <Film className="w-4 h-4 text-cyan-500 shrink-0" />;
-    if (item.category === 'audio') return <Music className="w-4 h-4 text-violet-500 shrink-0" />;
-    if (item.name.toLowerCase().endsWith('.zip')) return <FileArchive className="w-4 h-4 text-orange-500 shrink-0" />;
-    return <FileText className="w-4 h-4 text-slate-400 shrink-0" />;
+  const previewableItems = visibleItems.filter(
+    (i) => !i.isDirectory && (isImageFileItem(i) || isVideoFileItem(i))
+  );
+  const previewIndex = previewItem
+    ? previewableItems.findIndex((i) => i.uri === previewItem.uri)
+    : -1;
+
+  const totalVisibleBytes = visibleItems.reduce(
+    (sum, item) => sum + (item.isDirectory ? 0 : item.size || 0),
+    0
+  );
+
+  const categoryTitleLabel =
+    browseMode === 'images'
+      ? 'Images'
+      : browseMode === 'videos'
+      ? 'Videos'
+      : browseMode === 'audio'
+      ? 'Audio files'
+      : browseMode === 'documents'
+      ? 'Documents'
+      : browseMode === 'downloads'
+      ? 'Downloads'
+      : 'Folders';
+
+  const getFileThumbnailOrIcon = (item: PhoneFileItem) => {
+    if (item.isDirectory) {
+      return (
+        <div className="w-11 h-11 rounded-xl bg-amber-500/12 flex items-center justify-center shrink-0">
+          <Folder className="w-5 h-5 text-amber-500" />
+        </div>
+      );
+    }
+    if (isImageFileItem(item)) {
+      return (
+        <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-slate-200 dark:border-slate-800">
+          <MediaThumbnail item={item} iconSizeClass="w-4 h-4" />
+        </div>
+      );
+    }
+    if (isVideoFileItem(item)) {
+      return (
+        <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 relative border border-slate-200 dark:border-slate-800">
+          <MediaThumbnail item={item} iconSizeClass="w-4 h-4" />
+          <span className="absolute bottom-1 left-1 w-4 h-4 rounded-full bg-black/60 flex items-center justify-center pointer-events-none">
+            <Play className="w-2.5 h-2.5 text-white fill-white ml-0.5" />
+          </span>
+        </div>
+      );
+    }
+    if (isAudioFileItem(item)) {
+      return <AudioCoverThumbnail item={item} />;
+    }
+    if (isPdfFileItem(item)) {
+      return <PdfThumbnail item={item} />;
+    }
+    return <DocumentBadgeTile item={item} />;
   };
 
   return (
@@ -576,15 +747,37 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void handleGrantSaf()}
               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
             >
               <FolderOpen className="w-3.5 h-3.5" />
-              <span>{isNativeAndroid() ? 'Open Folder (SAF)' : 'Pick Local Folder'}</span>
+              <span>
+                {isNativeAndroid()
+                  ? browseMode === 'documents'
+                    ? 'Grant Documents Folder (SAF)'
+                    : 'Open Folder (SAF)'
+                  : 'Pick Local Folder'}
+              </span>
             </button>
+            {isNativeAndroid() && (browseMode === 'documents' || browseMode === 'downloads') && (
+              <button
+                type="button"
+                onClick={() =>
+                  void handlePickDocumentFiles(
+                    browseMode === 'downloads' ? 'downloads' : 'documents'
+                  )
+                }
+                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>
+                  {browseMode === 'downloads' ? 'Add Files from Downloads' : 'Add Document Files'}
+                </span>
+              </button>
+            )}
             {!isNativeAndroid() && (
               <button
                 type="button"
@@ -650,11 +843,43 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             onChange={(e) => setSortBy(e.target.value as 'name' | 'size' | 'date' | 'type')}
             className="px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-semibold"
           >
+            <option value="date">Sort: Date</option>
             <option value="name">Sort: Name</option>
             <option value="size">Sort: Size</option>
-            <option value="date">Sort: Date</option>
             <option value="type">Sort: Type</option>
           </select>
+          <div
+            className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
+            role="group"
+            aria-label="Layout view"
+          >
+            <button
+              type="button"
+              onClick={() => setViewLayoutOverride('grid')}
+              className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
+                useGalleryGrid
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+              title="Gallery Grid View"
+              aria-label="Gallery Grid View"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewLayoutOverride('list')}
+              className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
+                !useGalleryGrid
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+              title="Detailed List View"
+              aria-label="Detailed List View"
+            >
+              <ListIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
           {browseMode === 'folder' && isNativeAndroid() && (
             <button
               type="button"
@@ -771,12 +996,59 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
         </div>
       )}
 
-      {/* Files List */}
+      {/* Files List / Gallery */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4">
-        {currentPath && browseMode === 'folder' && (
-          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 pb-2 mb-2 border-b border-slate-100 dark:border-slate-800 truncate">
-            {currentPath}
-          </p>
+        <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+              {categoryTitleLabel}
+            </p>
+            {currentPath && browseMode === 'folder' && (
+              <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                {currentPath}
+              </p>
+            )}
+          </div>
+          <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400 shrink-0">
+            {visibleItems.length} items · {formatBytes(totalVisibleBytes)}
+          </span>
+        </div>
+
+        {/* Phone Category Quick Folders when browsing Folders */}
+        {browseMode === 'folder' && docStack.length === 0 && (
+          <div className="grid grid-cols-5 gap-1.5 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
+            {(
+              [
+                { id: 'images', label: 'Images', icon: ImageIcon, tone: 'text-emerald-600 bg-emerald-500/12' },
+                { id: 'videos', label: 'Videos', icon: Film, tone: 'text-cyan-600 bg-cyan-500/12' },
+                { id: 'audio', label: 'Audio', icon: Music, tone: 'text-sky-600 bg-sky-500/12' },
+                { id: 'downloads', label: 'Downloads', icon: Download, tone: 'text-indigo-600 bg-indigo-500/12' },
+                { id: 'documents', label: 'Documents', icon: FileText, tone: 'text-amber-600 bg-amber-500/12' },
+              ] as Array<{
+                id: Exclude<FileBrowseMode, 'folder'>;
+                label: string;
+                icon: React.ComponentType<{ className?: string }>;
+                tone: string;
+              }>
+            ).map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setBrowseMode(cat.id)}
+                  className="p-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 hover:border-emerald-500/40 flex flex-col items-center gap-1 cursor-pointer"
+                >
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${cat.tone}`}>
+                    <Icon className="w-4 h-4" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-200 truncate max-w-full">
+                    {cat.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
 
         {isLoading ? (
@@ -785,14 +1057,147 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             <span>Loading files...</span>
           </div>
         ) : visibleItems.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
-            No accessible files in this view.
+          <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-3">
+            {(browseMode === 'documents' || browseMode === 'downloads') && isNativeAndroid() ? (
+              <>
+                <p className="max-w-md mx-auto leading-relaxed">
+                  {browseMode === 'downloads'
+                    ? 'No accessible downloads found yet. Tap Add Files from Downloads to include PDFs, ZIPs, or documents from your Downloads folder.'
+                    : 'Android Scoped Storage limits direct reading of PDF, Word, Excel, and text files saved by other apps. Tap Grant Documents Folder (SAF) for your Documents folder, or Add Document Files to pick documents from Downloads or elsewhere.'}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {browseMode === 'documents' && (
+                    <button
+                      type="button"
+                      onClick={() => void handleGrantSaf()}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer"
+                    >
+                      Grant Documents Folder (SAF)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handlePickDocumentFiles(
+                        browseMode === 'downloads' ? 'downloads' : 'documents'
+                      )
+                    }
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-semibold cursor-pointer"
+                  >
+                    {browseMode === 'downloads' ? 'Add Files from Downloads' : 'Add Document Files'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <span>No accessible files in this view.</span>
+            )}
+          </div>
+        ) : useGalleryGrid ? (
+          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-1 sm:gap-1.5 max-h-[36rem] overflow-y-auto pr-0.5">
+            {visibleItems.map((item) => {
+              const checked = selectedUris.has(item.uri);
+              const isImg = isImageFileItem(item);
+              const isVid = isVideoFileItem(item);
+              const durLabel = isVid ? formatVideoDurationShort(item.durationMs) : '';
+
+              return (
+                <div
+                  key={item.uri}
+                  className={`group relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border transition-all ${
+                    checked
+                      ? 'border-emerald-500 ring-2 ring-emerald-500/70'
+                      : 'border-slate-200/70 dark:border-slate-800'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedUris.size > 0) {
+                        toggleSelect(item.uri);
+                      } else {
+                        void handleOpenFolderOrFile(item);
+                      }
+                    }}
+                    className="w-full h-full block cursor-pointer text-left"
+                    aria-label={item.name}
+                  >
+                    {isImg || isVid ? (
+                      <MediaThumbnail item={item} iconSizeClass="w-6 h-6" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1.5 bg-slate-50 dark:bg-slate-900">
+                        {item.isDirectory ? (
+                          <Folder className="w-6 h-6 text-amber-500" />
+                        ) : isAudioFileItem(item) ? (
+                          <AudioCoverThumbnail item={item} className="w-10 h-10 rounded-lg" />
+                        ) : isPdfFileItem(item) ? (
+                          <PdfThumbnail item={item} className="w-10 h-10 rounded-lg" />
+                        ) : (
+                          <DocumentBadgeTile item={item} className="w-10 h-10 rounded-lg" />
+                        )}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Bottom gradient + filename strip matching Samsung My Files */}
+                  <div className="absolute inset-x-0 bottom-0 pt-5 pb-1 px-1.5 bg-gradient-to-t from-black/80 via-black/45 to-transparent pointer-events-none">
+                    {isVid && (
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/25 backdrop-blur-xs">
+                          <Play className="w-2.5 h-2.5 text-white fill-white ml-0.5" />
+                        </span>
+                        {durLabel && (
+                          <span className="text-[9px] font-mono font-semibold tabular-nums text-white/95 drop-shadow">
+                            {durLabel}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-[10px] font-medium text-white truncate drop-shadow-xs leading-tight">
+                      {item.name}
+                    </p>
+                  </div>
+
+                  {/* Select checkbox target */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelect(item.uri);
+                    }}
+                    className="absolute top-0 right-0 w-8 h-8 flex items-start justify-end p-1 cursor-pointer"
+                    aria-label={checked ? `Deselect ${item.name}` : `Select ${item.name}`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center border transition-colors ${
+                        checked
+                          ? 'bg-emerald-600 border-emerald-500 text-white'
+                          : 'bg-black/35 border-white/75 text-transparent'
+                      }`}
+                    >
+                      <Check className="w-2.5 h-2.5" />
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[28rem] overflow-y-auto">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[34rem] overflow-y-auto">
             {visibleItems.map((item) => {
               const checked = selectedUris.has(item.uri);
               const isZip = item.name.toLowerCase().endsWith('.zip');
+              const durLabel = isVideoFileItem(item)
+                ? formatVideoDurationShort(item.durationMs)
+                : '';
+              const leftMeta = item.isDirectory
+                ? 'Folder'
+                : [
+                    ...(item.dateModified > 0
+                      ? [formatShortDateTime(item.dateModified)]
+                      : ['Unknown date']),
+                    ...(durLabel ? [durLabel] : []),
+                  ].join(' · ');
+
               return (
                 <div
                   key={item.uri}
@@ -814,18 +1219,21 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
                   <button
                     type="button"
                     onClick={() => void handleOpenFolderOrFile(item)}
-                    className="flex-1 min-w-0 flex items-center gap-2.5 text-left cursor-pointer"
+                    className="flex-1 min-w-0 flex items-center gap-3 text-left cursor-pointer"
                   >
-                    {getFileIcon(item)}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                    {getFileThumbnailOrIcon(item)}
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <p className="text-[13px] font-medium text-slate-900 dark:text-slate-100 truncate">
                         {item.name}
                       </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {item.isDirectory
-                          ? 'Folder'
-                          : `${formatBytes(item.size)} · ${formatShortDate(item.dateModified)}`}
-                      </p>
+                      <div className="flex items-center justify-between gap-2 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+                        <span className="truncate">{leftMeta}</span>
+                        {!item.isDirectory && (
+                          <span className="shrink-0 font-medium">
+                            {formatBytes(item.size)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
 
@@ -842,9 +1250,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
                       )}
                       <button
                         type="button"
-                        onClick={() => void handleOpenFolderOrFile(item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 cursor-pointer"
-                        title="Open file"
+                        onClick={() => void openExternally(item)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 cursor-pointer"
+                        title="Open in external app"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </button>
@@ -856,6 +1264,126 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Full-Screen Phone Gallery Photo & Video Lightbox */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 bg-black/95 text-white flex flex-col">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setPreviewItem(null)}
+              className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer shrink-0"
+              aria-label="Close preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="min-w-0 flex-1 text-center">
+              <p className="text-xs sm:text-sm font-semibold truncate">{previewItem.name}</p>
+              <p className="text-[11px] text-white/65 tabular-nums truncate">
+                {formatBytes(previewItem.size)}
+                {previewItem.dateModified > 0 ? ` · ${formatShortDate(previewItem.dateModified)}` : ''}
+                {previewIndex >= 0 ? ` · ${previewIndex + 1} / ${previewableItems.length}` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => void handleShareSingle(previewItem)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer"
+                title="Share"
+                aria-label="Share"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void openExternally(previewItem)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center cursor-pointer"
+                title="Open with external app"
+                aria-label="Open with external app"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const toDel = previewItem;
+                  setPreviewItem(null);
+                  setConfirmDeleteList([toDel]);
+                }}
+                className="w-9 h-9 rounded-full bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 flex items-center justify-center cursor-pointer"
+                title="Delete"
+                aria-label="Delete"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
+            {previewIndex > 0 && (
+              <button
+                type="button"
+                onClick={() => setPreviewItem(previewableItems[previewIndex - 1])}
+                className="absolute left-2 sm:left-4 z-10 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/15 flex items-center justify-center cursor-pointer"
+                aria-label="Previous item"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+
+            {previewLoading ? (
+              <div className="flex flex-col items-center gap-2 text-xs text-white/75">
+                <Loader2 className="w-7 h-7 animate-spin text-emerald-400" />
+                <span>Loading preview...</span>
+              </div>
+            ) : previewSrcUrl ? (
+              isVideoFileItem(previewItem) ? (
+                <video
+                  key={previewSrcUrl}
+                  src={previewSrcUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="max-w-full max-h-full rounded-xl bg-black"
+                />
+              ) : (
+                <img
+                  key={previewSrcUrl}
+                  src={previewSrcUrl}
+                  alt={previewItem.name}
+                  referrerPolicy="no-referrer"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
+              )
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-center max-w-xs">
+                <div className="w-48 h-48 rounded-2xl overflow-hidden border border-white/15">
+                  <MediaThumbnail item={previewItem} iconSizeClass="w-12 h-12" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void openExternally(previewItem)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold cursor-pointer"
+                >
+                  Open in Default App
+                </button>
+              </div>
+            )}
+
+            {previewIndex >= 0 && previewIndex < previewableItems.length - 1 && (
+              <button
+                type="button"
+                onClick={() => setPreviewItem(previewableItems[previewIndex + 1])}
+                className="absolute right-2 sm:right-4 z-10 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/15 flex items-center justify-center cursor-pointer"
+                aria-label="Next item"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Create Folder Modal */}
       {showNewFolderModal && (

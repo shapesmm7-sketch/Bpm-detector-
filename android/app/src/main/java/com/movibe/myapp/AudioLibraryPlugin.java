@@ -1096,7 +1096,8 @@ public class AudioLibraryPlugin extends Plugin {
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.SIZE,
-                MediaStore.Audio.Media.MIME_TYPE
+                MediaStore.Audio.Media.MIME_TYPE,
+                MediaStore.Audio.Media.DATE_MODIFIED
             };
 
             String sortOrder = MediaStore.Audio.Media.DATE_ADDED + " DESC";
@@ -1111,6 +1112,7 @@ public class AudioLibraryPlugin extends Plugin {
                     int durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
                     int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE);
                     int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE);
+                    int modCol = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED);
 
                     while (cursor.moveToNext()) {
                         long id = cursor.getLong(idCol);
@@ -1125,6 +1127,7 @@ public class AudioLibraryPlugin extends Plugin {
                         String album = cursor.getString(albumCol);
                         long durationMs = cursor.getLong(durationCol);
                         String mimeType = cursor.getString(mimeCol);
+                        long dateModifiedMs = modCol >= 0 ? cursor.getLong(modCol) * 1000L : 0L;
 
                         Uri contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id);
 
@@ -1136,6 +1139,7 @@ public class AudioLibraryPlugin extends Plugin {
                         item.put("album", album != null ? album : "");
                         item.put("durationMs", durationMs);
                         item.put("size", size);
+                        item.put("dateModified", dateModifiedMs);
                         item.put("mimeType", mimeType != null ? mimeType : "audio/*");
                         item.put("uri", contentUri.toString());
 
@@ -1227,7 +1231,8 @@ public class AudioLibraryPlugin extends Plugin {
                 MediaStore.Video.Media.DURATION,
                 MediaStore.Video.Media.SIZE,
                 MediaStore.Video.Media.MIME_TYPE,
-                MediaStore.Video.Media.RESOLUTION
+                MediaStore.Video.Media.RESOLUTION,
+                MediaStore.Video.Media.DATE_MODIFIED
             };
 
             String sortOrder = MediaStore.Video.Media.DATE_ADDED + " DESC";
@@ -1241,6 +1246,7 @@ public class AudioLibraryPlugin extends Plugin {
                     int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE);
                     int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE);
                     int resCol = cursor.getColumnIndex(MediaStore.Video.Media.RESOLUTION);
+                    int modCol = cursor.getColumnIndex(MediaStore.Video.Media.DATE_MODIFIED);
 
                     while (cursor.moveToNext()) {
                         long id = cursor.getLong(idCol);
@@ -1254,6 +1260,7 @@ public class AudioLibraryPlugin extends Plugin {
                         long durationMs = cursor.getLong(durationCol);
                         String mimeType = cursor.getString(mimeCol);
                         String resolution = resCol >= 0 ? cursor.getString(resCol) : "";
+                        long dateModifiedMs = modCol >= 0 ? cursor.getLong(modCol) * 1000L : 0L;
 
                         Uri contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id);
 
@@ -1263,6 +1270,7 @@ public class AudioLibraryPlugin extends Plugin {
                         item.put("displayName", displayName != null ? displayName : (title != null ? title : "video.mp4"));
                         item.put("durationMs", durationMs);
                         item.put("size", size);
+                        item.put("dateModified", dateModifiedMs);
                         item.put("mimeType", mimeType != null ? mimeType : "video/*");
                         item.put("resolution", resolution != null ? resolution : "");
                         item.put("uri", contentUri.toString());
@@ -1298,7 +1306,8 @@ public class AudioLibraryPlugin extends Plugin {
                 MediaStore.Images.Media.WIDTH,
                 MediaStore.Images.Media.HEIGHT,
                 MediaStore.Images.Media.SIZE,
-                MediaStore.Images.Media.MIME_TYPE
+                MediaStore.Images.Media.MIME_TYPE,
+                MediaStore.Images.Media.DATE_MODIFIED
             };
 
             String sortOrder = MediaStore.Images.Media.DATE_ADDED + " DESC";
@@ -1312,6 +1321,7 @@ public class AudioLibraryPlugin extends Plugin {
                     int heightCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT);
                     int sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE);
                     int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE);
+                    int modCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED);
 
                     while (cursor.moveToNext()) {
                         long id = cursor.getLong(idCol);
@@ -1325,6 +1335,7 @@ public class AudioLibraryPlugin extends Plugin {
                         int width = widthCol >= 0 ? cursor.getInt(widthCol) : 0;
                         int height = heightCol >= 0 ? cursor.getInt(heightCol) : 0;
                         String mimeType = cursor.getString(mimeCol);
+                        long dateModifiedMs = modCol >= 0 ? cursor.getLong(modCol) * 1000L : 0L;
 
                         Uri contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
 
@@ -1335,6 +1346,7 @@ public class AudioLibraryPlugin extends Plugin {
                         item.put("width", width);
                         item.put("height", height);
                         item.put("size", size);
+                        item.put("dateModified", dateModifiedMs);
                         item.put("mimeType", mimeType != null ? mimeType : "image/*");
                         item.put("uri", contentUri.toString());
 
@@ -1706,7 +1718,11 @@ public class AudioLibraryPlugin extends Plugin {
                 if (bitmap == null) {
                     MediaMetadataRetriever retriever = new MediaMetadataRetriever();
                     try {
-                        retriever.setDataSource(getContext(), contentUri);
+                        if ("file".equals(contentUri.getScheme()) && contentUri.getPath() != null) {
+                            retriever.setDataSource(contentUri.getPath());
+                        } else {
+                            retriever.setDataSource(getContext(), contentUri);
+                        }
                         bitmap = retriever.getFrameAtTime(1000000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
                         if (bitmap == null) {
                             bitmap = retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
@@ -1817,11 +1833,29 @@ public class AudioLibraryPlugin extends Plugin {
                 }
 
                 if (bitmap == null) {
-                    try (InputStream in = resolver.openInputStream(contentUri)) {
-                        if (in != null) {
-                            BitmapFactory.Options opts = new BitmapFactory.Options();
-                            opts.inSampleSize = 4;
-                            bitmap = BitmapFactory.decodeStream(in, null, opts);
+                    try {
+                        BitmapFactory.Options bounds = new BitmapFactory.Options();
+                        bounds.inJustDecodeBounds = true;
+                        try (InputStream bIn = "file".equals(contentUri.getScheme()) && contentUri.getPath() != null
+                            ? new FileInputStream(new File(contentUri.getPath()))
+                            : resolver.openInputStream(contentUri)) {
+                            if (bIn != null) {
+                                BitmapFactory.decodeStream(bIn, null, bounds);
+                            }
+                        }
+                        int sample = 1;
+                        int maxSide = Math.max(bounds.outWidth, bounds.outHeight);
+                        while (maxSide > 0 && (maxSide / sample) > 720) {
+                            sample *= 2;
+                        }
+                        BitmapFactory.Options opts = new BitmapFactory.Options();
+                        opts.inSampleSize = Math.max(1, sample);
+                        try (InputStream in = "file".equals(contentUri.getScheme()) && contentUri.getPath() != null
+                            ? new FileInputStream(new File(contentUri.getPath()))
+                            : resolver.openInputStream(contentUri)) {
+                            if (in != null) {
+                                bitmap = BitmapFactory.decodeStream(in, null, opts);
+                            }
                         }
                     } catch (Exception ignored) {
                         bitmap = null;

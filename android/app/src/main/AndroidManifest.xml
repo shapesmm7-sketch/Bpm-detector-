@@ -107,6 +107,8 @@
             <data android:mimeType="audio/*" />
         </intent>
         <package android:name="com.samsung.knox.securefolder" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
     </queries>
 
     <!-- Permissions -->

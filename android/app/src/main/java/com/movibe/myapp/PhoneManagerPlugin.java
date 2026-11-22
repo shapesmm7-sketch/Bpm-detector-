@@ -17,10 +17,14 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.pdf.PdfRenderer;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.os.StatFs;
 import android.os.storage.StorageManager;
 import android.os.storage.StorageVolume;
@@ -36,6 +40,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.getcapacitor.Bridge;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -75,12 +80,16 @@ public class PhoneManagerPlugin extends Plugin {
 
     private static final String PREFS_NAME = "movibe_phone_manager_prefs";
     private static final String KEY_SAF_TREES = "saf_tree_uris";
+    private static final String KEY_SAF_FILES = "saf_file_uris";
     private static final long DUPLICATE_MAX_FILE_BYTES = 350L * 1024L * 1024L;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService pdfThumbExecutor = Executors.newFixedThreadPool(2);
     private ActivityResultLauncher<Intent> safTreeLauncher;
+    private ActivityResultLauncher<Intent> safFilesLauncher;
     private ActivityResultLauncher<IntentSenderRequest> deleteConsentLauncher;
     private String pendingSafCallId;
+    private String pendingSafFilesCallId;
     private String pendingConsentCallId;
     private Runnable pendingConsentRetry;
 
@@ -120,6 +129,50 @@ public class PhoneManagerPlugin extends Plugin {
                 res.put("granted", true);
                 res.put("treeUri", treeUri.toString());
                 res.put("label", label);
+                saved.resolve(res);
+                bridge.releaseCall(saved);
+            }
+        );
+
+        safFilesLauncher = bridge.registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                PluginCall saved = pendingSafFilesCallId != null ? bridge.getSavedCall(pendingSafFilesCallId) : null;
+                pendingSafFilesCallId = null;
+                if (saved == null) return;
+
+                Intent data = result != null ? result.getData() : null;
+                if (result == null || result.getResultCode() != Activity.RESULT_OK || data == null) {
+                    JSObject res = new JSObject();
+                    res.put("addedCount", 0);
+                    res.put("cancelled", true);
+                    saved.resolve(res);
+                    bridge.releaseCall(saved);
+                    return;
+                }
+
+                List<Uri> picked = new ArrayList<>();
+                if (data.getClipData() != null) {
+                    ClipData clip = data.getClipData();
+                    for (int i = 0; i < clip.getItemCount(); i++) {
+                        Uri u = clip.getItemAt(i).getUri();
+                        if (u != null) picked.add(u);
+                    }
+                } else if (data.getData() != null) {
+                    picked.add(data.getData());
+                }
+
+                int takeFlags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                if (takeFlags == 0) takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                for (Uri u : picked) {
+                    try {
+                        getContext().getContentResolver().takePersistableUriPermission(u, takeFlags);
+                    } catch (Exception ignored) {}
+                    saveSafFileUri(u.toString());
+                }
+
+                JSObject res = new JSObject();
+                res.put("addedCount", picked.size());
                 saved.resolve(res);
                 bridge.releaseCall(saved);
             }
@@ -169,6 +222,31 @@ public class PhoneManagerPlugin extends Plugin {
         try {
             SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             return new JSONArray(prefs.getString(KEY_SAF_TREES, "[]"));
+        } catch (Exception ignored) {
+            return new JSONArray();
+        }
+    }
+
+    private void saveSafFileUri(String uriStr) {
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            JSONArray arr = new JSONArray(prefs.getString(KEY_SAF_FILES, "[]"));
+            JSONArray next = new JSONArray();
+            next.put(uriStr);
+            for (int i = 0; i < arr.length(); i++) {
+                String existing = arr.optString(i, "");
+                if (!existing.isEmpty() && !uriStr.equals(existing)) {
+                    next.put(existing);
+                }
+            }
+            prefs.edit().putString(KEY_SAF_FILES, next.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private JSONArray getSavedSafFileUris() {
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            return new JSONArray(prefs.getString(KEY_SAF_FILES, "[]"));
         } catch (Exception ignored) {
             return new JSONArray();
         }
@@ -472,12 +550,12 @@ public class PhoneManagerPlugin extends Plugin {
         if (lowerMime.startsWith("audio/") || lowerName.endsWith(".mp3") || lowerName.endsWith(".wav") || lowerName.endsWith(".m4a") || lowerName.endsWith(".flac") || lowerName.endsWith(".aac") || lowerName.endsWith(".ogg") || lowerName.endsWith(".opus")) {
             return "audio";
         }
+        if (lowerMime.contains("pdf") || lowerMime.contains("word") || lowerMime.contains("text") || lowerMime.contains("spreadsheet") || lowerMime.contains("presentation") || lowerMime.contains("opendocument") || lowerMime.contains("ms-excel") || lowerMime.contains("ms-powerpoint") || lowerMime.contains("msword") || lowerMime.contains("epub")
+            || lowerName.endsWith(".pdf") || lowerName.endsWith(".doc") || lowerName.endsWith(".docx") || lowerName.endsWith(".txt") || lowerName.endsWith(".csv") || lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx") || lowerName.endsWith(".ppt") || lowerName.endsWith(".pptx") || lowerName.endsWith(".rtf") || lowerName.endsWith(".odt") || lowerName.endsWith(".ods") || lowerName.endsWith(".odp") || lowerName.endsWith(".epub") || lowerName.endsWith(".md") || lowerName.endsWith(".json") || lowerName.endsWith(".xml")) {
+            return "documents";
+        }
         if (folderLower.contains("/download") || folderLower.contains("download/")) {
             return "downloads";
-        }
-        if (lowerMime.contains("pdf") || lowerMime.contains("word") || lowerMime.contains("text") || lowerMime.contains("spreadsheet") || lowerMime.contains("presentation")
-            || lowerName.endsWith(".pdf") || lowerName.endsWith(".doc") || lowerName.endsWith(".docx") || lowerName.endsWith(".txt") || lowerName.endsWith(".csv") || lowerName.endsWith(".xls") || lowerName.endsWith(".xlsx") || lowerName.endsWith(".ppt") || lowerName.endsWith(".pptx")) {
-            return "documents";
         }
         return "other";
     }
@@ -498,12 +576,16 @@ public class PhoneManagerPlugin extends Plugin {
         Set<String> seenUris = new HashSet<>();
         ContentResolver resolver = getContext().getContentResolver();
 
-        Uri[] collections = new Uri[] {
+        List<Uri> collectionList = new ArrayList<>(Arrays.asList(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             MediaStore.Files.getContentUri("external")
-        };
+        ));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            collectionList.add(MediaStore.Downloads.EXTERNAL_CONTENT_URI);
+        }
+        Uri[] collections = collectionList.toArray(new Uri[0]);
 
         for (int cIdx = 0; cIdx < collections.length; cIdx++) {
             Uri col = collections[cIdx];
@@ -560,7 +642,72 @@ public class PhoneManagerPlugin extends Plugin {
                 }
             } catch (Exception ignored) {}
         }
+
+        // Also scan readable public Documents & Downloads directories directly (Android <= 10 & Mo Vibe files)
+        File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+        if (docsDir != null && docsDir.exists() && docsDir.isDirectory() && docsDir.canRead()) {
+            scanDirFilesRecursive(docsDir, 0, 3, list, seenUris, false);
+        }
+        File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (dlDir != null && dlDir.exists() && dlDir.isDirectory() && dlDir.canRead()) {
+            scanDirFilesRecursive(dlDir, 0, 2, list, seenUris, false);
+        }
+
+        // Include persisted SAF trees granted by user (e.g. Documents / Storage folders)
+        JSONArray safArr = getSavedSafTreeUris();
+        for (int i = 0; i < safArr.length(); i++) {
+            JSONObject obj = safArr.optJSONObject(i);
+            if (obj == null) continue;
+            String treeStr = obj.optString("uri", "");
+            if (!treeStr.isEmpty()) {
+                scanSafTreeRecursive(Uri.parse(treeStr), null, 0, 3, list, seenUris, false);
+            }
+        }
+
+        // Include individually picked persisted SAF document URIs
+        JSONArray safFiles = getSavedSafFileUris();
+        for (int i = 0; i < safFiles.length(); i++) {
+            String fileUriStr = safFiles.optString(i, "");
+            if (fileUriStr.isEmpty() || seenUris.contains(fileUriStr)) continue;
+            Uri fileUri = Uri.parse(fileUriStr);
+            try (Cursor fc = resolver.query(
+                fileUri,
+                new String[] { OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE },
+                null, null, null
+            )) {
+                if (fc != null && fc.moveToFirst()) {
+                    String name = fc.getString(0);
+                    long sz = fc.isNull(1) ? 0L : fc.getLong(1);
+                    if (name != null && !name.isEmpty()) {
+                        seenUris.add(fileUriStr);
+                        String mime = resolver.getType(fileUri);
+                        if (mime == null || mime.isEmpty()) mime = guessMimeFromName(name);
+                        FileScanRecord rec = new FileScanRecord();
+                        rec.id = "saf-doc-" + fileUriStr.hashCode();
+                        rec.name = name;
+                        rec.uri = fileUriStr;
+                        String decodedUriPath = Uri.decode(fileUriStr);
+                        rec.path = decodedUriPath != null ? decodedUriPath : "Picked Document";
+                        rec.size = Math.max(0L, sz);
+                        rec.dateModified = getSafDocLastModified(resolver, fileUri);
+                        rec.mimeType = mime;
+                        rec.category = classifyFileCategory(name, mime, "documents");
+                        list.add(rec);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
         return list;
+    }
+
+    private long getSafDocLastModified(ContentResolver resolver, Uri uri) {
+        try (Cursor c = resolver.query(uri, new String[] { DocumentsContract.Document.COLUMN_LAST_MODIFIED }, null, null, null)) {
+            if (c != null && c.moveToFirst() && !c.isNull(0)) {
+                return c.getLong(0);
+            }
+        } catch (Exception ignored) {}
+        return 0L;
     }
 
     @PluginMethod
@@ -658,10 +805,15 @@ public class PhoneManagerPlugin extends Plugin {
                     if (!"all".equals(filterCat) && !filterCat.equals(rec.category)) continue;
                     matched.add(rec);
                 }
-                Collections.sort(matched, (a, b) -> Long.compare(b.size, a.size));
+                if (minBytes <= 0L) {
+                    Collections.sort(matched, (a, b) -> Long.compare(b.dateModified, a.dateModified));
+                } else {
+                    Collections.sort(matched, (a, b) -> Long.compare(b.size, a.size));
+                }
+                int maxItems = minBytes <= 0L ? 1000 : 300;
                 JSArray arr = new JSArray();
                 long totalBytes = 0L;
-                for (int i = 0; i < Math.min(300, matched.size()); i++) {
+                for (int i = 0; i < Math.min(maxItems, matched.size()); i++) {
                     FileScanRecord r = matched.get(i);
                     totalBytes += r.size;
                     arr.put(buildMediaItemObj(r.id, r.name, r.uri, r.path, r.size, r.dateModified, r.mimeType, r.category));
@@ -709,15 +861,17 @@ public class PhoneManagerPlugin extends Plugin {
                     }
                 }
 
-                // 3) User-granted SAF tree URIs that appear to be WhatsApp folders
+                // 3) User-granted SAF tree URIs that appear to be WhatsApp folders or Android/media
                 JSONArray safArr = getSavedSafTreeUris();
                 for (int i = 0; i < safArr.length(); i++) {
                     JSONObject obj = safArr.optJSONObject(i);
                     if (obj == null) continue;
                     String treeStr = obj.optString("uri", "");
-                    String label = obj.optString("label", "").toLowerCase(Locale.US);
-                    if (treeStr.toLowerCase(Locale.US).contains("whatsapp") || label.contains("whatsapp")) {
-                        scanSafTreeRecursive(Uri.parse(treeStr), null, 0, 3, found, seen, true);
+                    String treeLower = treeStr.toLowerCase(Locale.US);
+                    String labelLower = obj.optString("label", "").toLowerCase(Locale.US);
+                    if (treeLower.contains("whatsapp") || labelLower.contains("whatsapp")
+                        || treeLower.contains("android%2fmedia") || treeLower.contains("android/media") || labelLower.contains("media")) {
+                        scanSafTreeRecursive(Uri.parse(treeStr), null, 0, 5, found, seen, true);
                     }
                 }
 
@@ -758,8 +912,10 @@ public class PhoneManagerPlugin extends Plugin {
 
                 for (FileScanRecord rec : all) {
                     String pLower = rec.path != null ? rec.path.toLowerCase(Locale.US) : "";
-                    if (pLower.contains("download")) {
-                        seen.add(rec.path + "/" + rec.name);
+                    String uLower = rec.uri != null ? Uri.decode(rec.uri).toLowerCase(Locale.US) : "";
+                    if (pLower.contains("download") || uLower.contains("download")) {
+                        seen.add(rec.path);
+                        seen.add(rec.uri);
                         rec.category = classifyDownloadKind(rec.name, rec.mimeType, rec.dateModified);
                         downloads.add(rec);
                     }
@@ -767,26 +923,15 @@ public class PhoneManagerPlugin extends Plugin {
 
                 File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (dlDir != null && dlDir.exists() && dlDir.isDirectory() && dlDir.canRead()) {
-                    File[] children = dlDir.listFiles();
-                    if (children != null) {
-                        for (File f : children) {
-                            if (!f.isFile() || f.length() <= 0L) continue;
-                            String key = f.getAbsolutePath();
-                            if (seen.contains(key)) continue;
-                            seen.add(key);
-                            FileScanRecord rec = new FileScanRecord();
-                            rec.id = "file-" + f.getAbsolutePath().hashCode();
-                            rec.name = f.getName();
-                            rec.uri = Uri.fromFile(f).toString();
-                            rec.path = f.getAbsolutePath();
-                            rec.size = f.length();
-                            rec.dateModified = f.lastModified();
-                            rec.mimeType = guessMimeFromName(f.getName());
-                            rec.category = classifyDownloadKind(f.getName(), rec.mimeType, rec.dateModified);
-                            downloads.add(rec);
-                        }
+                    List<FileScanRecord> rawDl = new ArrayList<>();
+                    scanDirFilesRecursive(dlDir, 0, 2, rawDl, seen, false);
+                    for (FileScanRecord r : rawDl) {
+                        r.category = classifyDownloadKind(r.name, r.mimeType, r.dateModified);
+                        downloads.add(r);
                     }
                 }
+
+                Collections.sort(downloads, (a, b) -> Long.compare(b.dateModified, a.dateModified));
 
                 long totalBytes = 0L;
                 JSArray arr = new JSArray();
@@ -1138,11 +1283,239 @@ public class PhoneManagerPlugin extends Plugin {
             call.reject("Activity unavailable.");
             return;
         }
+        String preset = call.getString("preset", "default");
+        String initialPath = call.getString("initialPath", "");
+
         bridge.saveCall(call);
         pendingSafCallId = call.getCallbackId();
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+        );
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            String targetRel = resolveInitialSafRelativePath(preset, initialPath);
+            if (targetRel != null && !targetRel.isEmpty()) {
+                try {
+                    Uri initialUri = DocumentsContract.buildDocumentUri(
+                        "com.android.externalstorage.documents",
+                        "primary:" + targetRel
+                    );
+                    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri);
+                } catch (Exception ignored) {}
+            }
+        }
+
         getActivity().runOnUiThread(() -> safTreeLauncher.launch(intent));
+    }
+
+    @PluginMethod
+    public void requestSafDocumentFiles(PluginCall call) {
+        if (getActivity() == null) {
+            call.reject("Activity unavailable.");
+            return;
+        }
+        String preset = call.getString("preset", "documents");
+        bridge.saveCall(call);
+        pendingSafFilesCallId = call.getCallbackId();
+
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        if (!"downloads".equals(preset)) {
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                "application/pdf",
+                "text/*",
+                "text/csv",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-powerpoint",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "application/vnd.oasis.opendocument.text",
+                "application/vnd.oasis.opendocument.spreadsheet",
+                "application/vnd.oasis.opendocument.presentation",
+                "application/rtf",
+                "application/epub+zip",
+                "application/json",
+                "application/xml",
+                "application/zip"
+            });
+        }
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                String startDir = "downloads".equals(preset)
+                    ? Environment.DIRECTORY_DOWNLOADS
+                    : Environment.DIRECTORY_DOCUMENTS;
+                Uri initialUri = DocumentsContract.buildDocumentUri(
+                    "com.android.externalstorage.documents",
+                    "primary:" + startDir
+                );
+                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri);
+            } catch (Exception ignored) {}
+        }
+
+        getActivity().runOnUiThread(() -> safFilesLauncher.launch(intent));
+    }
+
+    @PluginMethod
+    public void getPdfThumbnail(PluginCall call) {
+        String id = call.getString("id", "");
+        String uriStr = call.getString("uri", "");
+        if (uriStr == null || uriStr.isEmpty()) {
+            JSObject empty = new JSObject();
+            empty.put("localUrl", "");
+            call.resolve(empty);
+            return;
+        }
+
+        String safeId = (id != null && !id.isEmpty() ? id : String.valueOf(uriStr.hashCode()))
+            .replaceAll("[^a-zA-Z0-9_-]", "_");
+
+        pdfThumbExecutor.execute(() -> {
+            ParcelFileDescriptor pfd = null;
+            PdfRenderer renderer = null;
+            PdfRenderer.Page page = null;
+            Bitmap bitmap = null;
+            try {
+                File thumbDir = new File(getContext().getCacheDir(), "pdf_thumbs");
+                if (!thumbDir.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    thumbDir.mkdirs();
+                }
+                File thumbFile = new File(thumbDir, "pdf_" + safeId + ".jpg");
+                if (thumbFile.exists() && thumbFile.length() > 0) {
+                    String path = thumbFile.getAbsolutePath();
+                    JSObject cached = new JSObject();
+                    cached.put("filePath", path);
+                    cached.put("localUrl", bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + path);
+                    call.resolve(cached);
+                    return;
+                }
+
+                Uri uri = Uri.parse(uriStr);
+                if ("file".equals(uri.getScheme()) && uri.getPath() != null) {
+                    File f = new File(uri.getPath());
+                    if (f.exists() && f.canRead()) {
+                        pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY);
+                    }
+                } else {
+                    pfd = getContext().getContentResolver().openFileDescriptor(uri, "r");
+                }
+
+                if (pfd == null) {
+                    JSObject empty = new JSObject();
+                    empty.put("localUrl", "");
+                    call.resolve(empty);
+                    return;
+                }
+
+                renderer = new PdfRenderer(pfd);
+                if (renderer.getPageCount() <= 0) {
+                    JSObject empty = new JSObject();
+                    empty.put("localUrl", "");
+                    call.resolve(empty);
+                    return;
+                }
+
+                page = renderer.openPage(0);
+                int pw = Math.max(1, page.getWidth());
+                int ph = Math.max(1, page.getHeight());
+                int targetW = 240;
+                int targetH = Math.max(160, Math.min(360, Math.round((float) ph * targetW / (float) pw)));
+
+                bitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(bitmap);
+                canvas.drawColor(Color.WHITE);
+                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
+
+                File tmpFile = new File(thumbDir, "pdf_" + safeId + "_" + System.nanoTime() + ".tmp");
+                try (FileOutputStream out = new FileOutputStream(tmpFile)) {
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 82, out);
+                    out.flush();
+                }
+                if (!tmpFile.renameTo(thumbFile)) {
+                    //noinspection ResultOfMethodCallIgnored
+                    tmpFile.delete();
+                }
+
+                String filePath = thumbFile.getAbsolutePath();
+                JSObject res = new JSObject();
+                res.put("filePath", filePath);
+                res.put("localUrl", bridge.getLocalUrl() + Bridge.CAPACITOR_FILE_START + filePath);
+                call.resolve(res);
+            } catch (Exception e) {
+                JSObject empty = new JSObject();
+                empty.put("localUrl", "");
+                call.resolve(empty);
+            } finally {
+                try {
+                    if (page != null) page.close();
+                } catch (Exception ignored) {}
+                try {
+                    if (renderer != null) renderer.close();
+                } catch (Exception ignored) {}
+                try {
+                    if (pfd != null) pfd.close();
+                } catch (Exception ignored) {}
+                if (bitmap != null && !bitmap.isRecycled()) {
+                    bitmap.recycle();
+                }
+            }
+        });
+    }
+
+    private String resolveInitialSafRelativePath(String preset, String explicitRelPath) {
+        if (explicitRelPath != null && !explicitRelPath.trim().isEmpty()) {
+            return explicitRelPath.trim().replaceAll("^/+", "");
+        }
+        File extRoot = Environment.getExternalStorageDirectory();
+        if ("whatsapp".equals(preset)) {
+            String[] candidates = new String[] {
+                "Android/media/com.whatsapp/WhatsApp/Media",
+                "WhatsApp/Media",
+                "Android/media/com.whatsapp.w4b/WhatsApp Business/Media",
+                "WhatsApp Business/Media",
+                "Android/media/com.whatsapp/WhatsApp",
+                "Android/media/com.whatsapp",
+                "Android/media/com.whatsapp.w4b",
+                "Android/media"
+            };
+            for (String rel : candidates) {
+                File dir = new File(extRoot, rel);
+                if (dir.exists() && dir.isDirectory()) {
+                    return rel;
+                }
+            }
+            PackageManager pm = getContext().getPackageManager();
+            if (isPackageInstalled(pm, "com.whatsapp")) {
+                return "Android/media/com.whatsapp/WhatsApp/Media";
+            }
+            if (isPackageInstalled(pm, "com.whatsapp.w4b")) {
+                return "Android/media/com.whatsapp.w4b/WhatsApp Business/Media";
+            }
+            File mediaDir = new File(extRoot, "Android/media");
+            if (mediaDir.exists()) {
+                return "Android/media";
+            }
+        }
+        return Environment.DIRECTORY_DOCUMENTS;
+    }
+
+    private boolean isPackageInstalled(PackageManager pm, String packageName) {
+        try {
+            pm.getPackageInfo(packageName, 0);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     @PluginMethod
@@ -1762,8 +2135,13 @@ public class PhoneManagerPlugin extends Plugin {
                 } else if (sz > 0L) {
                     Uri docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocId);
                     String uriStr = docUri.toString();
-                    if (seen.contains(uriStr)) continue;
+                    String primaryAbs = null;
+                    if (childDocId != null && childDocId.startsWith("primary:")) {
+                        primaryAbs = Environment.getExternalStorageDirectory().getAbsolutePath() + "/" + childDocId.substring(8);
+                    }
+                    if (seen.contains(uriStr) || (primaryAbs != null && seen.contains(primaryAbs))) continue;
                     seen.add(uriStr);
+                    if (primaryAbs != null) seen.add(primaryAbs);
                     FileScanRecord rec = new FileScanRecord();
                     rec.id = childDocId;
                     rec.name = name != null ? name : "Media";
@@ -1925,5 +2303,6 @@ public class PhoneManagerPlugin extends Plugin {
     protected void handleOnDestroy() {
         super.handleOnDestroy();
         executor.shutdownNow();
+        pdfThumbExecutor.shutdownNow();
     }
 }
