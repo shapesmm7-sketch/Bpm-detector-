@@ -1,11 +1,11 @@
 {
-  "projectId": "studio-7919759373-11145",
-  "appId": "1:46994218684:web:258e51832362c9637d7ab9",
+  "projectId": "mo-vibe",
+  "appId": "1:896008930405:web:movibeappclient",
   "apiKey": "AIzaSyDYVYYrJlNwawP2xdDatjB5CvlHx7vhyHU",
-  "authDomain": "studio-7919759373-11145.firebaseapp.com",
-  "storageBucket": "studio-7919759373-11145.firebasestorage.app",
-  "messagingSenderId": "46994218684",
+  "authDomain": "mo-vibe.firebaseapp.com",
+  "storageBucket": "mo-vibe.appspot.com",
+  "messagingSenderId": "896008930405",
   "measurementId": "",
-  "oAuthClientId": "46994218684-7e61gvm2vrep9d6cv08of67dh9fr0917.apps.googleusercontent.com",
+  "oAuthClientId": "896008930405-no0ikqvpvka2kath9tmhenm17amnrt1i.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
