@@ -1,4 +1,4 @@
-package com.beatpulse.app;
+package com.movibe.myapp;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,6 +9,8 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AudioLibraryPlugin.class);
+        registerPlugin(PhoneManagerPlugin.class);
+        registerPlugin(GmailAuthPlugin.class);
         super.onCreate(savedInstanceState);
         if (this.bridge != null && this.bridge.getWebView() != null) {
             this.bridge.getWebView().getSettings().setMediaPlaybackRequiresUserGesture(false);

@@ -1,4 +1,4 @@
-package com.beatpulse.app;
+package com.movibe.myapp;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -44,15 +44,15 @@ public class MusicPlaybackService extends Service {
     public static final String CHANNEL_ID = "beatpulse_music_playback";
     public static final int NOTIFICATION_ID = 4401;
 
-    public static final String ACTION_PLAY_QUEUE = "com.beatpulse.app.action.PLAY_QUEUE";
-    public static final String ACTION_PLAY_PAUSE = "com.beatpulse.app.action.PLAY_PAUSE";
-    public static final String ACTION_PAUSE = "com.beatpulse.app.action.PAUSE";
-    public static final String ACTION_RESUME = "com.beatpulse.app.action.RESUME";
-    public static final String ACTION_NEXT = "com.beatpulse.app.action.NEXT";
-    public static final String ACTION_PREVIOUS = "com.beatpulse.app.action.PREVIOUS";
-    public static final String ACTION_SEEK = "com.beatpulse.app.action.SEEK";
-    public static final String ACTION_UPDATE_SETTINGS = "com.beatpulse.app.action.UPDATE_SETTINGS";
-    public static final String ACTION_STOP = "com.beatpulse.app.action.STOP";
+    public static final String ACTION_PLAY_QUEUE = "com.movibe.myapp.action.PLAY_QUEUE";
+    public static final String ACTION_PLAY_PAUSE = "com.movibe.myapp.action.PLAY_PAUSE";
+    public static final String ACTION_PAUSE = "com.movibe.myapp.action.PAUSE";
+    public static final String ACTION_RESUME = "com.movibe.myapp.action.RESUME";
+    public static final String ACTION_NEXT = "com.movibe.myapp.action.NEXT";
+    public static final String ACTION_PREVIOUS = "com.movibe.myapp.action.PREVIOUS";
+    public static final String ACTION_SEEK = "com.movibe.myapp.action.SEEK";
+    public static final String ACTION_UPDATE_SETTINGS = "com.movibe.myapp.action.UPDATE_SETTINGS";
+    public static final String ACTION_STOP = "com.movibe.myapp.action.STOP";
 
     public static final String EXTRA_SEEK_MS = "seekMs";
     public static final String EXTRA_OPEN_SECTION = "beatpulse_open_section";

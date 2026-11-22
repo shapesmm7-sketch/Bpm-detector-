@@ -4,7 +4,7 @@ import { Menu, X } from 'lucide-react';
 interface HeaderProps {
   activeTab: 'analyzer' | 'menu' | 'history';
   setActiveTab: (tab: 'analyzer' | 'menu' | 'history') => void;
-  activeSection?: 'home' | 'audio' | 'video';
+  activeSection?: 'home' | 'audio' | 'video' | 'phone-manager';
   onSelectHome?: () => void;
 }
 
@@ -21,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
       ? 'Audio Player'
       : activeSection === 'video'
       ? 'Video Player'
+      : activeSection === 'phone-manager'
+      ? 'Phone Manager'
       : activeTab === 'menu'
       ? 'Menu Page'
       : activeTab === 'history'

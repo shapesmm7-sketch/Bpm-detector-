@@ -9,6 +9,7 @@ import { PhoneAudioPickerModal } from './components/PhoneAudioPickerModal';
 import { ExportFormatModal } from './components/ExportFormatModal';
 import { StandaloneAudioPlayer } from './components/StandaloneAudioPlayer';
 import { StandaloneVideoPlayer } from './components/StandaloneVideoPlayer';
+import { PhoneManagerSection } from './components/PhoneManagerSection';
 import {
   AppThemeMode,
   AudioLibrary,
@@ -37,12 +38,12 @@ import {
   clearAudioCache,
 } from './utils/audioStorage';
 
-import { Music, Home, Video } from 'lucide-react';
+import { Music, Home, Video, Smartphone } from 'lucide-react';
 
 const THEME_STORAGE_KEY = 'movibe_theme';
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<'home' | 'audio' | 'video'>('home');
+  const [activeSection, setActiveSection] = useState<'home' | 'audio' | 'video' | 'phone-manager'>('home');
   const [activeTab, setActiveTab] = useState<'analyzer' | 'menu' | 'history'>('analyzer');
   const [themeMode, setThemeMode] = useState<AppThemeMode>(() => {
     try {
@@ -1238,13 +1239,18 @@ export default function App() {
             externalVideoRequest={externalVideoRequest}
           />
         </div>
+
+        {/* Section 4: Phone Manager (Storage, Email, Files, Privacy) */}
+        <div className={activeSection === 'phone-manager' ? 'block min-w-0' : 'hidden'}>
+          <PhoneManagerSection isActiveTab={activeSection === 'phone-manager'} />
+        </div>
       </main>
 
-      {/* Fixed 3-Section App Footer: Home, Audio, Video */}
+      {/* Fixed 4-Section App Footer: Home, Audio, Video, Phone Manager */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 transition-colors duration-200">
         <nav
           aria-label="Main Sections"
-          className="max-w-5xl mx-auto grid grid-cols-3 h-16"
+          className="max-w-5xl mx-auto grid grid-cols-4 h-16"
         >
           <button
             type="button"
@@ -1309,6 +1315,29 @@ export default function App() {
             <Video className="w-5 h-5" />
             <span className="text-[11px] font-semibold tracking-tight leading-none">
               Video
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (activeSection === 'video') {
+                setVideoPauseSignal((n) => n + 1);
+              }
+              setActiveSection('phone-manager');
+            }}
+            className={`relative min-h-[44px] flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer whitespace-nowrap ${
+              activeSection === 'phone-manager'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            {activeSection === 'phone-manager' && (
+              <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            )}
+            <Smartphone className="w-5 h-5" />
+            <span className="text-[11px] font-semibold tracking-tight leading-none">
+              Phone Manager
             </span>
           </button>
         </nav>

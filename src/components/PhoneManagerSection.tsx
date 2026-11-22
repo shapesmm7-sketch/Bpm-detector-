@@ -1,0 +1,343 @@
+import React, { useState, useEffect } from 'react';
+import {
+  HardDrive,
+  Mail,
+  FolderOpen,
+  ShieldCheck,
+  ArrowLeft,
+  ChevronRight,
+  FileText,
+  Settings,
+  Sparkles,
+  Copy,
+} from 'lucide-react';
+import { isNativeAndroid } from '../plugins/audioLibrary';
+import {
+  PhoneManager,
+  StorageSummaryResult,
+  formatBytes,
+  formatShortDate,
+} from '../plugins/phoneManager';
+import { getWebStorageSummary } from '../utils/localStorageAnalyzer';
+import {
+  ConnectedEmailAccount,
+  getConnectedEmailAccounts,
+} from '../utils/emailAuthAndApi';
+import { StorageManagerView, StorageSubTool } from './phone-manager/StorageManagerView';
+import { EmailManagerView } from './phone-manager/EmailManagerView';
+import { FileManagerView } from './phone-manager/FileManagerView';
+import { PrivacyToolsView } from './phone-manager/PrivacyToolsView';
+
+type PhoneManagerScreen = 'home' | 'storage' | 'email' | 'files' | 'privacy';
+
+interface PhoneManagerSectionProps {
+  isActiveTab: boolean;
+}
+
+export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
+  isActiveTab,
+}) => {
+  const [screen, setScreen] = useState<PhoneManagerScreen>('home');
+  const [storageInitialTool, setStorageInitialTool] = useState<StorageSubTool>('analyzer');
+  const [summary, setSummary] = useState<StorageSummaryResult | null>(null);
+  const [connectedAccounts, setConnectedAccounts] = useState<ConnectedEmailAccount[]>(() =>
+    getConnectedEmailAccounts()
+  );
+
+  const refreshSummary = async () => {
+    try {
+      if (isNativeAndroid()) {
+        const res = await PhoneManager.getStorageSummary();
+        setSummary(res);
+      } else {
+        const res = await getWebStorageSummary();
+        setSummary(res);
+      }
+    } catch {
+      // ignore initial read error until permission granted
+    }
+  };
+
+  useEffect(() => {
+    if (isActiveTab) {
+      void refreshSummary();
+      setConnectedAccounts(getConnectedEmailAccounts());
+    }
+  }, [isActiveTab]);
+
+  const syncEmailAccounts = () => {
+    setConnectedAccounts(getConnectedEmailAccounts());
+  };
+
+  const openStorageTool = (tool: StorageSubTool) => {
+    setStorageInitialTool(tool);
+    setScreen('storage');
+  };
+
+  const usedPercent =
+    summary && summary.totalBytes > 0
+      ? Math.min(100, Math.round((summary.usedBytes / summary.totalBytes) * 100))
+      : 0;
+
+  const toolCards: Array<{
+    id: Exclude<PhoneManagerScreen, 'home'>;
+    title: string;
+    description: string;
+    metric: string;
+    icon: React.ReactNode;
+    accentBg: string;
+  }> = [
+    {
+      id: 'storage',
+      title: 'Storage Manager',
+      description: 'Analyzer, SHA-256 duplicates, WhatsApp & Downloads cleaner, Photo/Video compressor',
+      metric: summary && summary.totalBytes > 0 ? `${usedPercent}% used` : 'Local Storage',
+      icon: <HardDrive className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
+      accentBg: 'bg-emerald-500/10 border-emerald-500/20',
+    },
+    {
+      id: 'email',
+      title: 'Email Manager',
+      description: 'Official OAuth inbox cleanup, bulk trash/archive, large attachments & unsubscribe review',
+      metric:
+        connectedAccounts.length > 0
+          ? `${connectedAccounts.length} connected`
+          : 'No accounts linked',
+      icon: <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
+      accentBg: 'bg-blue-500/10 border-blue-500/20',
+    },
+    {
+      id: 'files',
+      title: 'File Manager',
+      description: 'Browse Internal, SD Card & SAF folders, search, move/copy, ZIP compress & extract',
+      metric: summary
+        ? `${Object.values(summary.categories).reduce((s, c) => s + c.count, 0).toLocaleString()} indexed`
+        : 'Folders & Files',
+      icon: <FolderOpen className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
+      accentBg: 'bg-amber-500/10 border-amber-500/20',
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy Tools',
+      description: 'Mic, Camera, Location & Notification permission shortcuts, clipboard clear & safe guidance',
+      metric: 'Controls & Info',
+      icon: <ShieldCheck className="w-5 h-5 text-violet-600 dark:text-violet-400" />,
+      accentBg: 'bg-violet-500/10 border-violet-500/20',
+    },
+  ];
+
+  const screenTitle =
+    screen === 'storage'
+      ? 'Storage Manager'
+      : screen === 'email'
+        ? 'Email Manager'
+        : screen === 'files'
+          ? 'File Manager'
+          : screen === 'privacy'
+            ? 'Privacy Tools'
+            : 'Phone Manager';
+
+  return (
+    <div className="space-y-5">
+      {/* Header Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {screen !== 'home' && (
+            <button
+              type="button"
+              onClick={() => setScreen('home')}
+              className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:border-emerald-500/40 cursor-pointer"
+              aria-label="Back to Phone Manager Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <div>
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+              {screenTitle}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Manage device storage, email accounts, local files, and privacy shortcuts in one workspace
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* PHONE MANAGER HOME DASHBOARD */}
+      {screen === 'home' && (
+        <div className="space-y-5">
+          {/* Quick Status Summary Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-500 dark:text-slate-400">
+                  Storage Used
+                </span>
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {summary && summary.totalBytes > 0 ? `${usedPercent}%` : '—'}
+                </span>
+              </div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {summary ? `${formatBytes(summary.availableBytes)} free` : 'Tap Storage Manager'}
+              </p>
+              <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full"
+                  style={{ width: `${usedPercent}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-1.5">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                Connected Email Accounts
+              </span>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">
+                {connectedAccounts.length > 0
+                  ? connectedAccounts.map((a) => a.email).join(', ')
+                  : 'None connected yet'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setScreen('email')}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                {connectedAccounts.length > 0 ? 'Manage Gmail →' : 'Connect Gmail →'}
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 block">
+                Quick Privacy & Cleanup Shortcuts
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => openStorageTool('duplicates')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Copy className="w-3 h-3 text-emerald-600" />
+                  <span>Duplicates</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openStorageTool('recommendations')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span>Cleanup Tips</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScreen('privacy')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Settings className="w-3 h-3 text-violet-500" />
+                  <span>Permissions</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Four Main Tool Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {toolCards.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => {
+                  if (card.id === 'storage') setStorageInitialTool('analyzer');
+                  setScreen(card.id);
+                }}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 rounded-2xl p-4 sm:p-5 text-left transition-all shadow-sm hover:shadow-md flex items-start justify-between gap-3 cursor-pointer"
+              >
+                <div className="flex items-start gap-3.5 min-w-0">
+                  <div className={`p-3 rounded-2xl border shrink-0 ${card.accentBg}`}>
+                    {card.icon}
+                  </div>
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                        {card.title}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-semibold text-slate-600 dark:text-slate-300">
+                        {card.metric}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {card.description}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mt-1" />
+              </button>
+            ))}
+          </div>
+
+          {/* Recent Accessible Files */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Recent Files
+              </h3>
+              <button
+                type="button"
+                onClick={() => setScreen('files')}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 cursor-pointer hover:underline"
+              >
+                Browse All &rarr;
+              </button>
+            </div>
+            {!summary || summary.recentFiles.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 py-2">
+                {isNativeAndroid()
+                  ? 'Grant media storage access inside Storage Manager or File Manager to display recent device files.'
+                  : 'Select a local folder or files inside Storage Manager or File Manager to view recent local files.'}
+              </p>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {summary.recentFiles.slice(0, 6).map((f) => (
+                  <div key={f.uri} className="py-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                          {f.name}
+                        </p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                          {f.category} · {formatShortDate(f.dateModified)}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300 shrink-0">
+                      {formatBytes(f.size)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {screen === 'storage' && (
+        <StorageManagerView
+          initialTool={storageInitialTool}
+          summary={summary}
+          onRefreshSummary={refreshSummary}
+        />
+      )}
+
+      {screen === 'email' && (
+        <EmailManagerView
+          accounts={connectedAccounts}
+          onAccountsChanged={syncEmailAccounts}
+        />
+      )}
+
+      {screen === 'files' && <FileManagerView onStorageMutated={refreshSummary} />}
+
+      {screen === 'privacy' && <PrivacyToolsView />}
+    </div>
+  );
+};

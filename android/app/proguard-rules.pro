@@ -20,4 +20,4 @@
 -keepclassmembers class * {
     @com.getcapacitor.PluginMethod <methods>;
 }
--keep class com.beatpulse.app.** { *; }
+-keep class com.movibe.myapp.** { *; }

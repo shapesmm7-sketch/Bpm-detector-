@@ -1,4 +1,4 @@
-package com.beatpulse.app;
+package com.movibe.myapp;
 
 import android.Manifest;
 import android.app.Activity;

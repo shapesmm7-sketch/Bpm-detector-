@@ -1,6 +1,6 @@
 workflows:
-  android-debug-workflow:
-    name: Build Android Debug APK
+  android-release-workflow:
+    name: Build Android Release APK & AAB
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
@@ -25,13 +25,35 @@ workflows:
         script: |
           npm run build
           npx cap sync android
-      - name: Build Android Debug APK
+      - name: Prepare Android signing configuration
+        script: |
+          if [ -n "${CM_KEYSTORE:-}" ] && [ -z "${CM_KEYSTORE_PATH:-}" ]; then
+            (echo "$CM_KEYSTORE" | base64 -d > /tmp/cm-release.keystore 2>/dev/null || echo "$CM_KEYSTORE" | base64 -D > /tmp/cm-release.keystore)
+            echo "CM_KEYSTORE_PATH=/tmp/cm-release.keystore" >> "$CM_ENV"
+            echo "Using decoded CM_KEYSTORE from encrypted environment variable."
+          elif [ -n "${CM_KEYSTORE_PATH:-}" ] && [ -f "${CM_KEYSTORE_PATH}" ]; then
+            echo "Using keystore at CM_KEYSTORE_PATH."
+          else
+            echo "No external CM_KEYSTORE_PATH configured; using committed android/app/debug.keystore (fixed SHA-1: 50:AF:85:6D:2B:E4:58:56:8E:4E:B9:51:67:69:B7:FD:85:FE:F2:25)."
+          fi
+      - name: Build Android Release APK and AAB
         script: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease bundleRelease
+      - name: Print Release APK Signing SHA-1 & SHA-256 Fingerprints
+        script: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          APKSIGNER=$(find "$SDK_DIR/build-tools" -maxdepth 2 -name apksigner 2>/dev/null | sort | tail -n 1 || true)
+          if [ -n "$APKSIGNER" ] && [ -f "$APK_PATH" ]; then
+            "$APKSIGNER" verify --print-certs "$APK_PATH"
+          else
+            keytool -printcert -jarfile "$APK_PATH" || true
+          fi
     artifacts:
-      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
     publishing:
       email:
         recipients:

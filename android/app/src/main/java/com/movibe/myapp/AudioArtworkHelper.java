@@ -1,4 +1,4 @@
-package com.beatpulse.app;
+package com.movibe.myapp;
 
 import android.content.ContentResolver;
 import android.content.ContentUris;

@@ -22,6 +22,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "firebase": "^13.4.0",
+    "jszip": "^3.10.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "music-tempo": "^1.0.3",
