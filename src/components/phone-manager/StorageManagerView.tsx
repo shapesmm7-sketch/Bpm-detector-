@@ -72,6 +72,9 @@ interface StorageManagerViewProps {
   initialTool?: StorageSubTool;
   summary: StorageSummaryResult | null;
   onRefreshSummary: () => Promise<void>;
+  allFilesGranted?: boolean;
+  onRequestAllFilesAccess?: () => Promise<void>;
+  refreshKey?: number;
 }
 
 const CATEGORY_META: Array<{
@@ -92,6 +95,9 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   initialTool = 'analyzer',
   summary,
   onRefreshSummary,
+  allFilesGranted = false,
+  onRequestAllFilesAccess,
+  refreshKey = 0,
 }) => {
   const [activeTool, setActiveTool] = useState<StorageSubTool>(initialTool);
   const [isLoading, setIsLoading] = useState(false);
@@ -190,6 +196,20 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     if (activeTool === 'video_compress') void loadMediaCandidates('video');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool]);
+
+  // Automatically re-scan active Storage Manager view when All Files Access permission is granted on resume
+  useEffect(() => {
+    if (!refreshKey || refreshKey <= 0) return;
+    if (activeTool === 'analyzer') void onRefreshSummary();
+    if (activeTool === 'duplicates') void runDuplicateScan();
+    if (activeTool === 'large') void runLargeScan(largeMinMb, largeCategory);
+    if (activeTool === 'whatsapp') void runWhatsAppScan();
+    if (activeTool === 'downloads') void runDownloadsScan();
+    if (activeTool === 'recommendations') void runRecommendationsScan();
+    if (activeTool === 'photo_compress') void loadMediaCandidates('photo');
+    if (activeTool === 'video_compress') void loadMediaCandidates('video');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   const handleWebFolderPick = async () => {
     setErrorMsg(null);
@@ -685,7 +705,9 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isNativeAndroid()
-                    ? 'Live Android StatFs & MediaStore readings'
+                    ? allFilesGranted
+                      ? 'Live Android StatFs & All Files shared-storage readings'
+                      : 'Live Android StatFs & MediaStore readings'
                     : 'Real browser storage estimate + local folder workspace'}
                 </p>
               </div>
@@ -711,16 +733,31 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
               </div>
             </div>
 
-            {summary && !summary.hasStoragePermission && isNativeAndroid() && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs space-y-2">
-                <p className="font-semibold">Storage read permission is required to inspect media categories.</p>
-                <button
-                  type="button"
-                  onClick={() => void AudioLibrary.getAllAudioFiles().then(() => onRefreshSummary())}
-                  className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold cursor-pointer"
-                >
-                  Grant Storage Permission
-                </button>
+            {isNativeAndroid() && !allFilesGranted && onRequestAllFilesAccess && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex flex-wrap items-center justify-between gap-2.5">
+                <span className="flex-1 min-w-[200px]">
+                  {summary && !summary.hasStoragePermission
+                    ? 'Grant All Files Access or Media Storage permission to calculate all categories across internal & SD storage.'
+                    : 'Allow All Files Access to scan shared internal folders, SD card files, documents, and Downloads in full.'}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {summary && !summary.hasStoragePermission && (
+                    <button
+                      type="button"
+                      onClick={() => void AudioLibrary.getAllAudioFiles().then(() => onRefreshSummary())}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 text-white font-semibold cursor-pointer"
+                    >
+                      Media Permission
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void onRequestAllFilesAccess()}
+                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer"
+                  >
+                    Allow All Files Access
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1033,8 +1070,21 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
           </div>
 
           {waRequiresSafHint && (
-            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs">
-              Android restricts selecting the top storage root directly. Tap <strong>Select WhatsApp Media Folder (SAF)</strong> to open directly inside <strong>Android &rarr; media &rarr; com.whatsapp &rarr; WhatsApp &rarr; Media</strong>, then tap <strong>Use this folder</strong>.
+            <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2.5">
+              <span className="flex-1 min-w-[200px]">
+                {!allFilesGranted
+                  ? 'Allow All Files Access to scan shared WhatsApp Media folders (WhatsApp databases remain protected), or select the WhatsApp Media folder via SAF.'
+                  : 'Use Select WhatsApp Media Folder (SAF) if your Android OS keeps Android/media restricted on this device.'}
+              </span>
+              {!allFilesGranted && onRequestAllFilesAccess && (
+                <button
+                  type="button"
+                  onClick={() => void onRequestAllFilesAccess()}
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer shrink-0"
+                >
+                  Allow All Files Access
+                </button>
+              )}
             </div>
           )}
 
@@ -1170,8 +1220,17 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
           </div>
 
           {!isLoading && sortedDownloads.length === 0 ? (
-            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400">
-              No downloaded files found for this filter.
+            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400 space-y-2.5">
+              <p>No downloaded files found for this filter.</p>
+              {isNativeAndroid() && !allFilesGranted && onRequestAllFilesAccess && (
+                <button
+                  type="button"
+                  onClick={() => void onRequestAllFilesAccess()}
+                  className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold cursor-pointer"
+                >
+                  Allow All Files Access to Scan Downloads
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-96 overflow-y-auto">

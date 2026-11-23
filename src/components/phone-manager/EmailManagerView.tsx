@@ -18,6 +18,8 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import {
   ConnectedEmailAccount,
@@ -31,6 +33,8 @@ import {
   performBulkEmailAction,
 } from '../../utils/emailAuthAndApi';
 import { formatBytes } from '../../plugins/phoneManager';
+import { isNativeAndroid } from '../../plugins/audioLibrary';
+import { GmailAuth } from '../../plugins/gmailAuth';
 
 interface EmailManagerViewProps {
   accounts: ConnectedEmailAccount[];
@@ -69,9 +73,28 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [confirmTrashIds, setConfirmTrashIds] = useState<string[] | null>(null);
   const [reviewUnsubMsg, setReviewUnsubMsg] = useState<EmailMessageSummary | null>(null);
+  const [signingInfo, setSigningInfo] = useState<{ packageName: string; sha1: string } | null>(null);
+  const [copiedSha1, setCopiedSha1] = useState(false);
 
   const activeAccount =
     accounts.find((a) => a.id === selectedAccountId) || accounts[0] || null;
+
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    let active = true;
+    GmailAuth.getSigningInfo()
+      .then((info) => {
+        if (active && info?.sha1) {
+          setSigningInfo(info);
+        }
+      })
+      .catch(() => {
+        // ignore on non-native environments
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (accounts.length > 0 && !accounts.some((a) => a.id === selectedAccountId)) {
@@ -240,6 +263,45 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
           </button>
         </div>
 
+        {signingInfo && (
+          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-1.5 text-[11px]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">
+                Android OAuth Fingerprint ({signingInfo.packageName})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                    void navigator.clipboard.writeText(signingInfo.sha1);
+                    setCopiedSha1(true);
+                    window.setTimeout(() => setCopiedSha1(false), 2000);
+                  }
+                }}
+                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                {copiedSha1 ? (
+                  <>
+                    <Check className="w-3 h-3 text-emerald-500" />
+                    <span>Copied SHA-1</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3 h-3" />
+                    <span>Copy SHA-1</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="font-mono text-[10px] text-slate-600 dark:text-slate-400 break-all select-all">
+              {signingInfo.sha1}
+            </p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+              In Google Cloud project <span className="font-semibold">mo-vibe</span>, verify this exact SHA-1 is on the Android OAuth Client and your Gmail account is listed under OAuth consent screen → Test users.
+            </p>
+          </div>
+        )}
+
         {/* Connected Gmail Accounts List */}
         {accounts.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
@@ -283,7 +345,7 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
       {errorMsg && (
         <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span className="flex-1">{errorMsg}</span>
+          <span className="flex-1 break-words">{errorMsg}</span>
         </div>
       )}
       {statusMsg && (

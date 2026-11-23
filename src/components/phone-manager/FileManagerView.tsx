@@ -67,6 +67,9 @@ import {
 
 interface FileManagerViewProps {
   onStorageMutated: () => Promise<void>;
+  allFilesGranted?: boolean;
+  onRequestAllFilesAccess?: () => Promise<void>;
+  refreshKey?: number;
 }
 
 type FileBrowseMode =
@@ -79,6 +82,9 @@ type FileBrowseMode =
 
 export const FileManagerView: React.FC<FileManagerViewProps> = ({
   onStorageMutated,
+  allFilesGranted = false,
+  onRequestAllFilesAccess,
+  refreshKey = 0,
 }) => {
   const [browseMode, setBrowseMode] = useState<FileBrowseMode>('folder');
   const [roots, setRoots] = useState<StorageRootItem[]>([]);
@@ -90,6 +96,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
 
   const [items, setItems] = useState<PhoneFileItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [globalSearchActive, setGlobalSearchActive] = useState(false);
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'date' | 'type'>('date');
   const [viewLayoutOverride, setViewLayoutOverride] = useState<'auto' | 'grid' | 'list'>('auto');
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
@@ -128,6 +135,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
   useEffect(() => {
     setSelectedUris(new Set());
     setViewLayoutOverride('auto');
+    setGlobalSearchActive(false);
     if (browseMode === 'folder') {
       if (isNativeAndroid() && activeRoot) {
         void loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
@@ -139,6 +147,19 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browseMode, activeRoot?.id]);
+
+  // Auto-refresh File Manager when All Files Access permission is granted on resume
+  useEffect(() => {
+    if (!refreshKey || refreshKey <= 0 || !isNativeAndroid()) return;
+    setGlobalSearchActive(false);
+    void loadRoots();
+    if (browseMode === 'folder' && activeRoot) {
+      void loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
+    } else if (browseMode !== 'folder') {
+      void loadCategoryFiles(browseMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   useEffect(() => {
     if (!previewItem) {
@@ -218,6 +239,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
   ) => {
     setIsLoading(true);
     setErrorMsg(null);
+    setGlobalSearchActive(false);
     try {
       const res = await PhoneManager.listDirectory(
         root.type === 'saf'
@@ -232,6 +254,37 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       setErrorMsg((err as Error)?.message || 'Could not read folder contents.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGlobalDeviceSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q || !isNativeAndroid()) return;
+    setIsLoading(true);
+    setErrorMsg(null);
+    setEmptyAndroidNote(false);
+    try {
+      const res = await PhoneManager.searchFiles({
+        query: q,
+        category: browseMode === 'folder' ? 'all' : browseMode,
+        maxResults: 250,
+      });
+      setGlobalSearchActive(true);
+      setItems(res.files || []);
+    } catch (err) {
+      setErrorMsg((err as Error)?.message || 'Search across storage failed.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearGlobalSearch = async () => {
+    setSearchQuery('');
+    setGlobalSearchActive(false);
+    if (browseMode === 'folder' && activeRoot && isNativeAndroid()) {
+      await loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
+    } else if (browseMode !== 'folder') {
+      await loadCategoryFiles(browseMode);
     }
   };
 
@@ -828,15 +881,46 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search files by name..."
-              className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
-            />
+          <div className="relative flex-1 min-w-[180px] flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSearchQuery(next);
+                  if (!next.trim() && globalSearchActive) {
+                    void handleClearGlobalSearch();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isNativeAndroid() && searchQuery.trim().length >= 2) {
+                    void handleGlobalDeviceSearch();
+                  }
+                }}
+                placeholder="Search files by name..."
+                className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
+              />
+            </div>
+            {isNativeAndroid() && browseMode === 'folder' && searchQuery.trim().length >= 2 && (
+              <button
+                type="button"
+                onClick={() => void handleGlobalDeviceSearch()}
+                className="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+              >
+                Search All Storage
+              </button>
+            )}
+            {globalSearchActive && (
+              <button
+                type="button"
+                onClick={() => void handleClearGlobalSearch()}
+                className="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-semibold whitespace-nowrap cursor-pointer"
+              >
+                Back to Folder
+              </button>
+            )}
           </div>
           <select
             value={sortBy}
@@ -907,12 +991,21 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
         </div>
       )}
 
-      {/* Scoped Storage Notice (No MANAGE_EXTERNAL_STORAGE) */}
+      {/* Scoped Storage Notice (Non-blocking fallback when All Files Access is not granted) */}
       {emptyAndroidNote && (
-        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs">
-          Android scoped storage limits direct raw folder listing here. Use the{' '}
-          <strong>Open Folder (SAF)</strong> button above or switch to{' '}
-          <strong>Images / Videos / Audio / Documents / Downloads</strong> tabs to manage files safely without Play-restricted permissions.
+        <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-300 text-xs flex flex-wrap items-center justify-between gap-2.5">
+          <span className="flex-1 min-w-[200px]">
+            Android scoped storage limits direct folder listing without All Files Access. Allow All Files Access for full shared storage browsing, or use <strong>Open Folder (SAF)</strong> as fallback.
+          </span>
+          {isNativeAndroid() && !allFilesGranted && onRequestAllFilesAccess && (
+            <button
+              type="button"
+              onClick={() => void onRequestAllFilesAccess()}
+              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer shrink-0"
+            >
+              Allow All Files Access
+            </button>
+          )}
         </div>
       )}
 
@@ -923,28 +1016,28 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             {selectedItems.length} item(s) selected
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
+            {selectedItems.length === 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRenameTarget(selectedItems[0]);
+                  setRenameValue(selectedItems[0].name);
+                }}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Rename</span>
+              </button>
+            )}
             {selectedItems.length === 1 && !selectedItems[0].isDirectory && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRenameTarget(selectedItems[0]);
-                    setRenameValue(selectedItems[0].name);
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>Rename</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleShareSingle(selectedItems[0])}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <Share2 className="w-3 h-3" />
-                  <span>Share</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => void handleShareSingle(selectedItems[0])}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <Share2 className="w-3 h-3" />
+                <span>Share</span>
+              </button>
             )}
             <button
               type="button"
@@ -952,8 +1045,8 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
                 setTransferModal({
                   mode: 'copy',
                   items: selectedItems,
-                  targetPath: currentPath || '',
-                  targetTreeUri: roots.find((r) => r.type === 'saf')?.treeUri || '',
+                  targetPath: currentPath && currentPath.startsWith('/') ? currentPath : '',
+                  targetTreeUri: activeRoot?.type === 'saf' ? activeRoot.treeUri || '' : '',
                 })
               }
               className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
@@ -967,8 +1060,8 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
                 setTransferModal({
                   mode: 'move',
                   items: selectedItems,
-                  targetPath: currentPath || '',
-                  targetTreeUri: roots.find((r) => r.type === 'saf')?.treeUri || '',
+                  targetPath: currentPath && currentPath.startsWith('/') ? currentPath : '',
+                  targetTreeUri: activeRoot?.type === 'saf' ? activeRoot.treeUri || '' : '',
                 })
               }
               className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
@@ -1061,11 +1154,22 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             {(browseMode === 'documents' || browseMode === 'downloads') && isNativeAndroid() ? (
               <>
                 <p className="max-w-md mx-auto leading-relaxed">
-                  {browseMode === 'downloads'
-                    ? 'No accessible downloads found yet. Tap Add Files from Downloads to include PDFs, ZIPs, or documents from your Downloads folder.'
-                    : 'Android Scoped Storage limits direct reading of PDF, Word, Excel, and text files saved by other apps. Tap Grant Documents Folder (SAF) for your Documents folder, or Add Document Files to pick documents from Downloads or elsewhere.'}
+                  {allFilesGranted
+                    ? `No files matched inside ${browseMode === 'downloads' ? 'Downloads' : 'Documents'}. You can still pick external folders via SAF below.`
+                    : browseMode === 'downloads'
+                      ? 'Allow All Files Access to scan your Downloads folder directly, or pick files with SAF below.'
+                      : 'Allow All Files Access to index PDF, Word, Excel, and text documents directly across shared storage, or use Grant Documents Folder (SAF) as fallback.'}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
+                  {!allFilesGranted && onRequestAllFilesAccess && (
+                    <button
+                      type="button"
+                      onClick={() => void onRequestAllFilesAccess()}
+                      className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold cursor-pointer"
+                    >
+                      Allow All Files Access
+                    </button>
+                  )}
                   {browseMode === 'documents' && (
                     <button
                       type="button"
@@ -1476,15 +1580,81 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
                 </select>
               )}
               {!transferModal.targetTreeUri && (
-                <input
-                  type="text"
-                  value={transferModal.targetPath}
-                  onChange={(e) =>
-                    setTransferModal({ ...transferModal, targetPath: e.target.value })
-                  }
-                  placeholder="/storage/emulated/0/Download"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={transferModal.targetPath}
+                    onChange={(e) =>
+                      setTransferModal({ ...transferModal, targetPath: e.target.value })
+                    }
+                    placeholder="/storage/emulated/0/Download"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
+                  />
+                  {isNativeAndroid() && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentPath && currentPath.startsWith('/') && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTransferModal({ ...transferModal, targetPath: currentPath })
+                          }
+                          className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold cursor-pointer"
+                        >
+                          Current Folder
+                        </button>
+                      )}
+                      {(() => {
+                        const primaryPath =
+                          roots.find((r) => r.id === 'internal')?.path || '/storage/emulated/0';
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTransferModal({
+                                  ...transferModal,
+                                  targetPath: `${primaryPath}/Download`,
+                                })
+                              }
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold cursor-pointer"
+                            >
+                              Downloads
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setTransferModal({
+                                  ...transferModal,
+                                  targetPath: `${primaryPath}/Documents`,
+                                })
+                              }
+                              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold cursor-pointer"
+                            >
+                              Documents
+                            </button>
+                          </>
+                        );
+                      })()}
+                      {roots
+                        .filter((r) => r.type === 'file' && r.id !== 'internal' && r.path)
+                        .map((sd) => (
+                          <button
+                            key={sd.id}
+                            type="button"
+                            onClick={() =>
+                              setTransferModal({
+                                ...transferModal,
+                                targetPath: sd.path || '',
+                              })
+                            }
+                            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold cursor-pointer"
+                          >
+                            {sd.label}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <div className="flex justify-end gap-2">

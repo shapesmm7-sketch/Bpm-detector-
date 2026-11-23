@@ -34,11 +34,22 @@ export interface SafTreeRef {
   label: string;
 }
 
+export interface AllFilesAccessStatus {
+  granted: boolean;
+  supported: boolean;
+  hasMediaRead: boolean;
+  sdkInt: number;
+  openedSettings?: boolean;
+  alreadyGranted?: boolean;
+}
+
 export interface StorageSummaryResult {
   totalBytes: number;
   availableBytes: number;
   usedBytes: number;
   hasStoragePermission: boolean;
+  hasAllFilesAccess?: boolean;
+  sdkInt?: number;
   categories: Record<StorageCategoryKey, StorageCategoryStat>;
   recentFiles: PhoneFileItem[];
   safTrees: SafTreeRef[];
@@ -69,6 +80,7 @@ export interface PrivacyOverviewResult {
     location: boolean;
     notifications: boolean;
     mediaStorage: boolean;
+    allFilesAccess?: boolean;
   };
   packageName: string;
   versionName: string;
@@ -81,6 +93,8 @@ export interface PrivacyOverviewResult {
 }
 
 interface PhoneManagerPluginInterface {
+  getAllFilesAccessStatus(): Promise<AllFilesAccessStatus>;
+  requestAllFilesAccess(): Promise<AllFilesAccessStatus>;
   getStorageSummary(): Promise<StorageSummaryResult>;
   findDuplicates(): Promise<{
     groups: DuplicateGroup[];
@@ -92,6 +106,14 @@ interface PhoneManagerPluginInterface {
   }): Promise<{
     files: PhoneFileItem[];
     totalBytes: number;
+  }>;
+  searchFiles(options: {
+    query: string;
+    category?: string;
+    maxResults?: number;
+  }): Promise<{
+    files: PhoneFileItem[];
+    totalMatched: number;
   }>;
   scanWhatsAppMedia(): Promise<{
     files: PhoneFileItem[];
@@ -129,6 +151,7 @@ interface PhoneManagerPluginInterface {
   }>;
   getStorageRoots(): Promise<{
     roots: StorageRootItem[];
+    hasAllFilesAccess?: boolean;
   }>;
   listDirectory(options: {
     path?: string;
@@ -230,13 +253,17 @@ interface PhoneManagerPluginInterface {
     cleared: boolean;
   }>;
   openPrivacySetting(options: {
-    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps';
+    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps' | 'all_files_access';
   }): Promise<{
     opened: boolean;
   }>;
   addListener(
     eventName: 'videoCompressProgress',
     listenerFunc: (payload: { percent: number }) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'allFilesAccessChanged',
+    listenerFunc: (payload: { granted: boolean; hasMediaRead: boolean; sdkInt: number }) => void
   ): Promise<PluginListenerHandle>;
 }
 

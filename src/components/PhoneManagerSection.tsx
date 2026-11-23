@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   HardDrive,
   Mail,
@@ -10,9 +10,12 @@ import {
   Settings,
   Sparkles,
   Copy,
+  ShieldAlert,
+  X,
 } from 'lucide-react';
 import { isNativeAndroid } from '../plugins/audioLibrary';
 import {
+  AllFilesAccessStatus,
   PhoneManager,
   StorageSummaryResult,
   formatBytes,
@@ -40,6 +43,10 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
   const [screen, setScreen] = useState<PhoneManagerScreen>('home');
   const [storageInitialTool, setStorageInitialTool] = useState<StorageSubTool>('analyzer');
   const [summary, setSummary] = useState<StorageSummaryResult | null>(null);
+  const [allFilesStatus, setAllFilesStatus] = useState<AllFilesAccessStatus | null>(null);
+  const [allFilesDismissed, setAllFilesDismissed] = useState(false);
+  const [permissionRefreshKey, setPermissionRefreshKey] = useState(0);
+  const lastAllFilesGrantedRef = useRef<boolean | null>(null);
   const [connectedAccounts, setConnectedAccounts] = useState<ConnectedEmailAccount[]>(() =>
     getConnectedEmailAccounts()
   );
@@ -58,16 +65,87 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
     }
   };
 
+  const syncAllFilesStatus = async () => {
+    if (!isNativeAndroid()) return;
+    try {
+      const status = await PhoneManager.getAllFilesAccessStatus();
+      setAllFilesStatus(status);
+      const prev = lastAllFilesGrantedRef.current;
+      lastAllFilesGrantedRef.current = status.granted;
+      if (status.granted && prev === false) {
+        setPermissionRefreshKey((k) => k + 1);
+        await refreshSummary();
+      }
+    } catch {
+      // keep UI responsive even if check fails
+    }
+  };
+
+  const handleRequestAllFilesAccess = async () => {
+    if (!isNativeAndroid()) return;
+    try {
+      const res = await PhoneManager.requestAllFilesAccess();
+      setAllFilesStatus(res);
+      const prev = lastAllFilesGrantedRef.current;
+      lastAllFilesGrantedRef.current = res.granted;
+      if (res.granted && prev !== true) {
+        setPermissionRefreshKey((k) => k + 1);
+        await refreshSummary();
+      }
+    } catch {
+      // Permission denial or canceled settings flow should never crash
+    }
+  };
+
+  useEffect(() => {
+    if (!isNativeAndroid()) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    void PhoneManager.addListener('allFilesAccessChanged', (ev) => {
+      setAllFilesStatus((prev) => ({
+        granted: ev.granted,
+        supported: prev?.supported ?? ev.sdkInt >= 30,
+        hasMediaRead: ev.hasMediaRead,
+        sdkInt: ev.sdkInt,
+      }));
+      const prev = lastAllFilesGrantedRef.current;
+      lastAllFilesGrantedRef.current = ev.granted;
+      if (ev.granted && prev !== true) {
+        setPermissionRefreshKey((k) => k + 1);
+        void refreshSummary();
+      }
+    }).then((h) => {
+      handle = h;
+    });
+
+    const handleResumeCheck = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void syncAllFilesStatus();
+    };
+    document.addEventListener('visibilitychange', handleResumeCheck);
+    window.addEventListener('focus', handleResumeCheck);
+
+    return () => {
+      if (handle) void handle.remove();
+      document.removeEventListener('visibilitychange', handleResumeCheck);
+      window.removeEventListener('focus', handleResumeCheck);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (isActiveTab) {
       void refreshSummary();
+      void syncAllFilesStatus();
       setConnectedAccounts(getConnectedEmailAccounts());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActiveTab]);
 
   const syncEmailAccounts = () => {
     setConnectedAccounts(getConnectedEmailAccounts());
   };
+
+  const allFilesGranted = Boolean(allFilesStatus?.granted ?? summary?.hasAllFilesAccess);
 
   const openStorageTool = (tool: StorageSubTool) => {
     setStorageInitialTool(tool);
@@ -166,6 +244,41 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
       {/* PHONE MANAGER HOME DASHBOARD */}
       {screen === 'home' && (
         <div className="space-y-5">
+          {isNativeAndroid() && allFilesStatus && !allFilesStatus.granted && !allFilesDismissed && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                    Allow All Files Access for full Storage & File Manager scans
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Enables scanning shared internal storage & SD card folders, Downloads, WhatsApp media cleanup, duplicate hashing, and rename/move/delete actions. Private app directories (/Android/data, /Android/obb) and protected WhatsApp databases remain restricted by Android, and you can still use SAF folder access if you decline.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => void handleRequestAllFilesAccess()}
+                  className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold cursor-pointer"
+                >
+                  Allow All Files Access
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllFilesDismissed(true)}
+                  className="p-2 rounded-xl bg-white/70 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                  aria-label="Dismiss All Files Access notice"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Quick Status Summary Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-2">
@@ -325,6 +438,9 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
           initialTool={storageInitialTool}
           summary={summary}
           onRefreshSummary={refreshSummary}
+          allFilesGranted={allFilesGranted}
+          onRequestAllFilesAccess={handleRequestAllFilesAccess}
+          refreshKey={permissionRefreshKey}
         />
       )}
 
@@ -335,7 +451,14 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
         />
       )}
 
-      {screen === 'files' && <FileManagerView onStorageMutated={refreshSummary} />}
+      {screen === 'files' && (
+        <FileManagerView
+          onStorageMutated={refreshSummary}
+          allFilesGranted={allFilesGranted}
+          onRequestAllFilesAccess={handleRequestAllFilesAccess}
+          refreshKey={permissionRefreshKey}
+        />
+      )}
 
       {screen === 'privacy' && <PrivacyToolsView />}
     </div>

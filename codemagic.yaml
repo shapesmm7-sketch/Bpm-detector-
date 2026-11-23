@@ -4,6 +4,8 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
+      groups:
+        - Android signing
       node: 22.14.0
       java: 21
       vars:
@@ -28,14 +30,29 @@ workflows:
       - name: Prepare Android signing configuration
         script: |
           if [ -n "${CM_KEYSTORE:-}" ] && [ -z "${CM_KEYSTORE_PATH:-}" ]; then
-            (echo "$CM_KEYSTORE" | base64 -d > /tmp/cm-release.keystore 2>/dev/null || echo "$CM_KEYSTORE" | base64 -D > /tmp/cm-release.keystore)
+            if [ "$(uname -s)" = "Darwin" ]; then
+              printf '%s' "$CM_KEYSTORE" | tr -d '[:space:]' | base64 -D > /tmp/cm-release.keystore
+            else
+              printf '%s' "$CM_KEYSTORE" | tr -d '[:space:]' | base64 -d > /tmp/cm-release.keystore
+            fi
+            if [ ! -s /tmp/cm-release.keystore ]; then
+              echo "ERROR: Decoded CM_KEYSTORE is empty. Check the base64 string in the 'Android signing' group."
+              exit 1
+            fi
             echo "CM_KEYSTORE_PATH=/tmp/cm-release.keystore" >> "$CM_ENV"
-            echo "Using decoded CM_KEYSTORE from encrypted environment variable."
+            echo "Using decoded CM_KEYSTORE from Codemagic 'Android signing' group."
+            keytool -list -v -keystore /tmp/cm-release.keystore -storepass "$CM_KEYSTORE_PASSWORD" | grep -E "Alias name:|SHA1:|SHA256:" || true
           elif [ -n "${CM_KEYSTORE_PATH:-}" ] && [ -f "${CM_KEYSTORE_PATH}" ]; then
             echo "Using keystore at CM_KEYSTORE_PATH."
+            keytool -list -v -keystore "$CM_KEYSTORE_PATH" -storepass "$CM_KEYSTORE_PASSWORD" | grep -E "Alias name:|SHA1:|SHA256:" || true
+          elif [ -f "android/app/movibe.keystore" ] && [ -n "${CM_KEYSTORE_PASSWORD:-}" ] && [ -n "${CM_KEY_ALIAS:-}" ] && [ -n "${CM_KEY_PASSWORD:-}" ]; then
+            echo "CM_KEYSTORE_PATH=$(pwd)/android/app/movibe.keystore" >> "$CM_ENV"
+            echo "Using existing android/app/movibe.keystore with Codemagic signing credentials."
+            keytool -list -v -keystore android/app/movibe.keystore -storepass "$CM_KEYSTORE_PASSWORD" | grep -E "Alias name:|SHA1:|SHA256:" || true
           else
             if [ ! -f android/app/debug.keystore ]; then
-              echo "android/app/debug.keystore missing from clone; generating fallback debug.keystore..."
+              echo "WARNING: No persistent keystore configured (CM_KEYSTORE / CM_KEYSTORE_PATH / android/app/movibe.keystore)."
+              echo "Generating temporary debug.keystore (its SHA-1 changes on every clean build)..."
               keytool -genkeypair \
                 -keystore android/app/debug.keystore \
                 -storetype PKCS12 \

@@ -41,6 +41,24 @@ export const PrivacyToolsView: React.FC = () => {
 
   useEffect(() => {
     void loadPrivacyStatus();
+    if (!isNativeAndroid()) return;
+    let handle: { remove: () => Promise<void> } | null = null;
+    void PhoneManager.addListener('allFilesAccessChanged', () => {
+      void loadPrivacyStatus();
+    }).then((h) => {
+      handle = h;
+    });
+    const onResume = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void loadPrivacyStatus();
+    };
+    document.addEventListener('visibilitychange', onResume);
+    window.addEventListener('focus', onResume);
+    return () => {
+      if (handle) void handle.remove();
+      document.removeEventListener('visibilitychange', onResume);
+      window.removeEventListener('focus', onResume);
+    };
   }, []);
 
   const loadPrivacyStatus = async () => {
@@ -78,7 +96,7 @@ export const PrivacyToolsView: React.FC = () => {
   };
 
   const openSetting = async (
-    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps',
+    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps' | 'all_files_access',
     label: string
   ) => {
     setErrorMsg(null);
@@ -117,9 +135,17 @@ export const PrivacyToolsView: React.FC = () => {
     desc: string;
     granted?: boolean;
     webState?: string;
-    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps';
+    target: 'app_details' | 'privacy_dashboard' | 'notifications' | 'all_apps' | 'all_files_access';
     icon: React.ReactNode;
   }> = [
+    {
+      id: 'all_files',
+      label: 'All Files Access',
+      desc: 'Shared internal storage & SD card access for Phone Manager',
+      granted: overview?.permissions.allFilesAccess,
+      target: 'all_files_access',
+      icon: <HardDrive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />,
+    },
     {
       id: 'app_perms',
       label: 'App Permissions Settings',

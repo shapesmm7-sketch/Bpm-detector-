@@ -14,6 +14,10 @@ interface GmailAuthPluginInterface {
   clearCachedToken(options: {
     token: string;
   }): Promise<{ cleared: boolean }>;
+  getSigningInfo(): Promise<{
+    packageName: string;
+    sha1: string;
+  }>;
 }
 
 export const GmailAuth = registerPlugin<GmailAuthPluginInterface>('GmailAuth');
