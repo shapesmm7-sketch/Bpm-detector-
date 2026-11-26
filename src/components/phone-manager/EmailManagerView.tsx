@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Inbox,
   Paperclip,
@@ -18,23 +18,23 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
-  Copy,
-  Check,
 } from 'lucide-react';
 import {
   ConnectedEmailAccount,
+  EmailAccountCacheSnapshot,
   EmailBulkAction,
   EmailFilterView,
   EmailMessageSummary,
   connectGmailAccount,
   disconnectEmailAccount,
-  fetchProviderEmails,
+  filterCachedEmails,
+  getEmailCacheSnapshot,
   isAccountTokenValid,
   performBulkEmailAction,
+  subscribeEmailCache,
+  syncGmailAccountCache,
 } from '../../utils/emailAuthAndApi';
 import { formatBytes } from '../../plugins/phoneManager';
-import { isNativeAndroid } from '../../plugins/audioLibrary';
-import { GmailAuth } from '../../plugins/gmailAuth';
 
 interface EmailManagerViewProps {
   accounts: ConnectedEmailAccount[];
@@ -63,54 +63,85 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
   const [searchInput, setSearchInput] = useState<string>('');
   const [activeSearchQuery, setActiveSearchQuery] = useState<string>('');
 
-  const [messages, setMessages] = useState<EmailMessageSummary[]>([]);
-  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectAllStickyRef = useRef(false);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBusyAction, setIsBusyAction] = useState(false);
   const [isConnectingGmail, setIsConnectingGmail] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [confirmTrashIds, setConfirmTrashIds] = useState<string[] | null>(null);
   const [reviewUnsubMsg, setReviewUnsubMsg] = useState<EmailMessageSummary | null>(null);
-  const [signingInfo, setSigningInfo] = useState<{ packageName: string; sha1: string } | null>(null);
-  const [copiedSha1, setCopiedSha1] = useState(false);
 
   const activeAccount =
     accounts.find((a) => a.id === selectedAccountId) || accounts[0] || null;
 
-  useEffect(() => {
-    if (!isNativeAndroid()) return;
-    let active = true;
-    GmailAuth.getSigningInfo()
-      .then((info) => {
-        if (active && info?.sha1) {
-          setSigningInfo(info);
-        }
-      })
-      .catch(() => {
-        // ignore on non-native environments
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [cacheSnap, setCacheSnap] = useState<EmailAccountCacheSnapshot>(() =>
+    getEmailCacheSnapshot(activeAccount?.id || '')
+  );
 
   useEffect(() => {
     if (accounts.length > 0 && !accounts.some((a) => a.id === selectedAccountId)) {
       setSelectedAccountId(accounts[0].id);
     } else if (accounts.length === 0) {
       setSelectedAccountId('');
-      setMessages([]);
+      selectAllStickyRef.current = false;
+      setSelectedIds(new Set());
     }
   }, [accounts, selectedAccountId]);
 
   useEffect(() => {
-    if (activeAccount) {
-      void loadMessages(false);
+    const acctId = activeAccount?.id || '';
+    setCacheSnap(getEmailCacheSnapshot(acctId));
+    return subscribeEmailCache(() => {
+      setCacheSnap(getEmailCacheSnapshot(acctId));
+    });
+  }, [activeAccount?.id]);
+
+  useEffect(() => {
+    if (!activeAccount) return;
+    const snap = getEmailCacheSnapshot(activeAccount.id);
+    if (!snap.ready && !snap.isSyncing && !snap.error && isAccountTokenValid(activeAccount)) {
+      void syncGmailAccountCache(activeAccount, false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAccount?.id, activeView, readFilter, olderThanDays, customBeforeDate, activeSearchQuery]);
+  }, [activeAccount]);
+
+  useEffect(() => {
+    selectAllStickyRef.current = false;
+    setSelectedIds(new Set());
+  }, [
+    activeAccount?.id,
+    activeView,
+    readFilter,
+    olderThanDays,
+    customBeforeDate,
+    activeSearchQuery,
+  ]);
+
+  const messages = useMemo(() => {
+    if (!activeAccount) return [];
+    return filterCachedEmails(cacheSnap.messages, {
+      view: activeView,
+      readFilter: activeView === 'inbox' ? readFilter : undefined,
+      olderThanDays: activeView === 'old_emails' && !customBeforeDate ? olderThanDays : undefined,
+      customBeforeDate: activeView === 'old_emails' && customBeforeDate ? customBeforeDate : undefined,
+      searchQuery: activeSearchQuery,
+    });
+  }, [
+    activeAccount,
+    cacheSnap.messages,
+    activeView,
+    readFilter,
+    olderThanDays,
+    customBeforeDate,
+    activeSearchQuery,
+  ]);
+
+  useEffect(() => {
+    if (selectAllStickyRef.current) {
+      setSelectedIds(new Set(messages.map((m) => m.id)));
+    }
+  }, [messages]);
 
   const handleConnectGmail = async (loginHint?: string) => {
     setIsConnectingGmail(true);
@@ -120,7 +151,9 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
       const acct = await connectGmailAccount(loginHint);
       onAccountsChanged();
       setSelectedAccountId(acct.id);
-      setStatusMsg(`Connected Gmail account ${acct.email} via official Google OAuth.`);
+      setStatusMsg(
+        `Connected ${acct.email} via official Google OAuth — saving all messages in memory now.`
+      );
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Google OAuth sign-in did not complete.');
     } finally {
@@ -131,36 +164,19 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
   const handleDisconnect = async (id: string) => {
     await disconnectEmailAccount(id);
     onAccountsChanged();
+    selectAllStickyRef.current = false;
     setSelectedIds(new Set());
     setStatusMsg('Gmail account disconnected and in-memory OAuth session cleared.');
   };
 
-  const loadMessages = async (append: boolean) => {
+  const handleRefresh = () => {
     if (!activeAccount) return;
-    setIsLoading(true);
     setErrorMsg(null);
-    if (!append) setSelectedIds(new Set());
-    try {
-      const res = await fetchProviderEmails({
-        account: activeAccount,
-        view: activeView,
-        readFilter: activeView === 'inbox' ? readFilter : undefined,
-        olderThanDays: activeView === 'old_emails' && !customBeforeDate ? olderThanDays : undefined,
-        customBeforeDate: activeView === 'old_emails' && customBeforeDate ? customBeforeDate : undefined,
-        searchQuery: activeSearchQuery,
-        pageToken: append ? nextPageToken : undefined,
-        maxResults: 20,
-      });
-      setMessages((prev) => (append ? [...prev, ...res.messages] : res.messages));
-      setNextPageToken(res.nextPageToken);
-    } catch (err) {
-      setErrorMsg((err as Error)?.message || 'Could not load Gmail messages.');
-    } finally {
-      setIsLoading(false);
-    }
+    void syncGmailAccountCache(activeAccount, true);
   };
 
   const toggleSelectMessage = (id: string) => {
+    selectAllStickyRef.current = false;
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -172,8 +188,10 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
   const toggleSelectAll = () => {
     if (messages.length === 0) return;
     if (selectedIds.size === messages.length) {
+      selectAllStickyRef.current = false;
       setSelectedIds(new Set());
     } else {
+      selectAllStickyRef.current = true;
       setSelectedIds(new Set(messages.map((m) => m.id)));
     }
   };
@@ -188,7 +206,7 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
       return;
     }
 
-    setIsLoading(true);
+    setIsBusyAction(true);
     setErrorMsg(null);
     try {
       const res = await performBulkEmailAction({
@@ -196,18 +214,8 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
         messageIds: targetIds,
         action,
       });
+      selectAllStickyRef.current = false;
       setSelectedIds(new Set());
-      if (action === 'trash' || action === 'archive') {
-        const removedSet = new Set(targetIds);
-        setMessages((prev) => prev.filter((m) => !removedSet.has(m.id)));
-      } else {
-        const updatedSet = new Set(targetIds);
-        setMessages((prev) =>
-          prev.map((m) =>
-            updatedSet.has(m.id) ? { ...m, isUnread: action === 'mark_unread' } : m
-          )
-        );
-      }
       const actionLabel =
         action === 'trash'
           ? 'moved to Trash'
@@ -220,10 +228,12 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Gmail action failed.');
     } finally {
-      setIsLoading(false);
+      setIsBusyAction(false);
     }
   };
 
+  const isSyncing = cacheSnap.isSyncing;
+  const displayError = errorMsg || cacheSnap.error;
   const tokenValid = activeAccount ? isAccountTokenValid(activeAccount) : false;
 
   return (
@@ -263,45 +273,6 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
           </button>
         </div>
 
-        {signingInfo && (
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-1.5 text-[11px]">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">
-                Android OAuth Fingerprint ({signingInfo.packageName})
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-                    void navigator.clipboard.writeText(signingInfo.sha1);
-                    setCopiedSha1(true);
-                    window.setTimeout(() => setCopiedSha1(false), 2000);
-                  }
-                }}
-                className="px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold flex items-center gap-1 cursor-pointer"
-              >
-                {copiedSha1 ? (
-                  <>
-                    <Check className="w-3 h-3 text-emerald-500" />
-                    <span>Copied SHA-1</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3" />
-                    <span>Copy SHA-1</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <p className="font-mono text-[10px] text-slate-600 dark:text-slate-400 break-all select-all">
-              {signingInfo.sha1}
-            </p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">
-              In Google Cloud project <span className="font-semibold">mo-vibe</span>, verify this exact SHA-1 is on the Android OAuth Client and your Gmail account is listed under OAuth consent screen → Test users.
-            </p>
-          </div>
-        )}
-
         {/* Connected Gmail Accounts List */}
         {accounts.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
@@ -329,10 +300,11 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
                   <button
                     type="button"
                     onClick={() => void handleDisconnect(acct.id)}
-                    title="Disconnect Gmail account"
-                    className="p-1 rounded-lg hover:bg-rose-500/15 text-slate-400 hover:text-rose-500 cursor-pointer"
+                    title={`Sign out ${acct.email}`}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] cursor-pointer transition-colors"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="w-3 h-3" />
+                    <span>Sign out</span>
                   </button>
                 </div>
               );
@@ -342,31 +314,74 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
       </div>
 
       {/* Status / Error */}
-      {errorMsg && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-          <span className="flex-1 break-words">{errorMsg}</span>
-        </div>
-      )}
+      {displayError && (() => {
+        const urlMatch = displayError.match(/(https:\/\/console\.[^\s]+)/);
+        const consoleUrl = urlMatch ? urlMatch[1] : null;
+        const cleanError = consoleUrl
+          ? displayError.replace(/\s*Link:\s*https:\/\/console\.[^\s]+/, '').trim()
+          : displayError;
+        return (
+          <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5 overflow-hidden">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <p className="break-words leading-relaxed">{cleanError}</p>
+              {consoleUrl && (
+                <a
+                  href={consoleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-[11px]"
+                >
+                  <span>Enable Gmail API in Google Cloud</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {statusMsg && (
         <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-start gap-2">
           <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-          <span className="flex-1">{statusMsg}</span>
+          <span className="flex-1 min-w-0 break-words">{statusMsg}</span>
         </div>
       )}
 
       {/* Email Workspace when connected */}
       {activeAccount && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="min-w-0">
+              <p className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Active Gmail Account
+              </p>
+              <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                {activeAccount.email}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleDisconnect(activeAccount.id)}
+              className="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign out</span>
+            </button>
+          </div>
           {!tokenValid && (
             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between gap-2">
-              <span>OAuth access token expired for {activeAccount.email}.</span>
+              <span>
+                {activeAccount.accessToken
+                  ? `OAuth session expired for ${activeAccount.email}.`
+                  : `Restored ${activeAccount.email}. Tap Reconnect to refresh access token.`}
+              </span>
               <button
                 type="button"
+                disabled={isConnectingGmail}
                 onClick={() => void handleConnectGmail(activeAccount.email)}
-                className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold cursor-pointer"
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold cursor-pointer disabled:opacity-60 shrink-0"
               >
-                Re-authenticate
+                {activeAccount.accessToken ? 'Re-authenticate' : 'Reconnect'}
               </button>
             </div>
           )}
@@ -404,7 +419,11 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
                 <input
                   type="text"
                   value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchInput(val);
+                    setActiveSearchQuery(val);
+                  }}
                   placeholder="Search sender, subject, keyword, has:attachment..."
                   className="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100"
                 />
@@ -462,12 +481,12 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
 
             <button
               type="button"
-              onClick={() => void loadMessages(false)}
-              disabled={isLoading}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer"
-              title="Refresh messages"
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer disabled:opacity-60"
+              title="Refresh cached Gmail messages"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
@@ -484,14 +503,18 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
                 <Square className="w-4 h-4 text-slate-400" />
               )}
               <span>
-                {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select All'}
+                {selectedIds.size > 0
+                  ? `${selectedIds.size} of ${messages.length} selected`
+                  : messages.length > 0
+                    ? `Select All (${messages.length})`
+                    : 'Select All'}
               </span>
             </button>
 
             <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                disabled={selectedIds.size === 0 || isLoading}
+                disabled={selectedIds.size === 0 || isBusyAction}
                 onClick={() => void runBulkAction('archive')}
                 className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold flex items-center gap-1 disabled:opacity-40 cursor-pointer"
               >
@@ -500,7 +523,7 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
               </button>
               <button
                 type="button"
-                disabled={selectedIds.size === 0 || isLoading}
+                disabled={selectedIds.size === 0 || isBusyAction}
                 onClick={() => void runBulkAction('mark_read')}
                 className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold disabled:opacity-40 cursor-pointer"
               >
@@ -508,7 +531,7 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
               </button>
               <button
                 type="button"
-                disabled={selectedIds.size === 0 || isLoading}
+                disabled={selectedIds.size === 0 || isBusyAction}
                 onClick={() => void runBulkAction('mark_unread')}
                 className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold disabled:opacity-40 cursor-pointer"
               >
@@ -516,7 +539,7 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
               </button>
               <button
                 type="button"
-                disabled={selectedIds.size === 0 || isLoading}
+                disabled={selectedIds.size === 0 || isBusyAction}
                 onClick={() => void runBulkAction('trash')}
                 className="px-2.5 py-1.5 rounded-lg bg-rose-600 text-white text-[11px] font-semibold flex items-center gap-1 disabled:opacity-40 cursor-pointer"
               >
@@ -531,11 +554,21 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
             <strong>Move to Trash</strong> moves selected messages to Trash (recoverable for 30 days). Mo Vibe never permanently bypasses Trash without explicit action inside Gmail.
           </p>
 
+          {isSyncing && cacheSnap.messages.length > 0 && (
+            <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              <span>
+                Saving all Gmail messages in memory for instant folders... ({cacheSnap.loadedCount}
+                {cacheSnap.totalMatchedCount !== null ? ` / ${cacheSnap.totalMatchedCount}` : ''} loaded)
+              </span>
+            </div>
+          )}
+
           {/* Messages List */}
-          {isLoading && messages.length === 0 ? (
+          {isSyncing && cacheSnap.messages.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-              <span>Loading real Gmail messages...</span>
+              <span>Saving all Gmail messages once so folders open instantly...</span>
             </div>
           ) : messages.length === 0 ? (
             <div className="p-8 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400">
@@ -615,19 +648,6 @@ export const EmailManagerView: React.FC<EmailManagerViewProps> = ({
                   </div>
                 );
               })}
-            </div>
-          )}
-
-          {nextPageToken && (
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={() => void loadMessages(true)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-100 cursor-pointer"
-              >
-                {isLoading ? 'Loading...' : 'Load More Messages'}
-              </button>
             </div>
           )}
         </div>

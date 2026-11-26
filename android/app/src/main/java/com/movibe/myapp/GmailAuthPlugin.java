@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
@@ -31,6 +32,8 @@ import com.google.android.gms.auth.api.identity.Identity;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.Scope;
 
+import org.json.JSONArray;
+
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +44,8 @@ import java.util.concurrent.Executors;
 @CapacitorPlugin(name = "GmailAuth")
 public class GmailAuthPlugin extends Plugin {
 
+    private static final String GMAIL_PREFS = "movibe_gmail_prefs";
+    private static final String KEY_SAVED_EMAILS = "saved_gmail_emails";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private ActivityResultLauncher<Intent> accountPickerLauncher;
     private ActivityResultLauncher<IntentSenderRequest> authConsentLauncher;
@@ -294,6 +299,9 @@ public class GmailAuthPlugin extends Plugin {
                     return;
                 }
 
+                if (email != null && !email.isEmpty()) {
+                    addSavedEmail(email);
+                }
                 JSArray grantedArr = new JSArray();
                 for (String s : scopeStrings) {
                     grantedArr.put(s);
@@ -330,6 +338,11 @@ public class GmailAuthPlugin extends Plugin {
             return;
         }
 
+        String emailOut = pendingSelectedEmail != null ? pendingSelectedEmail : "";
+        if (!emailOut.isEmpty()) {
+            addSavedEmail(emailOut);
+        }
+
         JSArray grantedArr = new JSArray();
         if (authResult.getGrantedScopes() != null) {
             for (String s : authResult.getGrantedScopes()) {
@@ -339,7 +352,7 @@ public class GmailAuthPlugin extends Plugin {
 
         JSObject res = new JSObject();
         res.put("accessToken", accessToken);
-        res.put("email", pendingSelectedEmail != null ? pendingSelectedEmail : "");
+        res.put("email", emailOut);
         res.put("grantedScopes", grantedArr);
 
         clearPendingState();
@@ -404,9 +417,185 @@ public class GmailAuthPlugin extends Plugin {
         bridge.releaseCall(saved);
     }
 
+    private void addSavedEmail(String email) {
+        if (email == null || email.trim().isEmpty()) return;
+        String normalized = email.trim();
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences(GMAIL_PREFS, Context.MODE_PRIVATE);
+            JSONArray arr = new JSONArray(prefs.getString(KEY_SAVED_EMAILS, "[]"));
+            JSONArray next = new JSONArray();
+            next.put(normalized);
+            for (int i = 0; i < arr.length(); i++) {
+                String existing = arr.optString(i, "").trim();
+                if (!existing.isEmpty() && !existing.equalsIgnoreCase(normalized)) {
+                    next.put(existing);
+                }
+            }
+            prefs.edit().putString(KEY_SAVED_EMAILS, next.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void removeSavedEmail(String email) {
+        if (email == null || email.trim().isEmpty()) return;
+        String normalized = email.trim();
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences(GMAIL_PREFS, Context.MODE_PRIVATE);
+            JSONArray arr = new JSONArray(prefs.getString(KEY_SAVED_EMAILS, "[]"));
+            JSONArray next = new JSONArray();
+            for (int i = 0; i < arr.length(); i++) {
+                String existing = arr.optString(i, "").trim();
+                if (!existing.isEmpty() && !existing.equalsIgnoreCase(normalized)) {
+                    next.put(existing);
+                }
+            }
+            prefs.edit().putString(KEY_SAVED_EMAILS, next.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private List<String> getSavedEmailList() {
+        List<String> list = new ArrayList<>();
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences(GMAIL_PREFS, Context.MODE_PRIVATE);
+            JSONArray arr = new JSONArray(prefs.getString(KEY_SAVED_EMAILS, "[]"));
+            for (int i = 0; i < arr.length(); i++) {
+                String e = arr.optString(i, "").trim();
+                if (!e.isEmpty()) list.add(e);
+            }
+        } catch (Exception ignored) {}
+        return list;
+    }
+
+    @PluginMethod
+    public void getSavedAccounts(PluginCall call) {
+        JSArray arr = new JSArray();
+        for (String e : getSavedEmailList()) {
+            arr.put(e);
+        }
+        JSObject res = new JSObject();
+        res.put("emails", arr);
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void removeSavedAccount(PluginCall call) {
+        String email = call.getString("email", "");
+        removeSavedEmail(email);
+        JSObject res = new JSObject();
+        res.put("removed", true);
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void authorizeSilent(PluginCall call) {
+        String rawEmail = call.getString("email", "");
+        String email = rawEmail != null ? rawEmail.trim() : "";
+        if (email.isEmpty()) {
+            JSObject res = new JSObject();
+            res.put("accessToken", "");
+            res.put("email", "");
+            res.put("grantedScopes", new JSArray());
+            res.put("needsReauth", true);
+            call.resolve(res);
+            return;
+        }
+
+        List<Scope> scopes = new ArrayList<>();
+        List<String> scopeStrings = new ArrayList<>();
+        JSArray reqScopes = call.getArray("scopes");
+        if (reqScopes != null) {
+            for (int i = 0; i < reqScopes.length(); i++) {
+                String s = reqScopes.optString(i, "").trim();
+                if (!s.isEmpty()) {
+                    scopes.add(new Scope(s));
+                    scopeStrings.add(s);
+                }
+            }
+        }
+        if (scopes.isEmpty()) {
+            String s1 = "https://www.googleapis.com/auth/gmail.modify";
+            String s2 = "https://www.googleapis.com/auth/userinfo.email";
+            scopes.add(new Scope(s1));
+            scopes.add(new Scope(s2));
+            scopeStrings.add(s1);
+            scopeStrings.add(s2);
+        }
+
+        Activity activity = getActivity();
+        if (activity == null) {
+            trySilentGoogleAuthUtil(call, email, scopeStrings);
+            return;
+        }
+
+        AuthorizationRequest request = AuthorizationRequest.builder()
+            .setRequestedScopes(scopes)
+            .setAccount(new Account(email, "com.google"))
+            .build();
+
+        Identity.getAuthorizationClient(activity)
+            .authorize(request)
+            .addOnSuccessListener(activity, authResult -> {
+                if (authResult != null && !authResult.hasResolution()
+                    && authResult.getAccessToken() != null && !authResult.getAccessToken().isEmpty()) {
+                    JSArray grantedArr = new JSArray();
+                    if (authResult.getGrantedScopes() != null) {
+                        for (String s : authResult.getGrantedScopes()) {
+                            grantedArr.put(s);
+                        }
+                    }
+                    JSObject res = new JSObject();
+                    res.put("accessToken", authResult.getAccessToken());
+                    res.put("email", email);
+                    res.put("grantedScopes", grantedArr);
+                    res.put("needsReauth", false);
+                    call.resolve(res);
+                } else {
+                    trySilentGoogleAuthUtil(call, email, scopeStrings);
+                }
+            })
+            .addOnFailureListener(activity, e -> trySilentGoogleAuthUtil(call, email, scopeStrings));
+    }
+
+    private void trySilentGoogleAuthUtil(PluginCall call, String email, List<String> scopeStrings) {
+        final String oauthScope = "oauth2:" + TextUtils.join(" ", scopeStrings);
+        executor.execute(() -> {
+            try {
+                String token = GoogleAuthUtil.getToken(
+                    getContext(),
+                    new Account(email, "com.google"),
+                    oauthScope
+                );
+                if (token != null && !token.isEmpty()) {
+                    JSArray grantedArr = new JSArray();
+                    for (String s : scopeStrings) {
+                        grantedArr.put(s);
+                    }
+                    JSObject res = new JSObject();
+                    res.put("accessToken", token);
+                    res.put("email", email);
+                    res.put("grantedScopes", grantedArr);
+                    res.put("needsReauth", false);
+                    call.resolve(res);
+                    return;
+                }
+            } catch (Exception ignored) {
+                // Consent revoked or requires user interaction
+            }
+            JSObject res = new JSObject();
+            res.put("accessToken", "");
+            res.put("email", email);
+            res.put("grantedScopes", new JSArray());
+            res.put("needsReauth", true);
+            call.resolve(res);
+        });
+    }
+
     @PluginMethod
     public void clearCachedToken(PluginCall call) {
         String token = call.getString("token", "");
+        String email = call.getString("email", "");
+        if (email != null && !email.trim().isEmpty()) {
+            removeSavedEmail(email.trim());
+        }
         if (token == null || token.trim().isEmpty()) {
             JSObject res = new JSObject();
             res.put("cleared", true);

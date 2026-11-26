@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Disc, AlertCircle, FileAudio } from 'lucide-react';
+import { ArrowRight, AlertCircle, FileAudio, Upload } from 'lucide-react';
 
 interface SongUploaderProps {
   onFileSelected: (file: File) => void;
@@ -9,6 +9,10 @@ interface SongUploaderProps {
   loadedTrackName?: string;
   loadedBpm?: number;
 }
+
+const PREVIEW_BAR_HEIGHTS = [
+  22, 42, 30, 56, 72, 40, 88, 60, 44, 78, 52, 92, 68, 36, 54, 48, 28, 62, 40, 50, 32, 24,
+];
 
 export const SongUploader: React.FC<SongUploaderProps> = ({
   onFileSelected,
@@ -25,105 +29,127 @@ export const SongUploader: React.FC<SongUploaderProps> = ({
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('audio/') || file.name.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i)) {
+      if (
+        file.type.startsWith('audio/') ||
+        file.name.match(/\.(mp3|wav|ogg|flac|m4a|aac|webm)$/i)
+      ) {
         onFileSelected(file);
       }
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm dark:shadow-2xl space-y-4 overflow-hidden min-w-0 transition-colors">
-      {/* Drop Zone Deck */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-        onClick={onTriggerUpload}
-        className={`relative border-2 border-dashed rounded-xl p-5 sm:p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-4 overflow-hidden min-w-0 w-full ${
-          isDragOver
-            ? 'border-emerald-500 dark:border-emerald-400 bg-emerald-500/10 scale-[1.005]'
-            : 'border-slate-300 dark:border-slate-800 hover:border-emerald-500/60 bg-slate-50 dark:bg-slate-950/70 hover:bg-slate-100/80 dark:hover:bg-slate-950'
-        } ${isAnalyzing ? 'opacity-70 pointer-events-none' : ''}`}
-      >
-        <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm dark:shadow-inner shrink-0">
-            {isAnalyzing ? (
-              <div className="w-7 h-7 border-2 border-emerald-500/30 border-t-emerald-500 dark:border-t-emerald-400 rounded-full animate-spin" />
-            ) : (
-              <Disc className="w-7 h-7 text-emerald-600 dark:text-emerald-400 animate-spin-slow" />
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base sm:text-lg flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <span>Drop any audio track to detect BPM, change key or Tempo</span>
-              <span className="text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                · PulseBPM Precision
-              </span>
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
-              Compatible with MP3, WAV, FLAC, M4A, AAC, OGG · Drag &amp; drop or{' '}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTriggerUpload();
-                }}
-                className="text-emerald-600 dark:text-emerald-400 underline font-medium hover:text-emerald-500 dark:hover:text-emerald-300 cursor-pointer inline p-0 bg-transparent border-none"
-              >
-                click to browse
-              </button>
-            </p>
-          </div>
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={handleDrop}
+      className={`rounded-3xl p-5 sm:p-6 border transition-all overflow-hidden min-w-0 space-y-5 ${
+        isDragOver
+          ? 'border-emerald-500 bg-emerald-50 dark:bg-[#09241B] shadow-md'
+          : 'border-emerald-500/35 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/70 dark:from-[#08221A] dark:via-[#0B1822] dark:to-[#0A171E] shadow-sm'
+      } ${isAnalyzing ? 'opacity-80 pointer-events-none' : ''}`}
+    >
+      {/* Top Row: Audio Analyzer Title + PulseBPM label */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1.5 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Audio Analyzer
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-md">
+            Detect the BPM of any audio, then change its key and tempo.
+          </p>
         </div>
+        <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 shrink-0 pt-1">
+          PulseBPM
+        </span>
+      </div>
 
-        {/* Dedicated, prominent Upload Song Button */}
-        <div className="pt-2 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTriggerUpload();
-            }}
-            disabled={isAnalyzing}
-            className="px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-950 bg-emerald-400 hover:bg-emerald-300 active:scale-95 transition-all flex items-center gap-2.5 shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-slate-900/40 border-t-slate-900 rounded-full animate-spin" />
-                <span>Analyzing Audio...</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                <span>Upload Song</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {loadedTrackName && !isAnalyzing && (
-          <div className="pt-1 w-full max-w-full min-w-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-400 font-mono overflow-hidden">
-            <div className="flex items-center justify-center gap-1.5 min-w-0 max-w-full">
-              <FileAudio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="min-w-0 max-w-full break-all line-clamp-2 text-center">
-                Currently loaded: <strong className="text-slate-900 dark:text-slate-200">{loadedTrackName}</strong>
-              </span>
+      {/* When no song is loaded yet, show the signature 128 BPM + waveform preview card from mockup */}
+      {!loadedTrackName && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <span className="text-5xl sm:text-6xl font-black font-mono tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400 leading-none">
+              128
+            </span>
+            <div className="space-y-0.5 font-mono text-xs sm:text-sm leading-tight">
+              <div className="font-bold text-slate-900 dark:text-white tracking-wider">BPM</div>
+              <div className="text-slate-500 dark:text-slate-400 tracking-wider uppercase text-[11px] sm:text-xs">
+                KEY: A MINOR
+              </div>
             </div>
-            {loadedBpm && (
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">
-                · {loadedBpm} BPM
-              </span>
-            )}
           </div>
-        )}
+
+          {/* Graphic Audio Bar Waveform */}
+          <div
+            className="flex items-center justify-between gap-1 sm:gap-1.5 h-16 px-0.5"
+            aria-hidden="true"
+          >
+            {PREVIEW_BAR_HEIGHTS.map((heightPct, idx) => {
+              const isPlayedRegion = idx < 12;
+              return (
+                <span
+                  key={idx}
+                  className={`flex-1 rounded-full transition-colors ${
+                    isPlayedRegion
+                      ? 'bg-emerald-500 dark:bg-emerald-400'
+                      : 'bg-emerald-500/20 dark:bg-emerald-400/20'
+                  }`}
+                  style={{ height: `${heightPct}%` }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* When a song is loaded, show concise loaded track status */}
+      {loadedTrackName && !isAnalyzing && (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-white/80 dark:bg-slate-900/70 border border-emerald-500/20 text-xs font-mono min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <FileAudio className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="text-slate-700 dark:text-slate-200 truncate font-semibold">
+              {loadedTrackName}
+            </span>
+          </div>
+          {loadedBpm && (
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold tabular-nums shrink-0">
+              {loadedBpm} BPM
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Primary Upload Song CTA Button */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={onTriggerUpload}
+          disabled={isAnalyzing}
+          className="w-full min-h-[48px] px-5 py-3 rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-wider text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-60"
+        >
+          {isAnalyzing ? (
+            <>
+              <span className="w-4 h-4 border-2 border-slate-950/35 border-t-slate-950 rounded-full animate-spin" />
+              <span>Analyzing Audio...</span>
+            </>
+          ) : (
+            <>
+              {loadedTrackName ? <Upload className="w-4 h-4" /> : null}
+              <span>{loadedTrackName ? 'Upload Another Song' : 'Upload Song'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
+        <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
+          Drop MP3, WAV, FLAC, M4A, AAC or OGG files anywhere on this card
+        </p>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg text-red-700 dark:text-red-400 text-xs flex items-center gap-2">
+        <div className="p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/25 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>

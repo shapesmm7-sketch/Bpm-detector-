@@ -37,8 +37,17 @@ import {
   removeAudioFromCache,
   clearAudioCache,
 } from './utils/audioStorage';
+import {
+  getCachedPhoneIndexState,
+  subscribePhoneIndexCache,
+  syncCachedPhoneIndex,
+} from './utils/fileIndexCache';
+import { formatBytes } from './plugins/phoneManager';
+import { restoreSavedGmailAccounts } from './utils/emailAuthAndApi';
+import audioPlayerCoverImg from './assets/images/audio_player_cover_1795509191552.jpg';
+import videoPlayerCoverImg from './assets/images/video_player_cover_1795509192224.jpg';
 
-import { Music, Home, Video, Smartphone } from 'lucide-react';
+import { Music, Home, Video, Smartphone, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const THEME_STORAGE_KEY = 'movibe_theme';
 
@@ -64,6 +73,9 @@ export default function App() {
   });
   const [audioPauseSignal, setAudioPauseSignal] = useState<number>(0);
   const [videoPauseSignal, setVideoPauseSignal] = useState<number>(0);
+  const [phoneSummary, setPhoneSummary] = useState(() => getCachedPhoneIndexState().summary);
+  const [audioCoverFailed, setAudioCoverFailed] = useState(false);
+  const [videoCoverFailed, setVideoCoverFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Audio Track State
@@ -197,6 +209,18 @@ export default function App() {
       console.warn('History save error', e);
     }
   }, [history]);
+
+  // Pre-scan & cache accessible device files + restore connected Gmail sessions once on app launch
+  useEffect(() => {
+    const unsubIndex = subscribePhoneIndexCache((next) => {
+      setPhoneSummary(next.summary);
+    });
+    void syncCachedPhoneIndex(false);
+    void restoreSavedGmailAccounts();
+    return () => {
+      unsubIndex();
+    };
+  }, []);
 
   // Clean up native audio element, SoundTouch player, and object URL on unmount
   useEffect(() => {
@@ -1031,26 +1055,71 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeSection={activeSection}
-        onSelectHome={() => setActiveSection('home')}
+        onSelectHome={() => {
+          if (activeSection === 'home' && activeTab === 'analyzer' && (bpmResult || isAnalyzing)) {
+            stopAudio();
+            setBpmResult(null);
+            setAudioBuffer(null);
+            setTrackName('');
+            setAnalysisError(null);
+            setIsAnalyzing(false);
+          }
+          setActiveSection('home');
+        }}
       />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-6 pb-24 space-y-6 overflow-x-hidden">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 pt-5 pb-24 space-y-6 overflow-x-hidden">
         {/* Section 1: Home (Existing BPM Analyzer App + Menu + History) */}
         <div className={activeSection === 'home' ? 'block space-y-6 min-w-0' : 'hidden'}>
           {activeTab === 'analyzer' && (
-            <div className="space-y-6 min-w-0">
-            {/* Song Upload Area */}
-            <SongUploader
-              onFileSelected={handleFileSelected}
-              onTriggerUpload={handleOpenUpload}
-              isAnalyzing={isAnalyzing}
-              error={analysisError}
-              loadedTrackName={trackName}
-              loadedBpm={bpmResult?.bpm}
-            />
+            <div className="space-y-5 sm:space-y-6 min-w-0">
+              {/* When viewing/analyzing a song, show a clean Back to Home control and focus exclusively on the song results */}
+              {(bpmResult || isAnalyzing) ? (
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopAudio();
+                      setBpmResult(null);
+                      setAudioBuffer(null);
+                      setTrackName('');
+                      setAnalysisError(null);
+                      setIsAnalyzing(false);
+                    }}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition-colors shadow-sm"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Home</span>
+                  </button>
+                  <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                    {isAnalyzing ? 'Analyzing Track...' : 'Song Analysis Results'}
+                  </span>
+                </div>
+              ) : (
+                /* Editorial Hero Headline (Home Hub only) */
+                <section className="space-y-2 pt-1">
+                  <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.08] text-slate-900 dark:text-white text-balance max-w-xl">
+                    Your music and phone{' '}
+                    <span className="text-emerald-600 dark:text-emerald-400">vibes.</span>
+                  </h1>
+                  <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                    Analyze tracks, edit audio and video, and keep your phone clean.
+                  </p>
+                </section>
+              )}
 
-            {/* HERO BPM DISPLAY */}
-            {bpmResult && (
+              {/* Song Upload Area / Audio Analyzer Card */}
+              <SongUploader
+                onFileSelected={handleFileSelected}
+                onTriggerUpload={handleOpenUpload}
+                isAnalyzing={isAnalyzing}
+                error={analysisError}
+                loadedTrackName={trackName}
+                loadedBpm={bpmResult?.bpm}
+              />
+
+              {/* HERO BPM DISPLAY (Full live analyzer workspace when a song is loaded) */}
+              {bpmResult && (
               <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-8 shadow-xl dark:shadow-[0_0_50px_rgba(16,185,129,0.15)] space-y-6 text-center overflow-hidden min-w-0">
                 {/* Track Title Banner */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800 text-xs min-w-0">
@@ -1176,9 +1245,242 @@ export default function App() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
+              )}
+
+              {/* Audio, Video & Phone Manager Home Cards (shown ONLY on Home Hub before a song is uploaded/analyzed) */}
+              {!bpmResult && !isAnalyzing && (
+                <>
+                  {/* Audio & Video Editor 2-Column Showcase Cards */}
+                  <section className="grid grid-cols-2 gap-3.5 sm:gap-5 items-stretch">
+                {/* Audio Player & Editor Card */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeSection === 'video') {
+                      setVideoPauseSignal((n) => n + 1);
+                    }
+                    setActiveSection('audio');
+                  }}
+                  className="group bg-white dark:bg-[#0D1420] border border-slate-200 dark:border-slate-800 hover:border-emerald-500/45 rounded-3xl p-3.5 sm:p-5 text-left transition-all shadow-sm hover:shadow-md flex flex-col justify-between gap-3 cursor-pointer overflow-hidden"
+                >
+                  <div className="space-y-3">
+                    <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+                      Audio Player &amp; Editor
+                    </h2>
+                    <div className="w-full aspect-[4/4.3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/50">
+                      {audioCoverFailed ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-emerald-50 to-slate-100 dark:from-emerald-950/40 dark:to-slate-900 text-emerald-600 dark:text-emerald-400">
+                          <Music className="w-8 h-8" />
+                          <span className="text-xs font-semibold">Audio Studio</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={audioPlayerCoverImg}
+                          alt="Audio Player and Editor"
+                          referrerPolicy="no-referrer"
+                          onError={() => setAudioCoverFailed(true)}
+                          className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-snug">
+                      Trim, change tempo and shift key.
+                    </p>
+                    <div className="flex items-center justify-between gap-2 pt-1 text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      <span>Tempo + Key</span>
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                    </div>
+                  </div>
+                </button>
+
+                {/* Video Player & Editor Card */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSection('video');
+                  }}
+                  className="group bg-white dark:bg-[#0D1420] border border-slate-200 dark:border-slate-800 hover:border-cyan-500/45 rounded-3xl p-3.5 sm:p-5 text-left transition-all shadow-sm hover:shadow-md flex flex-col justify-between gap-3 cursor-pointer overflow-hidden"
+                >
+                  <div className="space-y-3">
+                    <h2 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug">
+                      Video Player &amp; Editor
+                    </h2>
+                    <div className="w-full aspect-[4/4.3] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/50">
+                      {videoCoverFailed ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-cyan-50 to-slate-100 dark:from-cyan-950/40 dark:to-slate-900 text-cyan-600 dark:text-cyan-400">
+                          <Video className="w-8 h-8" />
+                          <span className="text-xs font-semibold">Video Editor</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={videoPlayerCoverImg}
+                          alt="Video Player and Editor"
+                          referrerPolicy="no-referrer"
+                          onError={() => setVideoCoverFailed(true)}
+                          className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2.5">
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-snug">
+                      Watch, cut and export.
+                    </p>
+                    <div className="flex items-center justify-between gap-2 pt-1 text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-400">
+                      <span>Trim + Export</span>
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                    </div>
+                  </div>
+                </button>
+              </section>
+
+              {/* Phone Manager Live Storage Overview Card */}
+              {(() => {
+                const usedPct =
+                  phoneSummary && phoneSummary.totalBytes > 0
+                    ? Math.min(100, Math.round((phoneSummary.usedBytes / phoneSummary.totalBytes) * 100))
+                    : 0;
+                const audioBytes = phoneSummary?.categories.audio.bytes || 0;
+                const videoBytes = phoneSummary?.categories.videos.bytes || 0;
+                const otherBytes =
+                  (phoneSummary?.categories.images.bytes || 0) +
+                  (phoneSummary?.categories.documents.bytes || 0) +
+                  (phoneSummary?.categories.downloads.bytes || 0) +
+                  (phoneSummary?.categories.other.bytes || 0);
+                const maxCatBytes = Math.max(1, audioBytes, videoBytes, otherBytes);
+                const ringRadius = 40;
+                const ringCircumference = 2 * Math.PI * ringRadius;
+                const strokeOffset =
+                  ringCircumference - (usedPct / 100) * ringCircumference;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeSection === 'video') {
+                        setVideoPauseSignal((n) => n + 1);
+                      }
+                      setActiveSection('phone-manager');
+                    }}
+                    className="w-full group bg-white dark:bg-[#0D1420] border border-slate-200 dark:border-slate-800 hover:border-amber-500/45 rounded-3xl p-5 sm:p-6 text-left transition-all shadow-sm hover:shadow-md space-y-5 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        Phone Manager
+                      </h2>
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 shrink-0">
+                        Storage
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-5 sm:gap-7">
+                      {/* Circular Storage Ring */}
+                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 flex items-center justify-center">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r={ringRadius}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="10"
+                            className="text-slate-200 dark:text-slate-800"
+                          />
+                          <circle
+                            cx="50"
+                            cy="50"
+                            r={ringRadius}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="10"
+                            strokeLinecap="round"
+                            strokeDasharray={ringCircumference}
+                            strokeDashoffset={strokeOffset}
+                            className="text-amber-500 dark:text-amber-400 transition-all duration-500"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center leading-tight">
+                          <span className="text-xl sm:text-2xl font-black font-mono tabular-nums text-slate-900 dark:text-white">
+                            {phoneSummary && phoneSummary.totalBytes > 0 ? `${usedPct}%` : '—'}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                            used
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Real Live Category Breakdown Bars */}
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <span className="font-medium text-slate-700 dark:text-slate-200">Audio</span>
+                            <span className="font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                              {phoneSummary ? formatBytes(audioBytes) : '—'}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-emerald-500"
+                              style={{
+                                width: `${audioBytes > 0 ? Math.max(8, Math.round((audioBytes / maxCatBytes) * 100)) : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <span className="font-medium text-slate-700 dark:text-slate-200">Video</span>
+                            <span className="font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                              {phoneSummary ? formatBytes(videoBytes) : '—'}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-cyan-500"
+                              style={{
+                                width: `${videoBytes > 0 ? Math.max(8, Math.round((videoBytes / maxCatBytes) * 100)) : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs sm:text-sm">
+                            <span className="font-medium text-slate-700 dark:text-slate-200">Other</span>
+                            <span className="font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                              {phoneSummary ? formatBytes(otherBytes) : '—'}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-amber-500"
+                              style={{
+                                width: `${otherBytes > 0 ? Math.max(8, Math.round((otherBytes / maxCatBytes) * 100)) : 0}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold text-amber-700 dark:text-amber-400">
+                      <span>
+                        {phoneSummary && phoneSummary.availableBytes > 0
+                          ? `${formatBytes(phoneSummary.availableBytes)} free · Open Storage, Gmail & Files`
+                          : 'Open Storage Analyzer, Gmail & File Manager'}
+                      </span>
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 shrink-0" />
+                    </div>
+                  </button>
+                );
+              })()}
+                </>
+              )}
+            </div>
+          )}
 
         {/* Tab 2: Full Menu Page View */}
         {activeTab === 'menu' && (
@@ -1337,7 +1639,7 @@ export default function App() {
             )}
             <Smartphone className="w-5 h-5" />
             <span className="text-[11px] font-semibold tracking-tight leading-none">
-              Phone Manager
+              Manager
             </span>
           </button>
         </nav>

@@ -43,6 +43,17 @@ import {
   formatShortDateTime,
 } from '../../plugins/phoneManager';
 import {
+  CachedPhoneIndexState,
+  getCachedCategoryItems,
+  getCachedDuplicates,
+  getCachedLargeFiles,
+  getCachedPhoneIndexState,
+  hasCachedPhoneIndex,
+  subscribePhoneIndexCache,
+  syncCachedPhoneIndex,
+  updateCachedDuplicates,
+} from '../../utils/fileIndexCache';
+import {
   StorageRecommendationItem,
   buildStorageRecommendations,
   classifyWhatsAppWebCategory,
@@ -51,7 +62,6 @@ import {
   deleteWebItems,
   findWebDuplicates,
   getAllWebFileItems,
-  getWebStorageSummary,
   getWebStoredEntry,
   ingestWebFileList,
   pickWebFolderForWorkspace,
@@ -164,6 +174,15 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   const webFolderInputRef = useRef<HTMLInputElement | null>(null);
   const webPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const webVideoInputRef = useRef<HTMLInputElement | null>(null);
+  const [indexState, setIndexState] = useState<CachedPhoneIndexState>(() =>
+    getCachedPhoneIndexState()
+  );
+
+  useEffect(() => {
+    return subscribePhoneIndexCache((next) => {
+      setIndexState(next);
+    });
+  }, []);
 
   useEffect(() => {
     setActiveTool(initialTool);
@@ -182,12 +201,12 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     };
   }, []);
 
-  // Load current sub-tool automatically when switching
+  // Load current sub-tool automatically from pre-indexed cache (only scans if cache isn't ready yet)
   useEffect(() => {
     setSelectedUris(new Set());
     setErrorMsg(null);
     setStatusMsg(null);
-    if (activeTool === 'duplicates') void runDuplicateScan();
+    if (activeTool === 'duplicates') void runDuplicateScan(false);
     if (activeTool === 'large') void runLargeScan(largeMinMb, largeCategory);
     if (activeTool === 'whatsapp') void runWhatsAppScan();
     if (activeTool === 'downloads') void runDownloadsScan();
@@ -195,13 +214,13 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     if (activeTool === 'photo_compress') void loadMediaCandidates('photo');
     if (activeTool === 'video_compress') void loadMediaCandidates('video');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool]);
+  }, [activeTool, indexState.ready, indexState.indexedAt, indexState.duplicatesReady]);
 
   // Automatically re-scan active Storage Manager view when All Files Access permission is granted on resume
   useEffect(() => {
     if (!refreshKey || refreshKey <= 0) return;
     if (activeTool === 'analyzer') void onRefreshSummary();
-    if (activeTool === 'duplicates') void runDuplicateScan();
+    if (activeTool === 'duplicates') void runDuplicateScan(true);
     if (activeTool === 'large') void runLargeScan(largeMinMb, largeCategory);
     if (activeTool === 'whatsapp') void runWhatsAppScan();
     if (activeTool === 'downloads') void runDownloadsScan();
@@ -237,19 +256,47 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     setStatusMsg(`Loaded ${items.length} local files for storage inspection.`);
   };
 
-  const runDuplicateScan = async () => {
-    setIsLoading(true);
+  const runDuplicateScan = async (forceRefresh = false) => {
     setErrorMsg(null);
+    const cachedDup = getCachedDuplicates();
+    if (!forceRefresh && cachedDup.ready) {
+      setDupGroups(cachedDup.groups);
+      setDupWastedBytes(cachedDup.totalWastedBytes);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      if (isNativeAndroid()) {
-        const res = await PhoneManager.findDuplicates();
-        setDupGroups(res.groups || []);
-        setDupWastedBytes(res.totalWastedBytes || 0);
-      } else {
-        const res = await findWebDuplicates();
-        setDupGroups(res.groups);
-        setDupWastedBytes(res.totalWastedBytes);
+      if (!isNativeAndroid()) {
+        if (!hasCachedPhoneIndex() || forceRefresh) {
+          const next = await syncCachedPhoneIndex(forceRefresh);
+          setDupGroups(next.duplicateGroups);
+          setDupWastedBytes(next.duplicateWastedBytes);
+        } else {
+          const res = await findWebDuplicates();
+          setDupGroups(res.groups);
+          setDupWastedBytes(res.totalWastedBytes);
+          updateCachedDuplicates(res.groups, res.totalWastedBytes);
+        }
+        return;
       }
+
+      if (forceRefresh || !hasCachedPhoneIndex()) {
+        const next = await syncCachedPhoneIndex(forceRefresh);
+        if (next.duplicatesReady) {
+          setDupGroups(next.duplicateGroups);
+          setDupWastedBytes(next.duplicateWastedBytes);
+          return;
+        }
+      }
+
+      const res = await PhoneManager.findDuplicates({ forceRefresh });
+      const groups = res.groups || [];
+      const wasted = res.totalWastedBytes || 0;
+      setDupGroups(groups);
+      setDupWastedBytes(wasted);
+      updateCachedDuplicates(groups, wasted);
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Duplicate scan failed.');
     } finally {
@@ -258,21 +305,44 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   };
 
   const runLargeScan = async (minMb: number, cat: string) => {
-    setIsLoading(true);
     setErrorMsg(null);
     const minBytes = minMb * 1024 * 1024;
+
+    if (!isNativeAndroid()) {
+      const source = hasCachedPhoneIndex()
+        ? getCachedLargeFiles()
+        : getAllWebFileItems();
+      const filtered = source
+        .filter((f) => f.size >= minBytes && (cat === 'all' || f.category === cat))
+        .sort((a, b) => b.size - a.size);
+      setLargeFiles(filtered);
+      setIsLoading(false);
+      return;
+    }
+
+    if (hasCachedPhoneIndex()) {
+      const cached = getCachedLargeFiles()
+        .filter((f) => f.size >= minBytes && (cat === 'all' || f.category === cat))
+        .sort((a, b) => b.size - a.size);
+      setLargeFiles(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      if (isNativeAndroid()) {
+      const next = await syncCachedPhoneIndex(false);
+      if (next.ready) {
+        const cached = (next.largeFiles || [])
+          .filter((f) => f.size >= minBytes && (cat === 'all' || f.category === cat))
+          .sort((a, b) => b.size - a.size);
+        setLargeFiles(cached);
+      } else {
         const res = await PhoneManager.findLargeFiles({
           minSizeBytes: minBytes,
           category: cat,
         });
         setLargeFiles(res.files || []);
-      } else {
-        const all = getAllWebFileItems()
-          .filter((f) => f.size >= minBytes && (cat === 'all' || f.category === cat))
-          .sort((a, b) => b.size - a.size);
-        setLargeFiles(all);
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Large file scan failed.');
@@ -282,19 +352,38 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   };
 
   const runWhatsAppScan = async () => {
-    setIsLoading(true);
     setErrorMsg(null);
+    if (!isNativeAndroid()) {
+      const all = hasCachedPhoneIndex()
+        ? getCachedCategoryItems('whatsapp')
+        : getAllWebFileItems()
+            .filter((f) => `${f.path}/${f.name}`.toLowerCase().includes('whatsapp'))
+            .map((f) => ({ ...f, category: classifyWhatsAppWebCategory(f) }));
+      setWhatsappFiles(all);
+      setWaRequiresSafHint(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (hasCachedPhoneIndex()) {
+      const cached = getCachedCategoryItems('whatsapp');
+      setWhatsappFiles(cached);
+      setWaRequiresSafHint(cached.length === 0);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      if (isNativeAndroid()) {
+      const next = await syncCachedPhoneIndex(false);
+      if (next.ready) {
+        const cached = next.categoriesFiles.whatsapp || [];
+        setWhatsappFiles(cached);
+        setWaRequiresSafHint(cached.length === 0);
+      } else {
         const res = await PhoneManager.scanWhatsAppMedia();
         setWhatsappFiles(res.files || []);
         setWaRequiresSafHint(Boolean(res.requiresSafHint));
-      } else {
-        const all = getAllWebFileItems()
-          .filter((f) => `${f.path}/${f.name}`.toLowerCase().includes('whatsapp'))
-          .map((f) => ({ ...f, category: classifyWhatsAppWebCategory(f) }));
-        setWhatsappFiles(all);
-        setWaRequiresSafHint(false);
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'WhatsApp media scan failed.');
@@ -311,7 +400,8 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     try {
       const res = await PhoneManager.requestSafFolderAccess({ preset: 'whatsapp' });
       if (res.granted) {
-        setStatusMsg(`Granted access to ${res.label || 'WhatsApp Media'}. Scanning WhatsApp media...`);
+        setStatusMsg(`Granted access to ${res.label || 'WhatsApp Media'}. Updating index...`);
+        await onRefreshSummary();
         await runWhatsAppScan();
       }
     } catch (err) {
@@ -320,26 +410,44 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   };
 
   const runDownloadsScan = async () => {
-    setIsLoading(true);
     setErrorMsg(null);
+    if (!isNativeAndroid()) {
+      if (hasCachedPhoneIndex()) {
+        setDownloadsFiles(getCachedCategoryItems('downloads'));
+        setIsLoading(false);
+        return;
+      }
+      const thirtyDaysAgo = Date.now() - 30 * 86400_000;
+      const all = getAllWebFileItems()
+        .filter((f) => f.path.toLowerCase().includes('download') || f.category === 'downloads')
+        .map((f) => {
+          const lower = f.name.toLowerCase();
+          let cat = 'other';
+          if (/\.(apk|apks|xapk)$/.test(lower)) cat = 'apk';
+          else if (/\.(zip|rar|7z|tar|gz)$/.test(lower)) cat = 'archive';
+          else if (lower.endsWith('.pdf')) cat = 'pdf';
+          else if (f.dateModified > 0 && f.dateModified < thirtyDaysAgo) cat = 'old';
+          return { ...f, category: cat };
+        });
+      setDownloadsFiles(all);
+      setIsLoading(false);
+      return;
+    }
+
+    if (hasCachedPhoneIndex()) {
+      setDownloadsFiles(getCachedCategoryItems('downloads'));
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      if (isNativeAndroid()) {
+      const next = await syncCachedPhoneIndex(false);
+      if (next.ready) {
+        setDownloadsFiles(next.categoriesFiles.downloads || []);
+      } else {
         const res = await PhoneManager.scanDownloads();
         setDownloadsFiles(res.files || []);
-      } else {
-        const thirtyDaysAgo = Date.now() - 30 * 86400_000;
-        const all = getAllWebFileItems()
-          .filter((f) => f.path.toLowerCase().includes('download') || f.category === 'downloads')
-          .map((f) => {
-            const lower = f.name.toLowerCase();
-            let cat = 'other';
-            if (/\.(apk|apks|xapk)$/.test(lower)) cat = 'apk';
-            else if (/\.(zip|rar|7z|tar|gz)$/.test(lower)) cat = 'archive';
-            else if (lower.endsWith('.pdf')) cat = 'pdf';
-            else if (f.dateModified > 0 && f.dateModified < thirtyDaysAgo) cat = 'old';
-            return { ...f, category: cat };
-          });
-        setDownloadsFiles(all);
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Downloads scan failed.');
@@ -348,36 +456,32 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
     }
   };
 
-  const runRecommendationsScan = async () => {
-    setIsLoading(true);
+  const runRecommendationsScan = async (forceRefresh = false) => {
     setErrorMsg(null);
-    try {
-      let groups: DuplicateGroup[] = [];
-      let large: PhoneFileItem[] = [];
-      let dls: PhoneFileItem[] = [];
-      let wa: PhoneFileItem[] = [];
+    if (!forceRefresh && hasCachedPhoneIndex()) {
+      const dup = getCachedDuplicates();
+      const large = getCachedLargeFiles().filter((f) => f.size >= 50 * 1024 * 1024);
+      const dls = getCachedCategoryItems('downloads');
+      const wa = getCachedCategoryItems('whatsapp');
+      setRecommendations(
+        buildStorageRecommendations({
+          duplicateGroups: dup.groups,
+          largeFiles: large,
+          downloads: dls,
+          whatsappFiles: wa,
+        })
+      );
+      setIsLoading(false);
+      return;
+    }
 
-      if (isNativeAndroid()) {
-        const [dRes, lRes, dlRes, waRes] = await Promise.all([
-          PhoneManager.findDuplicates(),
-          PhoneManager.findLargeFiles({ minSizeBytes: 50 * 1024 * 1024, category: 'all' }),
-          PhoneManager.scanDownloads(),
-          PhoneManager.scanWhatsAppMedia(),
-        ]);
-        groups = dRes.groups || [];
-        large = lRes.files || [];
-        dls = dlRes.files || [];
-        wa = waRes.files || [];
-      } else {
-        const dup = await findWebDuplicates();
-        groups = dup.groups;
-        const all = getAllWebFileItems();
-        large = all.filter((f) => f.size >= 50 * 1024 * 1024);
-        dls = all.filter((f) => f.category === 'downloads' || f.path.toLowerCase().includes('download'));
-        wa = all
-          .filter((f) => f.path.toLowerCase().includes('whatsapp'))
-          .map((f) => ({ ...f, category: classifyWhatsAppWebCategory(f) }));
-      }
+    setIsLoading(true);
+    try {
+      const next = await syncCachedPhoneIndex(forceRefresh);
+      const groups = next.duplicateGroups;
+      const large = next.largeFiles.filter((f) => f.size >= 50 * 1024 * 1024);
+      const dls = next.categoriesFiles.downloads || [];
+      const wa = next.categoriesFiles.whatsapp || [];
 
       setRecommendations(
         buildStorageRecommendations({
@@ -395,45 +499,33 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
   };
 
   const loadMediaCandidates = async (kind: 'photo' | 'video') => {
+    if (!isNativeAndroid()) {
+      const all = getAllWebFileItems();
+      if (kind === 'photo') {
+        setPhotoCandidates(all.filter((f) => f.category === 'images'));
+      } else {
+        setVideoCandidates(all.filter((f) => f.category === 'videos'));
+      }
+      return;
+    }
+
+    if (hasCachedPhoneIndex()) {
+      if (kind === 'photo') {
+        setPhotoCandidates(getCachedCategoryItems('images').slice(0, 80));
+      } else {
+        setVideoCandidates(getCachedCategoryItems('videos').slice(0, 60));
+      }
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (isNativeAndroid()) {
-        if (kind === 'photo') {
-          const res = await AudioLibrary.getAllImageFiles();
-          setPhotoCandidates(
-            (res.images || []).slice(0, 60).map((img) => ({
-              id: img.id,
-              name: img.displayName || img.title,
-              uri: img.uri,
-              path: '',
-              size: img.size,
-              dateModified: 0,
-              mimeType: img.mimeType,
-              category: 'images',
-            }))
-          );
-        } else {
-          const res = await AudioLibrary.getAllVideoFiles();
-          setVideoCandidates(
-            (res.videos || []).slice(0, 50).map((vid) => ({
-              id: vid.id,
-              name: vid.displayName || vid.title,
-              uri: vid.uri,
-              path: '',
-              size: vid.size,
-              dateModified: 0,
-              mimeType: vid.mimeType,
-              category: 'videos',
-            }))
-          );
-        }
+      const next = await syncCachedPhoneIndex(false);
+      if (kind === 'photo') {
+        setPhotoCandidates((next.categoriesFiles.images || []).slice(0, 80));
       } else {
-        const all = getAllWebFileItems();
-        if (kind === 'photo') {
-          setPhotoCandidates(all.filter((f) => f.category === 'images'));
-        } else {
-          setVideoCandidates(all.filter((f) => f.category === 'videos'));
-        }
+        setVideoCandidates((next.categoriesFiles.videos || []).slice(0, 60));
       }
     } catch {
       // ignore permission warnings here
@@ -724,11 +816,12 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
                 )}
                 <button
                   type="button"
+                  disabled={indexState.isIndexing}
                   onClick={() => void onRefreshSummary()}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Refresh</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${indexState.isIndexing ? 'animate-spin text-emerald-500' : ''}`} />
+                  <span>{indexState.isIndexing ? 'Indexing...' : 'Refresh'}</span>
                 </button>
               </div>
             </div>
@@ -846,17 +939,31 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => void runDuplicateScan()}
-                disabled={isLoading}
+                onClick={() => void runDuplicateScan(true)}
+                disabled={isLoading || indexState.isIndexing}
                 className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
-                {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                <span>Rescan</span>
+                {isLoading || indexState.isIndexing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                <span>{isLoading || indexState.isIndexing ? 'Scanning...' : 'Rescan'}</span>
               </button>
             </div>
           </div>
 
-          {!isLoading && dupGroups.length === 0 ? (
+          {dupGroups.length === 0 && (isLoading || (indexState.isIndexing && !indexState.duplicatesReady)) ? (
+            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+              <Loader2 className="w-7 h-7 mx-auto text-emerald-500 animate-spin" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                Preparing duplicate scan...
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Using cached file sizes and fast header/footer checks before full SHA-256 verification.
+              </p>
+            </div>
+          ) : dupGroups.length === 0 ? (
             <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
               <Copy className="w-7 h-7 mx-auto text-slate-400" />
               <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -988,7 +1095,12 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
             </div>
           </div>
 
-          {!isLoading && largeFiles.length === 0 ? (
+          {largeFiles.length === 0 && (isLoading || (indexState.isIndexing && !indexState.ready)) ? (
+            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+              <span>Loading indexed large files...</span>
+            </div>
+          ) : largeFiles.length === 0 ? (
             <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400">
               No accessible files larger than {largeMinMb} MB matched this filter.
             </div>
@@ -1112,7 +1224,12 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
             ))}
           </div>
 
-          {!isLoading && filteredWhatsapp.length === 0 ? (
+          {filteredWhatsapp.length === 0 && (isLoading || (indexState.isIndexing && !indexState.ready)) ? (
+            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+              <span>Loading indexed WhatsApp media...</span>
+            </div>
+          ) : filteredWhatsapp.length === 0 ? (
             <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400">
               No WhatsApp media found in this category yet.
             </div>
@@ -1219,7 +1336,12 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
             </div>
           </div>
 
-          {!isLoading && sortedDownloads.length === 0 ? (
+          {sortedDownloads.length === 0 && (isLoading || (indexState.isIndexing && !indexState.ready)) ? (
+            <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
+              <span>Loading indexed downloads...</span>
+            </div>
+          ) : sortedDownloads.length === 0 ? (
             <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-950/50 text-xs text-slate-500 dark:text-slate-400 space-y-2.5">
               <p>No downloaded files found for this filter.</p>
               {isNativeAndroid() && !allFilesGranted && onRequestAllFilesAccess && (
@@ -1562,11 +1684,11 @@ export const StorageManagerView: React.FC<StorageManagerViewProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => void runRecommendationsScan()}
-              disabled={isLoading}
+              onClick={() => void runRecommendationsScan(true)}
+              disabled={isLoading || indexState.isIndexing}
               className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer"
             >
-              {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              {isLoading || indexState.isIndexing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               <span>Refresh</span>
             </button>
           </div>

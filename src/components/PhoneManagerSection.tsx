@@ -12,19 +12,26 @@ import {
   Copy,
   ShieldAlert,
   X,
+  Loader2,
 } from 'lucide-react';
 import { isNativeAndroid } from '../plugins/audioLibrary';
 import {
   AllFilesAccessStatus,
   PhoneManager,
-  StorageSummaryResult,
   formatBytes,
   formatShortDate,
 } from '../plugins/phoneManager';
-import { getWebStorageSummary } from '../utils/localStorageAnalyzer';
+import {
+  CachedPhoneIndexState,
+  clearCachedPhoneIndex,
+  getCachedPhoneIndexState,
+  subscribePhoneIndexCache,
+  syncCachedPhoneIndex,
+} from '../utils/fileIndexCache';
 import {
   ConnectedEmailAccount,
   getConnectedEmailAccounts,
+  subscribeConnectedAccounts,
 } from '../utils/emailAuthAndApi';
 import { StorageManagerView, StorageSubTool } from './phone-manager/StorageManagerView';
 import { EmailManagerView } from './phone-manager/EmailManagerView';
@@ -42,7 +49,9 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
 }) => {
   const [screen, setScreen] = useState<PhoneManagerScreen>('home');
   const [storageInitialTool, setStorageInitialTool] = useState<StorageSubTool>('analyzer');
-  const [summary, setSummary] = useState<StorageSummaryResult | null>(null);
+  const [indexState, setIndexState] = useState<CachedPhoneIndexState>(() =>
+    getCachedPhoneIndexState()
+  );
   const [allFilesStatus, setAllFilesStatus] = useState<AllFilesAccessStatus | null>(null);
   const [allFilesDismissed, setAllFilesDismissed] = useState(false);
   const [permissionRefreshKey, setPermissionRefreshKey] = useState(0);
@@ -51,15 +60,24 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
     getConnectedEmailAccounts()
   );
 
-  const refreshSummary = async () => {
+  const summary = indexState.summary;
+
+  useEffect(() => {
+    const unsubIndex = subscribePhoneIndexCache((next) => {
+      setIndexState(next);
+    });
+    const unsubAccounts = subscribeConnectedAccounts(() => {
+      setConnectedAccounts(getConnectedEmailAccounts());
+    });
+    return () => {
+      unsubIndex();
+      unsubAccounts();
+    };
+  }, []);
+
+  const refreshSummary = async (forceRefresh = false) => {
     try {
-      if (isNativeAndroid()) {
-        const res = await PhoneManager.getStorageSummary();
-        setSummary(res);
-      } else {
-        const res = await getWebStorageSummary();
-        setSummary(res);
-      }
+      await syncCachedPhoneIndex(forceRefresh);
     } catch {
       // ignore initial read error until permission granted
     }
@@ -73,8 +91,9 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
       const prev = lastAllFilesGrantedRef.current;
       lastAllFilesGrantedRef.current = status.granted;
       if (status.granted && prev === false) {
+        clearCachedPhoneIndex();
         setPermissionRefreshKey((k) => k + 1);
-        await refreshSummary();
+        await refreshSummary(true);
       }
     } catch {
       // keep UI responsive even if check fails
@@ -89,8 +108,9 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
       const prev = lastAllFilesGrantedRef.current;
       lastAllFilesGrantedRef.current = res.granted;
       if (res.granted && prev !== true) {
+        clearCachedPhoneIndex();
         setPermissionRefreshKey((k) => k + 1);
-        await refreshSummary();
+        await refreshSummary(true);
       }
     } catch {
       // Permission denial or canceled settings flow should never crash
@@ -99,7 +119,8 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
 
   useEffect(() => {
     if (!isNativeAndroid()) return;
-    let handle: { remove: () => Promise<void> } | null = null;
+    let allFilesHandle: { remove: () => Promise<void> } | null = null;
+
     void PhoneManager.addListener('allFilesAccessChanged', (ev) => {
       setAllFilesStatus((prev) => ({
         granted: ev.granted,
@@ -110,11 +131,12 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
       const prev = lastAllFilesGrantedRef.current;
       lastAllFilesGrantedRef.current = ev.granted;
       if (ev.granted && prev !== true) {
+        clearCachedPhoneIndex();
         setPermissionRefreshKey((k) => k + 1);
-        void refreshSummary();
+        void refreshSummary(true);
       }
     }).then((h) => {
-      handle = h;
+      allFilesHandle = h;
     });
 
     const handleResumeCheck = () => {
@@ -125,7 +147,7 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
     window.addEventListener('focus', handleResumeCheck);
 
     return () => {
-      if (handle) void handle.remove();
+      if (allFilesHandle) void allFilesHandle.remove();
       document.removeEventListener('visibilitychange', handleResumeCheck);
       window.removeEventListener('focus', handleResumeCheck);
     };
@@ -134,8 +156,10 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
 
   useEffect(() => {
     if (isActiveTab) {
-      void refreshSummary();
       void syncAllFilesStatus();
+      if (!getCachedPhoneIndexState().ready) {
+        void refreshSummary(false);
+      }
       setConnectedAccounts(getConnectedEmailAccounts());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,6 +268,15 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
       {/* PHONE MANAGER HOME DASHBOARD */}
       {screen === 'home' && (
         <div className="space-y-5">
+          {isNativeAndroid() && indexState.isIndexing && (
+            <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin shrink-0" />
+              <p className="text-xs text-slate-700 dark:text-slate-200 font-medium">
+                Indexing accessible device files once so Folders, Images, Videos, Audio, Documents & Downloads open instantly...
+              </p>
+            </div>
+          )}
+
           {isNativeAndroid() && allFilesStatus && !allFilesStatus.granted && !allFilesDismissed && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -437,7 +470,7 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
         <StorageManagerView
           initialTool={storageInitialTool}
           summary={summary}
-          onRefreshSummary={refreshSummary}
+          onRefreshSummary={() => refreshSummary(true)}
           allFilesGranted={allFilesGranted}
           onRequestAllFilesAccess={handleRequestAllFilesAccess}
           refreshKey={permissionRefreshKey}
@@ -453,7 +486,7 @@ export const PhoneManagerSection: React.FC<PhoneManagerSectionProps> = ({
 
       {screen === 'files' && (
         <FileManagerView
-          onStorageMutated={refreshSummary}
+          onStorageMutated={() => refreshSummary(true)}
           allFilesGranted={allFilesGranted}
           onRequestAllFilesAccess={handleRequestAllFilesAccess}
           refreshKey={permissionRefreshKey}

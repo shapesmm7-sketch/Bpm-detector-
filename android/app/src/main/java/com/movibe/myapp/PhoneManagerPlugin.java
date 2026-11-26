@@ -32,6 +32,9 @@ import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
+import android.util.JsonReader;
+import android.util.JsonToken;
+import android.util.JsonWriter;
 import android.webkit.MimeTypeMap;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -57,7 +60,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,12 +89,18 @@ public class PhoneManagerPlugin extends Plugin {
     private static final String PREFS_NAME = "movibe_phone_manager_prefs";
     private static final String KEY_SAF_TREES = "saf_tree_uris";
     private static final String KEY_SAF_FILES = "saf_file_uris";
+    private static final String INDEX_CACHE_FILE = "movibe_file_index_v1.json";
+    private static final int INDEX_CACHE_VERSION = 2;
     private static final long DUPLICATE_MAX_FILE_BYTES = 350L * 1024L * 1024L;
     private static final int MAX_DIRECT_SCAN_FILES = 25000;
     private static final int MAX_DIRECT_SCAN_DEPTH = 10;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService opExecutor = Executors.newFixedThreadPool(3);
+    private final ExecutorService heavyExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService pdfThumbExecutor = Executors.newFixedThreadPool(2);
+    private final Object indexBuildLock = new Object();
+    private volatile FileIndexSnapshot cachedIndex = null;
     private ActivityResultLauncher<Intent> safTreeLauncher;
     private ActivityResultLauncher<Intent> safFilesLauncher;
     private ActivityResultLauncher<IntentSenderRequest> deleteConsentLauncher;
@@ -163,6 +176,7 @@ public class PhoneManagerPlugin extends Plugin {
 
                 String label = treeUri.getLastPathSegment() != null ? treeUri.getLastPathSegment() : "Folder";
                 saveSafTreeUri(treeUri.toString(), label);
+                invalidateFileIndex(true);
 
                 JSObject res = new JSObject();
                 res.put("granted", true);
@@ -209,6 +223,9 @@ public class PhoneManagerPlugin extends Plugin {
                     } catch (Exception ignored) {}
                     saveSafFileUri(u.toString());
                 }
+                if (!picked.isEmpty()) {
+                    invalidateFileIndex(true);
+                }
 
                 JSObject res = new JSObject();
                 res.put("addedCount", picked.size());
@@ -226,7 +243,8 @@ public class PhoneManagerPlugin extends Plugin {
                 pendingConsentRetry = null;
 
                 if (result != null && result.getResultCode() == Activity.RESULT_OK && retry != null) {
-                    executor.execute(retry);
+                    invalidateFileIndex(true);
+                    opExecutor.execute(retry);
                 } else if (saved != null) {
                     JSObject res = new JSObject();
                     res.put("deletedCount", 0);
@@ -300,6 +318,7 @@ public class PhoneManagerPlugin extends Plugin {
     private void emitAllFilesAccessChangeIfNeeded(boolean nowGranted) {
         if (lastKnownAllFilesGranted == null || lastKnownAllFilesGranted != nowGranted) {
             lastKnownAllFilesGranted = nowGranted;
+            invalidateFileIndex(true);
             JSObject ev = new JSObject();
             ev.put("granted", nowGranted);
             ev.put("hasMediaRead", hasStorageReadPermission());
@@ -524,323 +543,753 @@ public class PhoneManagerPlugin extends Plugin {
         return false;
     }
 
-    @PluginMethod
-    public void getStorageSummary(PluginCall call) {
-        executor.execute(() -> {
+    private static class FileIndexSnapshot {
+        long indexedAtMs;
+        boolean allFilesGranted;
+        boolean hasMediaRead;
+        long totalBytes;
+        long availableBytes;
+        long usedBytes;
+        long imgBytes;
+        int imgCount;
+        long vidBytes;
+        int vidCount;
+        long audBytes;
+        int audCount;
+        long docBytes;
+        int docCount;
+        long dlBytes;
+        int dlCount;
+        long otherBytes;
+        int otherCount;
+        final List<FileScanRecord> allRecords = new ArrayList<>();
+        final List<FileScanRecord> imagesList = new ArrayList<>();
+        final List<FileScanRecord> videosList = new ArrayList<>();
+        final List<FileScanRecord> audioList = new ArrayList<>();
+        final List<FileScanRecord> documentsList = new ArrayList<>();
+        final List<FileScanRecord> downloadsList = new ArrayList<>();
+        final List<FileScanRecord> otherList = new ArrayList<>();
+        final List<FileScanRecord> whatsappList = new ArrayList<>();
+        final List<FileScanRecord> largeFilesList = new ArrayList<>();
+        final List<DuplicateGroupRecord> duplicateGroups = new ArrayList<>();
+        long duplicateWastedBytes = 0L;
+        boolean duplicatesComputed = false;
+        boolean fromCache = false;
+        long scanDurationMs = 0L;
+    }
+
+    private void invalidateFileIndex(boolean deleteDiskFile) {
+        cachedIndex = null;
+        if (deleteDiskFile) {
             try {
-                Context ctx = getContext();
-                ContentResolver resolver = ctx.getContentResolver();
-                boolean allFilesGranted = hasAllFilesAccess();
-
-                StatFs primaryStat = new StatFs(Environment.getDataDirectory().getPath());
-                long totalBytes = primaryStat.getTotalBytes();
-                long availableBytes = primaryStat.getAvailableBytes();
-
-                List<File> volumeRoots = getAccessibleVolumeRoots(ctx);
-                File primaryRoot = Environment.getExternalStorageDirectory();
-                String primaryCanon = primaryRoot != null ? primaryRoot.getCanonicalPath() : "";
-                Set<String> countedStatSignatures = new HashSet<>();
-                countedStatSignatures.add(totalBytes + ":" + availableBytes);
-                for (File volRoot : volumeRoots) {
-                    try {
-                        String volCanon = volRoot.getCanonicalPath();
-                        if (volCanon.equals(primaryCanon)) continue;
-                        StatFs extraStat = new StatFs(volRoot.getAbsolutePath());
-                        long extraTotal = extraStat.getTotalBytes();
-                        long extraAvail = extraStat.getAvailableBytes();
-                        String sig = extraTotal + ":" + extraAvail;
-                        if (extraTotal > 0L && countedStatSignatures.add(sig)) {
-                            totalBytes += extraTotal;
-                            availableBytes += extraAvail;
-                        }
-                    } catch (Exception ignored) {}
+                File f = new File(getContext().getFilesDir(), INDEX_CACHE_FILE);
+                if (f.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    f.delete();
                 }
-                long usedBytes = Math.max(0L, totalBytes - availableBytes);
+            } catch (Exception ignored) {}
+        }
+    }
 
-                long imgBytes = 0L; int imgCount = 0;
-                long vidBytes = 0L; int vidCount = 0;
-                long audBytes = 0L; int audCount = 0;
-                long docBytes = 0L; int docCount = 0;
-                long dlBytes = 0L; int dlCount = 0;
-                long otherBytes = 0L; int otherCount = 0;
+    private long[] computeLiveStorageBytes(Context ctx) {
+        StatFs primaryStat = new StatFs(Environment.getDataDirectory().getPath());
+        long totalBytes = primaryStat.getTotalBytes();
+        long availableBytes = primaryStat.getAvailableBytes();
 
-                List<JSObject> recentList = new ArrayList<>();
-                Set<Long> countedIds = new HashSet<>();
-                Set<String> countedCanonicalPaths = new HashSet<>();
+        List<File> volumeRoots = getAccessibleVolumeRoots(ctx);
+        File primaryRoot = Environment.getExternalStorageDirectory();
+        String primaryCanon = "";
+        try {
+            primaryCanon = primaryRoot != null ? primaryRoot.getCanonicalPath() : "";
+        } catch (Exception ignored) {}
 
-                if (allFilesGranted) {
-                    List<FileScanRecord> directRecords = new ArrayList<>();
-                    Set<String> visitedDirs = new HashSet<>();
-                    for (File volRoot : volumeRoots) {
-                        scanSharedVolumeRecursive(
-                            volRoot,
-                            0,
-                            MAX_DIRECT_SCAN_DEPTH,
-                            directRecords,
-                            countedCanonicalPaths,
-                            visitedDirs,
-                            MAX_DIRECT_SCAN_FILES,
-                            false
-                        );
+        Set<String> countedStatSignatures = new HashSet<>();
+        countedStatSignatures.add(totalBytes + ":" + availableBytes);
+        for (File volRoot : volumeRoots) {
+            try {
+                String volCanon = volRoot.getCanonicalPath();
+                if (volCanon.equals(primaryCanon)) continue;
+                StatFs extraStat = new StatFs(volRoot.getAbsolutePath());
+                long extraTotal = extraStat.getTotalBytes();
+                long extraAvail = extraStat.getAvailableBytes();
+                String sig = extraTotal + ":" + extraAvail;
+                if (extraTotal > 0L && countedStatSignatures.add(sig)) {
+                    totalBytes += extraTotal;
+                    availableBytes += extraAvail;
+                }
+            } catch (Exception ignored) {}
+        }
+        long usedBytes = Math.max(0L, totalBytes - availableBytes);
+        return new long[] { totalBytes, availableBytes, usedBytes };
+    }
+
+    private FileIndexSnapshot getOrBuildFileIndex(boolean forceRefresh) {
+        boolean nowAllFiles = hasAllFilesAccess();
+        boolean nowMediaRead = hasStorageReadPermission();
+        Context ctx = getContext();
+
+        FileIndexSnapshot fast = cachedIndex;
+        if (!forceRefresh && fast != null && fast.allFilesGranted == nowAllFiles && fast.hasMediaRead == nowMediaRead) {
+            long[] liveStats = computeLiveStorageBytes(ctx);
+            fast.totalBytes = liveStats[0];
+            fast.availableBytes = liveStats[1];
+            fast.usedBytes = liveStats[2];
+            fast.fromCache = true;
+            return fast;
+        }
+
+        synchronized (indexBuildLock) {
+            FileIndexSnapshot recheck = cachedIndex;
+            if (!forceRefresh && recheck != null && recheck.allFilesGranted == nowAllFiles && recheck.hasMediaRead == nowMediaRead) {
+                long[] liveStats = computeLiveStorageBytes(ctx);
+                recheck.totalBytes = liveStats[0];
+                recheck.availableBytes = liveStats[1];
+                recheck.usedBytes = liveStats[2];
+                recheck.fromCache = true;
+                return recheck;
+            }
+
+            if (!forceRefresh) {
+                FileIndexSnapshot disk = loadIndexFromDisk(ctx, nowAllFiles, nowMediaRead);
+                if (disk != null) {
+                    long[] liveStats = computeLiveStorageBytes(ctx);
+                    disk.totalBytes = liveStats[0];
+                    disk.availableBytes = liveStats[1];
+                    disk.usedBytes = liveStats[2];
+                    disk.fromCache = true;
+                    cachedIndex = disk;
+                    return disk;
+                }
+            }
+
+            long startMs = System.currentTimeMillis();
+            FileIndexSnapshot built = buildFreshFileIndex(ctx, nowAllFiles, nowMediaRead);
+            built.scanDurationMs = Math.max(1L, System.currentTimeMillis() - startMs);
+            built.fromCache = false;
+            cachedIndex = built;
+            saveIndexToDisk(ctx, built);
+            return built;
+        }
+    }
+
+    private Map<String, Long> loadMediaDurationsByPath(ContentResolver resolver, Uri collectionUri) {
+        Map<String, Long> map = new HashMap<>();
+        try (Cursor c = resolver.query(
+            collectionUri,
+            new String[] { MediaStore.MediaColumns.DATA, MediaStore.MediaColumns.DURATION },
+            MediaStore.MediaColumns.DURATION + " > 0",
+            null,
+            null
+        )) {
+            if (c != null) {
+                int dataIdx = c.getColumnIndex(MediaStore.MediaColumns.DATA);
+                int durIdx = c.getColumnIndex(MediaStore.MediaColumns.DURATION);
+                while (c.moveToNext()) {
+                    String p = dataIdx >= 0 ? c.getString(dataIdx) : null;
+                    long d = durIdx >= 0 ? c.getLong(durIdx) : 0L;
+                    if (p != null && !p.isEmpty() && d > 0L) {
+                        map.put(p, d);
                     }
-                    Collections.sort(directRecords, (a, b) -> Long.compare(b.dateModified, a.dateModified));
-                    for (FileScanRecord rec : directRecords) {
-                        if ("images".equals(rec.category)) {
-                            imgBytes += rec.size;
-                            imgCount++;
-                        } else if ("videos".equals(rec.category)) {
-                            vidBytes += rec.size;
-                            vidCount++;
-                        } else if ("audio".equals(rec.category)) {
-                            audBytes += rec.size;
-                            audCount++;
-                        } else if ("documents".equals(rec.category)) {
-                            docBytes += rec.size;
-                            docCount++;
-                        } else if ("downloads".equals(rec.category)) {
-                            dlBytes += rec.size;
-                            dlCount++;
-                        } else {
-                            otherBytes += rec.size;
-                            otherCount++;
-                        }
-                        if (recentList.size() < 24) {
-                            recentList.add(buildMediaItemObj(
-                                rec.id, rec.name, rec.uri, rec.path, rec.size, rec.dateModified, rec.mimeType, rec.category
-                            ));
-                        }
-                    }
                 }
+            }
+        } catch (Exception ignored) {}
+        return map;
+    }
 
-                if (!allFilesGranted) {
-                    // MediaStore fallback when All Files Access is not granted
-                    // Images
-                    try (Cursor c = resolver.query(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        new String[] { MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.MIME_TYPE },
-                        null, null, MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
-                    )) {
-                        if (c != null) {
-                            int idIdx = c.getColumnIndex(MediaStore.MediaColumns._ID);
-                            int nameIdx = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
-                            int sizeIdx = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
-                            int dateIdx = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
-                            int mimeIdx = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
-                            while (c.moveToNext()) {
-                                long sz = sizeIdx >= 0 ? Math.max(0L, c.getLong(sizeIdx)) : 0L;
-                                if (sz <= 0L) continue;
-                                long id = idIdx >= 0 ? c.getLong(idIdx) : -1L;
-                                if (id > 0) countedIds.add(id);
-                                imgBytes += sz;
-                                imgCount++;
-                                if (recentList.size() < 20) {
-                                    recentList.add(buildMediaItemObj(
-                                        String.valueOf(id),
-                                        nameIdx >= 0 ? c.getString(nameIdx) : "Image",
-                                        ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString(),
-                                        "",
-                                        sz,
-                                        (dateIdx >= 0 ? c.getLong(dateIdx) * 1000L : 0L),
-                                        mimeIdx >= 0 ? c.getString(mimeIdx) : "image/*",
-                                        "images"
-                                    ));
-                                }
-                            }
-                        }
-                    } catch (Exception ignored) {}
+    private FileIndexSnapshot buildFreshFileIndex(Context ctx, boolean allFilesGranted, boolean hasMediaRead) {
+        FileIndexSnapshot snap = new FileIndexSnapshot();
+        snap.indexedAtMs = System.currentTimeMillis();
+        snap.allFilesGranted = allFilesGranted;
+        snap.hasMediaRead = hasMediaRead;
 
-                    // Videos
-                    try (Cursor c = resolver.query(
-                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                        new String[] { MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.MIME_TYPE },
-                        null, null, MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
-                    )) {
-                        if (c != null) {
-                            int idIdx = c.getColumnIndex(MediaStore.MediaColumns._ID);
-                            int nameIdx = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
-                            int sizeIdx = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
-                            int dateIdx = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
-                            int mimeIdx = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
-                            while (c.moveToNext()) {
-                                long sz = sizeIdx >= 0 ? Math.max(0L, c.getLong(sizeIdx)) : 0L;
-                                if (sz <= 0L) continue;
-                                long id = idIdx >= 0 ? c.getLong(idIdx) : -1L;
-                                if (id > 0) countedIds.add(id);
-                                vidBytes += sz;
-                                vidCount++;
-                                if (recentList.size() < 30) {
-                                    recentList.add(buildMediaItemObj(
-                                        String.valueOf(id),
-                                        nameIdx >= 0 ? c.getString(nameIdx) : "Video",
-                                        ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString(),
-                                        "",
-                                        sz,
-                                        (dateIdx >= 0 ? c.getLong(dateIdx) * 1000L : 0L),
-                                        mimeIdx >= 0 ? c.getString(mimeIdx) : "video/*",
-                                        "videos"
-                                    ));
-                                }
-                            }
-                        }
-                    } catch (Exception ignored) {}
+        long[] stats = computeLiveStorageBytes(ctx);
+        snap.totalBytes = stats[0];
+        snap.availableBytes = stats[1];
+        snap.usedBytes = stats[2];
 
-                    // Audio
-                    try (Cursor c = resolver.query(
-                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                        new String[] { MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.MIME_TYPE },
-                        null, null, MediaStore.MediaColumns.DATE_MODIFIED + " DESC"
-                    )) {
-                        if (c != null) {
-                            int idIdx = c.getColumnIndex(MediaStore.MediaColumns._ID);
-                            int nameIdx = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
-                            int sizeIdx = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
-                            int dateIdx = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
-                            int mimeIdx = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
-                            while (c.moveToNext()) {
-                                long sz = sizeIdx >= 0 ? Math.max(0L, c.getLong(sizeIdx)) : 0L;
-                                if (sz <= 0L) continue;
-                                long id = idIdx >= 0 ? c.getLong(idIdx) : -1L;
-                                if (id > 0) countedIds.add(id);
-                                audBytes += sz;
-                                audCount++;
-                                if (recentList.size() < 40) {
-                                    recentList.add(buildMediaItemObj(
-                                        String.valueOf(id),
-                                        nameIdx >= 0 ? c.getString(nameIdx) : "Audio",
-                                        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id).toString(),
-                                        "",
-                                        sz,
-                                        (dateIdx >= 0 ? c.getLong(dateIdx) * 1000L : 0L),
-                                        mimeIdx >= 0 ? c.getString(mimeIdx) : "audio/*",
-                                        "audio"
-                                    ));
-                                }
-                            }
-                        }
-                    } catch (Exception ignored) {}
+        ContentResolver resolver = ctx.getContentResolver();
+        List<FileScanRecord> rawList = new ArrayList<>();
+        Set<String> seenUris = new HashSet<>();
+        Set<String> seenPaths = new HashSet<>();
 
-                    // Documents, Downloads & Other accessible files via MediaStore.Files
-                    try {
-                        Uri filesUri = MediaStore.Files.getContentUri("external");
-                        List<String> cols = new ArrayList<>(Arrays.asList(
-                            MediaStore.Files.FileColumns._ID,
-                            MediaStore.Files.FileColumns.DISPLAY_NAME,
-                            MediaStore.Files.FileColumns.SIZE,
-                            MediaStore.Files.FileColumns.DATE_MODIFIED,
-                            MediaStore.Files.FileColumns.MIME_TYPE,
-                            MediaStore.Files.FileColumns.DATA
-                        ));
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            cols.add(MediaStore.MediaColumns.RELATIVE_PATH);
-                        }
-                        try (Cursor c = resolver.query(
-                            filesUri,
-                            cols.toArray(new String[0]),
-                            MediaStore.Files.FileColumns.SIZE + " > 0",
-                            null,
-                            MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC"
-                        )) {
-                            if (c != null) {
-                                int idIdx = c.getColumnIndex(MediaStore.Files.FileColumns._ID);
-                                int nameIdx = c.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
-                                int sizeIdx = c.getColumnIndex(MediaStore.Files.FileColumns.SIZE);
-                                int dateIdx = c.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
-                                int mimeIdx = c.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE);
-                                int dataIdx = c.getColumnIndex(MediaStore.Files.FileColumns.DATA);
-                                int relIdx = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                                    ? c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
-                                    : -1;
-
-                                while (c.moveToNext()) {
-                                    long id = idIdx >= 0 ? c.getLong(idIdx) : -1L;
-                                    if (id > 0 && countedIds.contains(id)) continue;
-                                    long sz = sizeIdx >= 0 ? Math.max(0L, c.getLong(sizeIdx)) : 0L;
-                                    if (sz <= 0L) continue;
-                                    String name = nameIdx >= 0 ? c.getString(nameIdx) : "";
-                                    String mime = mimeIdx >= 0 ? c.getString(mimeIdx) : "";
-                                    String dataPath = dataIdx >= 0 ? c.getString(dataIdx) : "";
-                                    String relPath = relIdx >= 0 ? c.getString(relIdx) : "";
-                                    String folderLower = ((relPath != null ? relPath : "") + " " + (dataPath != null ? dataPath : "")).toLowerCase(Locale.US);
-                                    String cat = classifyFileCategory(name, mime, folderLower);
-                                    if ("downloads".equals(cat)) {
-                                        dlBytes += sz;
-                                        dlCount++;
-                                    } else if ("documents".equals(cat)) {
-                                        docBytes += sz;
-                                        docCount++;
-                                    } else if ("images".equals(cat)) {
-                                        imgBytes += sz;
-                                        imgCount++;
-                                    } else if ("videos".equals(cat)) {
-                                        vidBytes += sz;
-                                        vidCount++;
-                                    } else if ("audio".equals(cat)) {
-                                        audBytes += sz;
-                                        audCount++;
-                                    } else {
-                                        otherBytes += sz;
-                                        otherCount++;
-                                    }
-                                    if (recentList.size() < 50 && name != null && !name.isEmpty()) {
-                                        Uri itemUri = ContentUris.withAppendedId(filesUri, id);
-                                        recentList.add(buildMediaItemObj(
-                                            String.valueOf(id),
-                                            name,
-                                            itemUri.toString(),
-                                            relPath != null && !relPath.isEmpty() ? relPath : (dataPath != null ? dataPath : ""),
-                                            sz,
-                                            (dateIdx >= 0 ? c.getLong(dateIdx) * 1000L : 0L),
-                                            mime != null ? mime : "application/octet-stream",
-                                            cat
-                                        ));
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Exception ignored) {}
+        if (allFilesGranted) {
+            Set<String> visitedDirs = new HashSet<>();
+            for (File volRoot : getAccessibleVolumeRoots(ctx)) {
+                scanSharedVolumeRecursive(
+                    volRoot,
+                    0,
+                    MAX_DIRECT_SCAN_DEPTH,
+                    rawList,
+                    seenPaths,
+                    visitedDirs,
+                    MAX_DIRECT_SCAN_FILES,
+                    false
+                );
+            }
+            for (FileScanRecord rec : rawList) {
+                if (rec.uri != null) seenUris.add(rec.uri);
+            }
+            // Fast 2-cursor metadata enrichment for video/audio duration badges
+            Map<String, Long> videoDurations = loadMediaDurationsByPath(resolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI);
+            Map<String, Long> audioDurations = loadMediaDurationsByPath(resolver, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI);
+            for (FileScanRecord rec : rawList) {
+                if ("videos".equals(rec.category) && rec.path != null) {
+                    Long dur = videoDurations.get(rec.path);
+                    if (dur != null) rec.durationMs = dur;
+                } else if ("audio".equals(rec.category) && rec.path != null) {
+                    Long dur = audioDurations.get(rec.path);
+                    if (dur != null) rec.durationMs = dur;
                 }
+            }
+        } else {
+            List<Uri> collectionList = new ArrayList<>(Arrays.asList(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                MediaStore.Files.getContentUri("external")
+            ));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                collectionList.add(MediaStore.Downloads.EXTERNAL_CONTENT_URI);
+            }
 
-                // Sort recent files by date desc and cap at 12
-                Collections.sort(recentList, (a, b) -> Long.compare(
-                    b.optLong("dateModified", 0L),
-                    a.optLong("dateModified", 0L)
+            for (int cIdx = 0; cIdx < collectionList.size(); cIdx++) {
+                Uri col = collectionList.get(cIdx);
+                List<String> proj = new ArrayList<>(Arrays.asList(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.SIZE,
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.MediaColumns.MIME_TYPE,
+                    MediaStore.MediaColumns.DATA
                 ));
-                JSArray recentArr = new JSArray();
-                for (int i = 0; i < Math.min(12, recentList.size()); i++) {
-                    recentArr.put(recentList.get(i));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    proj.add(MediaStore.MediaColumns.RELATIVE_PATH);
                 }
+                if (cIdx == 1 || cIdx == 2) {
+                    proj.add(MediaStore.MediaColumns.DURATION);
+                }
+                try (Cursor c = resolver.query(col, proj.toArray(new String[0]), MediaStore.MediaColumns.SIZE + " > 0", null, MediaStore.MediaColumns.DATE_MODIFIED + " DESC")) {
+                    if (c == null) continue;
+                    int idCol = c.getColumnIndex(MediaStore.MediaColumns._ID);
+                    int nameCol = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
+                    int sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
+                    int dateCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
+                    int mimeCol = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
+                    int dataCol = c.getColumnIndex(MediaStore.MediaColumns.DATA);
+                    int relCol = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) : -1;
+                    int durCol = (cIdx == 1 || cIdx == 2) ? c.getColumnIndex(MediaStore.MediaColumns.DURATION) : -1;
 
-                JSObject categories = new JSObject();
-                categories.put("images", makeCategoryObj(imgBytes, imgCount));
-                categories.put("videos", makeCategoryObj(vidBytes, vidCount));
-                categories.put("audio", makeCategoryObj(audBytes, audCount));
-                categories.put("documents", makeCategoryObj(docBytes, docCount));
-                categories.put("downloads", makeCategoryObj(dlBytes, dlCount));
-                categories.put("other", makeCategoryObj(otherBytes, otherCount));
+                    while (c.moveToNext()) {
+                        long id = idCol >= 0 ? c.getLong(idCol) : -1L;
+                        long sz = sizeCol >= 0 ? c.getLong(sizeCol) : 0L;
+                        if (id <= 0 || sz <= 0L) continue;
+                        Uri itemUri = ContentUris.withAppendedId(col, id);
+                        String uriStr = itemUri.toString();
+                        String name = nameCol >= 0 ? c.getString(nameCol) : "";
+                        if (name == null || name.isEmpty()) continue;
 
-                JSArray safArr = new JSArray();
-                JSONArray savedSaf = getSavedSafTreeUris();
-                for (int i = 0; i < savedSaf.length(); i++) {
-                    JSONObject o = savedSaf.optJSONObject(i);
-                    if (o != null) {
-                        JSObject entry = new JSObject();
-                        entry.put("uri", o.optString("uri"));
-                        entry.put("label", o.optString("label"));
-                        safArr.put(entry);
+                        String dataPath = dataCol >= 0 ? c.getString(dataCol) : "";
+                        String relPath = relCol >= 0 ? c.getString(relCol) : "";
+                        if (isRestrictedScanPath(dataPath) || isRestrictedScanPath(relPath)) continue;
+
+                        if (seenUris.contains(uriStr)) continue;
+                        if (dataPath != null && !dataPath.isEmpty() && seenPaths.contains(dataPath)) continue;
+                        seenUris.add(uriStr);
+                        if (dataPath != null && !dataPath.isEmpty()) seenPaths.add(dataPath);
+
+                        String mime = mimeCol >= 0 ? c.getString(mimeCol) : "";
+                        String folderLower = ((relPath != null ? relPath : "") + " " + (dataPath != null ? dataPath : "")).toLowerCase(Locale.US);
+                        String cat = cIdx == 0 ? "images" : cIdx == 1 ? "videos" : cIdx == 2 ? "audio" : classifyFileCategory(name, mime, folderLower);
+
+                        FileScanRecord rec = new FileScanRecord();
+                        rec.id = cIdx + "-" + id;
+                        rec.name = name;
+                        rec.uri = uriStr;
+                        rec.path = (dataPath != null && !dataPath.isEmpty()) ? dataPath : ((relPath != null && !relPath.isEmpty()) ? relPath : "");
+                        rec.size = sz;
+                        rec.dateModified = dateCol >= 0 ? c.getLong(dateCol) * 1000L : 0L;
+                        rec.mimeType = (mime != null && !mime.isEmpty()) ? mime : guessMimeFromName(name);
+                        rec.category = cat;
+                        rec.durationMs = durCol >= 0 ? Math.max(0L, c.getLong(durCol)) : 0L;
+                        rawList.add(rec);
                     }
+                } catch (Exception ignored) {}
+            }
+
+            // Scan readable public Documents & Downloads directories when All Files Access isn't granted
+            File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+            if (docsDir != null && docsDir.exists() && docsDir.isDirectory() && docsDir.canRead()) {
+                scanDirFilesRecursive(docsDir, 0, 3, rawList, seenPaths, false);
+            }
+            File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (dlDir != null && dlDir.exists() && dlDir.isDirectory() && dlDir.canRead()) {
+                scanDirFilesRecursive(dlDir, 0, 2, rawList, seenPaths, false);
+            }
+        }
+
+        // Persisted SAF trees & picked SAF files (always honored as fallback for Android-restricted folders)
+        JSONArray safArr = getSavedSafTreeUris();
+        for (int i = 0; i < safArr.length(); i++) {
+            JSONObject obj = safArr.optJSONObject(i);
+            if (obj == null) continue;
+            String treeStr = obj.optString("uri", "");
+            if (!treeStr.isEmpty()) {
+                scanSafTreeRecursive(Uri.parse(treeStr), null, 0, 5, rawList, seenUris, seenPaths, false);
+            }
+        }
+
+        JSONArray safFiles = getSavedSafFileUris();
+        for (int i = 0; i < safFiles.length(); i++) {
+            String fileUriStr = safFiles.optString(i, "");
+            if (fileUriStr.isEmpty() || seenUris.contains(fileUriStr)) continue;
+            Uri fileUri = Uri.parse(fileUriStr);
+            try (Cursor fc = resolver.query(
+                fileUri,
+                new String[] { OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE },
+                null, null, null
+            )) {
+                if (fc != null && fc.moveToFirst()) {
+                    String name = fc.getString(0);
+                    long sz = fc.isNull(1) ? 0L : fc.getLong(1);
+                    if (name != null && !name.isEmpty()) {
+                        seenUris.add(fileUriStr);
+                        String mime = resolver.getType(fileUri);
+                        if (mime == null || mime.isEmpty()) mime = guessMimeFromName(name);
+                        FileScanRecord rec = new FileScanRecord();
+                        rec.id = "saf-doc-" + fileUriStr.hashCode();
+                        rec.name = name;
+                        rec.uri = fileUriStr;
+                        String decodedUriPath = Uri.decode(fileUriStr);
+                        rec.path = decodedUriPath != null ? decodedUriPath : "Picked Document";
+                        rec.size = Math.max(0L, sz);
+                        rec.dateModified = getSafDocLastModified(resolver, fileUri);
+                        rec.mimeType = mime;
+                        rec.category = classifyFileCategory(name, mime, "documents");
+                        rawList.add(rec);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        Collections.sort(rawList, (a, b) -> Long.compare(b.dateModified, a.dateModified));
+        populateSnapshotBuckets(snap, rawList);
+        computeDuplicatesSnapshot(ctx, snap);
+        return snap;
+    }
+
+    private void populateSnapshotBuckets(FileIndexSnapshot snap, List<FileScanRecord> records) {
+        snap.allRecords.clear();
+        snap.imagesList.clear();
+        snap.videosList.clear();
+        snap.audioList.clear();
+        snap.documentsList.clear();
+        snap.downloadsList.clear();
+        snap.otherList.clear();
+        snap.whatsappList.clear();
+        snap.largeFilesList.clear();
+
+        snap.imgBytes = 0L; snap.imgCount = 0;
+        snap.vidBytes = 0L; snap.vidCount = 0;
+        snap.audBytes = 0L; snap.audCount = 0;
+        snap.docBytes = 0L; snap.docCount = 0;
+        snap.dlBytes = 0L; snap.dlCount = 0;
+        snap.otherBytes = 0L; snap.otherCount = 0;
+
+        long minLargeBytes = 5L * 1024L * 1024L;
+        for (FileScanRecord rec : records) {
+            snap.allRecords.add(rec);
+            if (rec.size >= minLargeBytes) {
+                snap.largeFilesList.add(rec);
+            }
+            if ("images".equals(rec.category)) {
+                snap.imgBytes += rec.size;
+                snap.imgCount++;
+                snap.imagesList.add(rec);
+            } else if ("videos".equals(rec.category)) {
+                snap.vidBytes += rec.size;
+                snap.vidCount++;
+                snap.videosList.add(rec);
+            } else if ("audio".equals(rec.category)) {
+                snap.audBytes += rec.size;
+                snap.audCount++;
+                snap.audioList.add(rec);
+            } else if ("documents".equals(rec.category)) {
+                snap.docBytes += rec.size;
+                snap.docCount++;
+                snap.documentsList.add(rec);
+            } else if ("downloads".equals(rec.category)) {
+                snap.dlBytes += rec.size;
+                snap.dlCount++;
+            } else {
+                snap.otherBytes += rec.size;
+                snap.otherCount++;
+                snap.otherList.add(rec);
+            }
+
+            String pLower = rec.path != null ? rec.path.toLowerCase(Locale.US) : "";
+            String uLower = rec.uri != null ? Uri.decode(rec.uri).toLowerCase(Locale.US) : "";
+            if (pLower.contains("/download") || pLower.startsWith("download") || uLower.contains("download") || "downloads".equals(rec.category)) {
+                FileScanRecord dlCopy = copyRecordWithCategory(rec, classifyDownloadKind(rec.name, rec.mimeType, rec.dateModified));
+                snap.downloadsList.add(dlCopy);
+            }
+
+            String waCheck = (pLower + " " + (rec.name != null ? rec.name.toLowerCase(Locale.US) : ""));
+            if (waCheck.contains("whatsapp") && !isRestrictedScanPath(rec.path)) {
+                FileScanRecord waCopy = copyRecordWithCategory(rec, classifyWhatsAppSubcategory(rec));
+                snap.whatsappList.add(waCopy);
+            }
+        }
+        if (snap.largeFilesList.size() > 1) {
+            Collections.sort(snap.largeFilesList, (a, b) -> Long.compare(b.size, a.size));
+        }
+    }
+
+    private FileScanRecord copyRecordWithCategory(FileScanRecord src, String catOverride) {
+        FileScanRecord r = new FileScanRecord();
+        r.id = src.id;
+        r.name = src.name;
+        r.uri = src.uri;
+        r.path = src.path;
+        r.size = src.size;
+        r.dateModified = src.dateModified;
+        r.mimeType = src.mimeType;
+        r.category = catOverride;
+        r.durationMs = src.durationMs;
+        r.width = src.width;
+        r.height = src.height;
+        return r;
+    }
+
+    private void saveIndexToDisk(Context ctx, FileIndexSnapshot snap) {
+        File target = new File(ctx.getFilesDir(), INDEX_CACHE_FILE);
+        File tmp = new File(ctx.getFilesDir(), INDEX_CACHE_FILE + ".tmp");
+        try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(tmp)), StandardCharsets.UTF_8))) {
+            writer.beginObject();
+            writer.name("version").value(INDEX_CACHE_VERSION);
+            writer.name("indexedAtMs").value(snap.indexedAtMs);
+            writer.name("allFilesGranted").value(snap.allFilesGranted);
+            writer.name("hasMediaRead").value(snap.hasMediaRead);
+            writer.name("duplicatesComputed").value(snap.duplicatesComputed);
+            writer.name("duplicateWastedBytes").value(snap.duplicateWastedBytes);
+            writer.name("records").beginArray();
+            for (FileScanRecord r : snap.allRecords) {
+                writer.beginObject();
+                writer.name("id").value(r.id != null ? r.id : "");
+                writer.name("name").value(r.name != null ? r.name : "");
+                writer.name("uri").value(r.uri != null ? r.uri : "");
+                writer.name("path").value(r.path != null ? r.path : "");
+                writer.name("size").value(r.size);
+                writer.name("dateModified").value(r.dateModified);
+                writer.name("mimeType").value(r.mimeType != null ? r.mimeType : "");
+                writer.name("category").value(r.category != null ? r.category : "other");
+                if (r.durationMs > 0L) writer.name("durationMs").value(r.durationMs);
+                writer.endObject();
+            }
+            writer.endArray();
+            writer.name("duplicateGroups").beginArray();
+            for (DuplicateGroupRecord grp : snap.duplicateGroups) {
+                writer.beginObject();
+                writer.name("hash").value(grp.hash != null ? grp.hash : "");
+                writer.name("size").value(grp.size);
+                writer.name("category").value(grp.category != null ? grp.category : "other");
+                writer.name("wastedBytes").value(grp.wastedBytes);
+                writer.name("uris").beginArray();
+                for (FileScanRecord f : grp.files) {
+                    if (f.uri != null) writer.value(f.uri);
+                }
+                writer.endArray();
+                writer.endObject();
+            }
+            writer.endArray();
+            writer.endObject();
+            writer.flush();
+        } catch (Exception e) {
+            if (tmp.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                tmp.delete();
+            }
+            return;
+        }
+        if (tmp.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            if (!tmp.renameTo(target)) {
+                //noinspection ResultOfMethodCallIgnored
+                tmp.delete();
+            }
+        }
+    }
+
+    private FileIndexSnapshot loadIndexFromDisk(Context ctx, boolean expectedAllFiles, boolean expectedMediaRead) {
+        File cacheFile = new File(ctx.getFilesDir(), INDEX_CACHE_FILE);
+        if (!cacheFile.exists() || cacheFile.length() == 0L) return null;
+
+        FileIndexSnapshot snap = new FileIndexSnapshot();
+        List<FileScanRecord> records = new ArrayList<>();
+        List<String> rawDupHashes = new ArrayList<>();
+        List<Long> rawDupSizes = new ArrayList<>();
+        List<String> rawDupCats = new ArrayList<>();
+        List<Long> rawDupWasted = new ArrayList<>();
+        List<List<String>> rawDupUris = new ArrayList<>();
+        int version = 0;
+
+        try (JsonReader reader = new JsonReader(new InputStreamReader(new BufferedInputStream(new FileInputStream(cacheFile)), StandardCharsets.UTF_8))) {
+            reader.beginObject();
+            while (reader.hasNext()) {
+                String key = reader.nextName();
+                if ("version".equals(key)) {
+                    version = reader.nextInt();
+                } else if ("indexedAtMs".equals(key)) {
+                    snap.indexedAtMs = reader.nextLong();
+                } else if ("allFilesGranted".equals(key)) {
+                    snap.allFilesGranted = reader.nextBoolean();
+                } else if ("hasMediaRead".equals(key)) {
+                    snap.hasMediaRead = reader.nextBoolean();
+                } else if ("duplicatesComputed".equals(key)) {
+                    snap.duplicatesComputed = reader.nextBoolean();
+                } else if ("duplicateWastedBytes".equals(key)) {
+                    snap.duplicateWastedBytes = reader.nextLong();
+                } else if ("records".equals(key)) {
+                    reader.beginArray();
+                    while (reader.hasNext()) {
+                        FileScanRecord r = new FileScanRecord();
+                        reader.beginObject();
+                        while (reader.hasNext()) {
+                            String rk = reader.nextName();
+                            if (reader.peek() == JsonToken.NULL) {
+                                reader.nextNull();
+                                continue;
+                            }
+                            if ("id".equals(rk)) r.id = reader.nextString();
+                            else if ("name".equals(rk)) r.name = reader.nextString();
+                            else if ("uri".equals(rk)) r.uri = reader.nextString();
+                            else if ("path".equals(rk)) r.path = reader.nextString();
+                            else if ("size".equals(rk)) r.size = reader.nextLong();
+                            else if ("dateModified".equals(rk)) r.dateModified = reader.nextLong();
+                            else if ("mimeType".equals(rk)) r.mimeType = reader.nextString();
+                            else if ("category".equals(rk)) r.category = reader.nextString();
+                            else if ("durationMs".equals(rk)) r.durationMs = reader.nextLong();
+                            else reader.skipValue();
+                        }
+                        reader.endObject();
+                        if (r.uri != null && !r.uri.isEmpty()) {
+                            records.add(r);
+                        }
+                    }
+                    reader.endArray();
+                } else if ("duplicateGroups".equals(key)) {
+                    reader.beginArray();
+                    while (reader.hasNext()) {
+                        String hash = "";
+                        long sz = 0L;
+                        String cat = "other";
+                        long wasted = 0L;
+                        List<String> uris = new ArrayList<>();
+                        reader.beginObject();
+                        while (reader.hasNext()) {
+                            String gk = reader.nextName();
+                            if (reader.peek() == JsonToken.NULL) {
+                                reader.nextNull();
+                                continue;
+                            }
+                            if ("hash".equals(gk)) hash = reader.nextString();
+                            else if ("size".equals(gk)) sz = reader.nextLong();
+                            else if ("category".equals(gk)) cat = reader.nextString();
+                            else if ("wastedBytes".equals(gk)) wasted = reader.nextLong();
+                            else if ("uris".equals(gk)) {
+                                reader.beginArray();
+                                while (reader.hasNext()) {
+                                    uris.add(reader.nextString());
+                                }
+                                reader.endArray();
+                            } else {
+                                reader.skipValue();
+                            }
+                        }
+                        reader.endObject();
+                        rawDupHashes.add(hash);
+                        rawDupSizes.add(sz);
+                        rawDupCats.add(cat);
+                        rawDupWasted.add(wasted);
+                        rawDupUris.add(uris);
+                    }
+                    reader.endArray();
+                } else {
+                    reader.skipValue();
+                }
+            }
+            reader.endObject();
+
+            if (version != INDEX_CACHE_VERSION || snap.allFilesGranted != expectedAllFiles || snap.hasMediaRead != expectedMediaRead) {
+                return null;
+            }
+            if (records.isEmpty() && expectedAllFiles) {
+                return null;
+            }
+            populateSnapshotBuckets(snap, records);
+
+            Map<String, FileScanRecord> byUri = new HashMap<>(records.size());
+            for (FileScanRecord r : records) {
+                if (r.uri != null) byUri.put(r.uri, r);
+            }
+            for (int i = 0; i < rawDupUris.size(); i++) {
+                DuplicateGroupRecord grp = new DuplicateGroupRecord();
+                grp.hash = rawDupHashes.get(i);
+                grp.size = rawDupSizes.get(i);
+                grp.category = rawDupCats.get(i);
+                grp.wastedBytes = rawDupWasted.get(i);
+                for (String u : rawDupUris.get(i)) {
+                    FileScanRecord matched = byUri.get(u);
+                    if (matched != null) grp.files.add(matched);
+                }
+                if (grp.files.size() >= 2) {
+                    snap.duplicateGroups.add(grp);
+                }
+            }
+            return snap;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private JSObject buildSummaryObjFromSnapshot(FileIndexSnapshot snap) {
+        JSArray recentArr = new JSArray();
+        for (int i = 0; i < Math.min(12, snap.allRecords.size()); i++) {
+            recentArr.put(buildMediaItemObj(snap.allRecords.get(i)));
+        }
+
+        JSObject categories = new JSObject();
+        categories.put("images", makeCategoryObj(snap.imgBytes, snap.imgCount));
+        categories.put("videos", makeCategoryObj(snap.vidBytes, snap.vidCount));
+        categories.put("audio", makeCategoryObj(snap.audBytes, snap.audCount));
+        categories.put("documents", makeCategoryObj(snap.docBytes, snap.docCount));
+        categories.put("downloads", makeCategoryObj(snap.dlBytes, snap.dlCount));
+        categories.put("other", makeCategoryObj(snap.otherBytes, snap.otherCount));
+
+        JSArray safArr = new JSArray();
+        JSONArray savedSaf = getSavedSafTreeUris();
+        for (int i = 0; i < savedSaf.length(); i++) {
+            JSONObject o = savedSaf.optJSONObject(i);
+            if (o != null) {
+                JSObject entry = new JSObject();
+                entry.put("uri", o.optString("uri"));
+                entry.put("label", o.optString("label"));
+                safArr.put(entry);
+            }
+        }
+
+        JSObject res = new JSObject();
+        res.put("totalBytes", snap.totalBytes);
+        res.put("availableBytes", snap.availableBytes);
+        res.put("usedBytes", snap.usedBytes);
+        res.put("hasStoragePermission", snap.hasMediaRead);
+        res.put("hasAllFilesAccess", snap.allFilesGranted);
+        res.put("sdkInt", Build.VERSION.SDK_INT);
+        res.put("indexedAt", snap.indexedAtMs);
+        res.put("totalIndexedFiles", snap.allRecords.size());
+        res.put("fromCache", snap.fromCache);
+        res.put("categories", categories);
+        res.put("recentFiles", recentArr);
+        res.put("safTrees", safArr);
+        return res;
+    }
+
+    private JSArray sliceRecordsToJsArray(List<FileScanRecord> list, int offset, int limit) {
+        JSArray arr = new JSArray();
+        if (list == null || list.isEmpty() || offset >= list.size()) return arr;
+        int end = Math.min(list.size(), offset + Math.max(1, limit));
+        for (int i = Math.max(0, offset); i < end; i++) {
+            arr.put(buildMediaItemObj(list.get(i)));
+        }
+        return arr;
+    }
+
+    @PluginMethod
+    public void syncAllFilesIndex(PluginCall call) {
+        boolean forceRefresh = Boolean.TRUE.equals(call.getBoolean("forceRefresh", false));
+        int categoryLimit = Math.max(200, Math.min(4000, call.getInt("categoryLimit", 2000)));
+
+        scanExecutor.execute(() -> {
+            try {
+                FileIndexSnapshot snap = getOrBuildFileIndex(forceRefresh);
+                JSObject summaryObj = buildSummaryObjFromSnapshot(snap);
+
+                JSObject categoriesFiles = new JSObject();
+                categoriesFiles.put("images", sliceRecordsToJsArray(snap.imagesList, 0, categoryLimit));
+                categoriesFiles.put("videos", sliceRecordsToJsArray(snap.videosList, 0, categoryLimit));
+                categoriesFiles.put("audio", sliceRecordsToJsArray(snap.audioList, 0, categoryLimit));
+                categoriesFiles.put("documents", sliceRecordsToJsArray(snap.documentsList, 0, categoryLimit));
+                categoriesFiles.put("downloads", sliceRecordsToJsArray(snap.downloadsList, 0, categoryLimit));
+                categoriesFiles.put("other", sliceRecordsToJsArray(snap.otherList, 0, categoryLimit));
+                categoriesFiles.put("whatsapp", sliceRecordsToJsArray(snap.whatsappList, 0, categoryLimit));
+
+                JSObject res = new JSObject();
+                res.put("indexedAt", snap.indexedAtMs);
+                res.put("fromCache", snap.fromCache);
+                res.put("scanDurationMs", snap.scanDurationMs);
+                res.put("totalIndexedFiles", snap.allRecords.size());
+                res.put("hasAllFilesAccess", snap.allFilesGranted);
+                res.put("hasStoragePermission", snap.hasMediaRead);
+                res.put("summary", summaryObj);
+                res.put("categoriesFiles", categoriesFiles);
+                res.put("largeFiles", sliceRecordsToJsArray(snap.largeFilesList, 0, 500));
+                res.put("duplicateGroups", duplicateGroupsToJsArray(snap.duplicateGroups));
+                res.put("duplicateWastedBytes", snap.duplicateWastedBytes);
+                res.put("duplicatesReady", snap.duplicatesComputed);
+                call.resolve(res);
+
+                if (!snap.fromCache) {
+                    notifyListeners("fileIndexUpdated", summaryObj, true);
+                }
+            } catch (Exception e) {
+                call.reject("Could not index device files: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void getCategoryFiles(PluginCall call) {
+        String category = call.getString("category", "all");
+        int limit = Math.max(50, Math.min(5000, call.getInt("limit", 2500)));
+        int offset = Math.max(0, call.getInt("offset", 0));
+
+        opExecutor.execute(() -> {
+            try {
+                FileIndexSnapshot snap = getOrBuildFileIndex(false);
+                List<FileScanRecord> targetList;
+                if ("images".equals(category)) targetList = snap.imagesList;
+                else if ("videos".equals(category)) targetList = snap.videosList;
+                else if ("audio".equals(category)) targetList = snap.audioList;
+                else if ("documents".equals(category)) targetList = snap.documentsList;
+                else if ("downloads".equals(category)) targetList = snap.downloadsList;
+                else if ("whatsapp".equals(category)) targetList = snap.whatsappList;
+                else if ("other".equals(category)) targetList = snap.otherList;
+                else targetList = snap.allRecords;
+
+                long totalBytes = 0L;
+                for (FileScanRecord r : targetList) {
+                    totalBytes += r.size;
                 }
 
                 JSObject res = new JSObject();
+                res.put("files", sliceRecordsToJsArray(targetList, offset, limit));
+                res.put("totalCount", targetList.size());
                 res.put("totalBytes", totalBytes);
-                res.put("availableBytes", availableBytes);
-                res.put("usedBytes", usedBytes);
-                res.put("hasStoragePermission", hasStorageReadPermission());
-                res.put("hasAllFilesAccess", allFilesGranted);
-                res.put("sdkInt", Build.VERSION.SDK_INT);
-                res.put("categories", categories);
-                res.put("recentFiles", recentArr);
-                res.put("safTrees", safArr);
+                res.put("indexedAt", snap.indexedAtMs);
+                res.put("fromCache", snap.fromCache);
                 call.resolve(res);
+            } catch (Exception e) {
+                call.reject("Could not load indexed category files: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void getStorageSummary(PluginCall call) {
+        boolean forceRefresh = Boolean.TRUE.equals(call.getBoolean("forceRefresh", false));
+        opExecutor.execute(() -> {
+            try {
+                FileIndexSnapshot snap = getOrBuildFileIndex(forceRefresh);
+                call.resolve(buildSummaryObjFromSnapshot(snap));
             } catch (Exception e) {
                 call.reject("Could not read storage summary: " + e.getMessage(), e);
             }
@@ -854,9 +1303,22 @@ public class PhoneManagerPlugin extends Plugin {
         return obj;
     }
 
+    private JSObject buildMediaItemObj(FileScanRecord rec) {
+        return buildMediaItemObj(
+            rec.id, rec.name, rec.uri, rec.path, rec.size, rec.dateModified, rec.mimeType, rec.category, rec.durationMs
+        );
+    }
+
     private JSObject buildMediaItemObj(
         String id, String name, String uri, String path,
         long size, long dateModified, String mimeType, String category
+    ) {
+        return buildMediaItemObj(id, name, uri, path, size, dateModified, mimeType, category, 0L);
+    }
+
+    private JSObject buildMediaItemObj(
+        String id, String name, String uri, String path,
+        long size, long dateModified, String mimeType, String category, long durationMs
     ) {
         JSObject item = new JSObject();
         item.put("id", id);
@@ -867,6 +1329,9 @@ public class PhoneManagerPlugin extends Plugin {
         item.put("dateModified", dateModified);
         item.put("mimeType", mimeType != null ? mimeType : "application/octet-stream");
         item.put("category", category);
+        if (durationMs > 0L) {
+            item.put("durationMs", durationMs);
+        }
         return item;
     }
 
@@ -901,172 +1366,40 @@ public class PhoneManagerPlugin extends Plugin {
         long dateModified;
         String mimeType;
         String category;
+        long durationMs;
+        int width;
+        int height;
+    }
+
+    private static class DuplicateGroupRecord {
+        String hash;
+        long size;
+        String category;
+        long wastedBytes;
+        final List<FileScanRecord> files = new ArrayList<>();
+    }
+
+    private JSArray duplicateGroupsToJsArray(List<DuplicateGroupRecord> list) {
+        JSArray groups = new JSArray();
+        if (list == null) return groups;
+        for (DuplicateGroupRecord grp : list) {
+            JSArray filesArr = new JSArray();
+            for (FileScanRecord d : grp.files) {
+                filesArr.put(buildMediaItemObj(d));
+            }
+            JSObject obj = new JSObject();
+            obj.put("hash", grp.hash != null ? grp.hash : "");
+            obj.put("size", grp.size);
+            obj.put("category", grp.category != null ? grp.category : "other");
+            obj.put("wastedBytes", grp.wastedBytes);
+            obj.put("files", filesArr);
+            groups.put(obj);
+        }
+        return groups;
     }
 
     private List<FileScanRecord> collectAccessibleMediaRecords() {
-        List<FileScanRecord> list = new ArrayList<>();
-        Set<String> seenUris = new HashSet<>();
-        Set<String> seenCanonicalPaths = new HashSet<>();
-        Context ctx = getContext();
-        ContentResolver resolver = ctx.getContentResolver();
-        boolean allFilesGranted = hasAllFilesAccess();
-
-        if (allFilesGranted) {
-            Set<String> visitedDirs = new HashSet<>();
-            for (File volRoot : getAccessibleVolumeRoots(ctx)) {
-                scanSharedVolumeRecursive(
-                    volRoot,
-                    0,
-                    MAX_DIRECT_SCAN_DEPTH,
-                    list,
-                    seenCanonicalPaths,
-                    visitedDirs,
-                    MAX_DIRECT_SCAN_FILES,
-                    false
-                );
-            }
-            for (FileScanRecord rec : list) {
-                if (rec.uri != null) seenUris.add(rec.uri);
-            }
-        }
-
-        List<Uri> collectionList = new ArrayList<>(Arrays.asList(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            MediaStore.Files.getContentUri("external")
-        ));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            collectionList.add(MediaStore.Downloads.EXTERNAL_CONTENT_URI);
-        }
-        Uri[] collections = collectionList.toArray(new Uri[0]);
-
-        for (int cIdx = 0; cIdx < collections.length; cIdx++) {
-            Uri col = collections[cIdx];
-            List<String> proj = new ArrayList<>(Arrays.asList(
-                MediaStore.MediaColumns._ID,
-                MediaStore.MediaColumns.DISPLAY_NAME,
-                MediaStore.MediaColumns.SIZE,
-                MediaStore.MediaColumns.DATE_MODIFIED,
-                MediaStore.MediaColumns.MIME_TYPE,
-                MediaStore.MediaColumns.DATA
-            ));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                proj.add(MediaStore.MediaColumns.RELATIVE_PATH);
-            }
-            try (Cursor c = resolver.query(col, proj.toArray(new String[0]), MediaStore.MediaColumns.SIZE + " > 0", null, MediaStore.MediaColumns.SIZE + " DESC")) {
-                if (c == null) continue;
-                int idCol = c.getColumnIndex(MediaStore.MediaColumns._ID);
-                int nameCol = c.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME);
-                int sizeCol = c.getColumnIndex(MediaStore.MediaColumns.SIZE);
-                int dateCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
-                int mimeCol = c.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE);
-                int dataCol = c.getColumnIndex(MediaStore.MediaColumns.DATA);
-                int relCol = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ? c.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH) : -1;
-
-                while (c.moveToNext()) {
-                    long id = idCol >= 0 ? c.getLong(idCol) : -1L;
-                    long sz = sizeCol >= 0 ? c.getLong(sizeCol) : 0L;
-                    if (id <= 0 || sz <= 0L) continue;
-                    Uri itemUri = ContentUris.withAppendedId(col, id);
-                    String uriStr = itemUri.toString();
-                    String name = nameCol >= 0 ? c.getString(nameCol) : "";
-                    if (name == null || name.isEmpty()) continue;
-
-                    String dataPath = dataCol >= 0 ? c.getString(dataCol) : "";
-                    String relPath = relCol >= 0 ? c.getString(relCol) : "";
-                    if (isRestrictedScanPath(dataPath) || isRestrictedScanPath(relPath)) continue;
-
-                    String canonKey = null;
-                    if (dataPath != null && !dataPath.isEmpty()) {
-                        try {
-                            canonKey = new File(dataPath).getCanonicalPath();
-                        } catch (Exception e) {
-                            canonKey = dataPath;
-                        }
-                    }
-
-                    if (seenUris.contains(uriStr)) continue;
-                    if (canonKey != null && seenCanonicalPaths.contains(canonKey)) continue;
-                    seenUris.add(uriStr);
-                    if (canonKey != null) seenCanonicalPaths.add(canonKey);
-
-                    String mime = mimeCol >= 0 ? c.getString(mimeCol) : "";
-                    String folderLower = ((relPath != null ? relPath : "") + " " + (dataPath != null ? dataPath : "")).toLowerCase(Locale.US);
-                    String cat = cIdx == 0 ? "images" : cIdx == 1 ? "videos" : cIdx == 2 ? "audio" : classifyFileCategory(name, mime, folderLower);
-
-                    FileScanRecord rec = new FileScanRecord();
-                    rec.id = cIdx + "-" + id;
-                    rec.name = name;
-                    rec.uri = uriStr;
-                    rec.path = (dataPath != null && !dataPath.isEmpty()) ? dataPath : ((relPath != null && !relPath.isEmpty()) ? relPath : "");
-                    rec.size = sz;
-                    rec.dateModified = dateCol >= 0 ? c.getLong(dateCol) * 1000L : 0L;
-                    rec.mimeType = mime != null ? mime : "application/octet-stream";
-                    rec.category = cat;
-                    list.add(rec);
-                }
-            } catch (Exception ignored) {}
-        }
-
-        // Scan readable public Documents & Downloads directories directly when direct full scan wasn't run
-        if (!allFilesGranted) {
-            File docsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-            if (docsDir != null && docsDir.exists() && docsDir.isDirectory() && docsDir.canRead()) {
-                scanDirFilesRecursive(docsDir, 0, 3, list, seenCanonicalPaths, false);
-            }
-            File dlDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (dlDir != null && dlDir.exists() && dlDir.isDirectory() && dlDir.canRead()) {
-                scanDirFilesRecursive(dlDir, 0, 2, list, seenCanonicalPaths, false);
-            }
-        }
-
-        // Include persisted SAF trees granted by user as fallback for restricted folders
-        JSONArray safArr = getSavedSafTreeUris();
-        for (int i = 0; i < safArr.length(); i++) {
-            JSONObject obj = safArr.optJSONObject(i);
-            if (obj == null) continue;
-            String treeStr = obj.optString("uri", "");
-            if (!treeStr.isEmpty()) {
-                scanSafTreeRecursive(Uri.parse(treeStr), null, 0, 4, list, seenUris, seenCanonicalPaths, false);
-            }
-        }
-
-        // Include individually picked persisted SAF document URIs
-        JSONArray safFiles = getSavedSafFileUris();
-        for (int i = 0; i < safFiles.length(); i++) {
-            String fileUriStr = safFiles.optString(i, "");
-            if (fileUriStr.isEmpty() || seenUris.contains(fileUriStr)) continue;
-            Uri fileUri = Uri.parse(fileUriStr);
-            try (Cursor fc = resolver.query(
-                fileUri,
-                new String[] { OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE },
-                null, null, null
-            )) {
-                if (fc != null && fc.moveToFirst()) {
-                    String name = fc.getString(0);
-                    long sz = fc.isNull(1) ? 0L : fc.getLong(1);
-                    if (name != null && !name.isEmpty()) {
-                        seenUris.add(fileUriStr);
-                        String mime = resolver.getType(fileUri);
-                        if (mime == null || mime.isEmpty()) mime = guessMimeFromName(name);
-                        FileScanRecord rec = new FileScanRecord();
-                        rec.id = "saf-doc-" + fileUriStr.hashCode();
-                        rec.name = name;
-                        rec.uri = fileUriStr;
-                        String decodedUriPath = Uri.decode(fileUriStr);
-                        rec.path = decodedUriPath != null ? decodedUriPath : "Picked Document";
-                        rec.size = Math.max(0L, sz);
-                        rec.dateModified = getSafDocLastModified(resolver, fileUri);
-                        rec.mimeType = mime;
-                        rec.category = classifyFileCategory(name, mime, "documents");
-                        list.add(rec);
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
-        return list;
+        return getOrBuildFileIndex(false).allRecords;
     }
 
     private long getSafDocLastModified(ContentResolver resolver, Uri uri) {
@@ -1078,59 +1411,162 @@ public class PhoneManagerPlugin extends Plugin {
         return 0L;
     }
 
+    private void computeDuplicatesSnapshot(Context ctx, FileIndexSnapshot snap) {
+        snap.duplicateGroups.clear();
+        snap.duplicateWastedBytes = 0L;
+
+        Map<Long, List<FileScanRecord>> bySize = new HashMap<>();
+        for (FileScanRecord rec : snap.allRecords) {
+            if (rec.size <= 0L || rec.size > DUPLICATE_MAX_FILE_BYTES) continue;
+            bySize.computeIfAbsent(rec.size, k -> new ArrayList<>()).add(rec);
+        }
+
+        ContentResolver resolver = ctx.getContentResolver();
+        Map<String, List<FileScanRecord>> byHash = new LinkedHashMap<>();
+
+        for (Map.Entry<Long, List<FileScanRecord>> entry : bySize.entrySet()) {
+            List<FileScanRecord> sameSize = entry.getValue();
+            if (sameSize.size() < 2) continue;
+
+            List<FileScanRecord> candidatesToFullHash = new ArrayList<>();
+            if (entry.getKey() > 16384L) {
+                // Fast stage 1: compare first 8KB + last 8KB before reading full bytes
+                Map<String, List<FileScanRecord>> byQuick = new HashMap<>();
+                for (FileScanRecord rec : sameSize) {
+                    String qf = computeQuickFingerprint(resolver, rec);
+                    if (qf == null) continue;
+                    byQuick.computeIfAbsent(qf, k -> new ArrayList<>()).add(rec);
+                }
+                for (List<FileScanRecord> qGroup : byQuick.values()) {
+                    if (qGroup.size() >= 2) {
+                        candidatesToFullHash.addAll(qGroup);
+                    }
+                }
+            } else {
+                candidatesToFullHash.addAll(sameSize);
+            }
+
+            for (FileScanRecord rec : candidatesToFullHash) {
+                String hash = computeSha256(resolver, Uri.parse(rec.uri));
+                if (hash == null) continue;
+                String key = rec.size + ":" + hash;
+                byHash.computeIfAbsent(key, k -> new ArrayList<>()).add(rec);
+            }
+        }
+
+        long potentialSavings = 0L;
+        for (Map.Entry<String, List<FileScanRecord>> entry : byHash.entrySet()) {
+            List<FileScanRecord> dupes = entry.getValue();
+            if (dupes.size() < 2) continue;
+            // Sort oldest first so first copy is preserved by default
+            Collections.sort(dupes, (a, b) -> Long.compare(a.dateModified, b.dateModified));
+
+            String[] parts = entry.getKey().split(":", 2);
+            String sha = parts.length > 1 ? parts[1] : "";
+            long wasted = dupes.get(0).size * (dupes.size() - 1L);
+            potentialSavings += wasted;
+
+            DuplicateGroupRecord grp = new DuplicateGroupRecord();
+            grp.hash = sha;
+            grp.size = dupes.get(0).size;
+            grp.category = dupes.get(0).category;
+            grp.wastedBytes = wasted;
+            grp.files.addAll(dupes);
+            snap.duplicateGroups.add(grp);
+        }
+
+        Collections.sort(snap.duplicateGroups, (a, b) -> Long.compare(b.wastedBytes, a.wastedBytes));
+        snap.duplicateWastedBytes = potentialSavings;
+        snap.duplicatesComputed = true;
+    }
+
+    private String computeQuickFingerprint(ContentResolver resolver, FileScanRecord rec) {
+        try {
+            Uri uri = Uri.parse(rec.uri);
+            if ("file".equals(uri.getScheme()) && uri.getPath() != null) {
+                File f = new File(uri.getPath());
+                long len = f.length();
+                if (len <= 0L) return null;
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                byte[] head = new byte[8192];
+                byte[] tail = new byte[8192];
+                try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+                    int hRead = raf.read(head, 0, (int) Math.min(head.length, len));
+                    if (hRead > 0) md.update(head, 0, hRead);
+                    if (len > head.length) {
+                        long tailPos = Math.max(head.length, len - tail.length);
+                        raf.seek(tailPos);
+                        int tRead = raf.read(tail, 0, (int) Math.min(tail.length, len - tailPos));
+                        if (tRead > 0) md.update(tail, 0, tRead);
+                    }
+                }
+                byte[] digest = md.digest();
+                StringBuilder sb = new StringBuilder(digest.length * 2 + 24);
+                sb.append(len).append(':');
+                for (byte b : digest) sb.append(String.format(Locale.US, "%02x", b));
+                return sb.toString();
+            }
+
+            try (ParcelFileDescriptor pfd = resolver.openFileDescriptor(uri, "r")) {
+                if (pfd != null) {
+                    long len = Math.max(rec.size, pfd.getStatSize());
+                    try (FileInputStream fis = new FileInputStream(pfd.getFileDescriptor())) {
+                        MessageDigest md = MessageDigest.getInstance("SHA-256");
+                        byte[] head = new byte[8192];
+                        int hRead = fis.read(head);
+                        if (hRead > 0) md.update(head, 0, hRead);
+                        if (len > 16384L) {
+                            try {
+                                fis.getChannel().position(len - 8192L);
+                                byte[] tail = new byte[8192];
+                                int tRead = fis.read(tail);
+                                if (tRead > 0) md.update(tail, 0, tRead);
+                            } catch (Exception ignored) {
+                                // non-seekable fd falls back cleanly to head fingerprint
+                            }
+                        }
+                        byte[] digest = md.digest();
+                        StringBuilder sb = new StringBuilder(digest.length * 2 + 24);
+                        sb.append(rec.size).append(':');
+                        for (byte b : digest) sb.append(String.format(Locale.US, "%02x", b));
+                        return sb.toString();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+        return "sz:" + rec.size;
+    }
+
     @PluginMethod
     public void findDuplicates(PluginCall call) {
-        executor.execute(() -> {
+        boolean forceRefresh = Boolean.TRUE.equals(call.getBoolean("forceRefresh", false));
+        opExecutor.execute(() -> {
             try {
-                List<FileScanRecord> all = collectAccessibleMediaRecords();
-                Map<Long, List<FileScanRecord>> bySize = new HashMap<>();
-                for (FileScanRecord rec : all) {
-                    if (rec.size > DUPLICATE_MAX_FILE_BYTES) continue;
-                    bySize.computeIfAbsent(rec.size, k -> new ArrayList<>()).add(rec);
+                boolean nowAllFiles = hasAllFilesAccess();
+                boolean nowMediaRead = hasStorageReadPermission();
+                FileIndexSnapshot fast = cachedIndex;
+                if (!forceRefresh && fast != null && fast.duplicatesComputed
+                    && fast.allFilesGranted == nowAllFiles && fast.hasMediaRead == nowMediaRead) {
+                    JSObject res = new JSObject();
+                    res.put("groups", duplicateGroupsToJsArray(fast.duplicateGroups));
+                    res.put("totalWastedBytes", fast.duplicateWastedBytes);
+                    call.resolve(res);
+                    return;
                 }
 
-                ContentResolver resolver = getContext().getContentResolver();
-                Map<String, List<FileScanRecord>> byHash = new LinkedHashMap<>();
-
-                for (Map.Entry<Long, List<FileScanRecord>> entry : bySize.entrySet()) {
-                    if (entry.getValue().size() < 2) continue;
-                    for (FileScanRecord rec : entry.getValue()) {
-                        String hash = computeSha256(resolver, Uri.parse(rec.uri));
-                        if (hash == null) continue;
-                        String key = rec.size + ":" + hash;
-                        byHash.computeIfAbsent(key, k -> new ArrayList<>()).add(rec);
+                FileIndexSnapshot snap = getOrBuildFileIndex(forceRefresh);
+                if (!snap.duplicatesComputed) {
+                    synchronized (indexBuildLock) {
+                        computeDuplicatesSnapshot(getContext(), snap);
+                        saveIndexToDisk(getContext(), snap);
                     }
-                }
-
-                JSArray groups = new JSArray();
-                long potentialSavings = 0L;
-                for (Map.Entry<String, List<FileScanRecord>> entry : byHash.entrySet()) {
-                    List<FileScanRecord> dupes = entry.getValue();
-                    if (dupes.size() < 2) continue;
-                    // Sort oldest first so first copy is preserved by default
-                    Collections.sort(dupes, (a, b) -> Long.compare(a.dateModified, b.dateModified));
-
-                    String[] parts = entry.getKey().split(":", 2);
-                    String sha = parts.length > 1 ? parts[1] : "";
-                    long wasted = dupes.get(0).size * (dupes.size() - 1L);
-                    potentialSavings += wasted;
-
-                    JSArray filesArr = new JSArray();
-                    for (FileScanRecord d : dupes) {
-                        filesArr.put(buildMediaItemObj(d.id, d.name, d.uri, d.path, d.size, d.dateModified, d.mimeType, d.category));
-                    }
-                    JSObject grp = new JSObject();
-                    grp.put("hash", sha);
-                    grp.put("size", dupes.get(0).size);
-                    grp.put("category", dupes.get(0).category);
-                    grp.put("wastedBytes", wasted);
-                    grp.put("files", filesArr);
-                    groups.put(grp);
                 }
 
                 JSObject res = new JSObject();
-                res.put("groups", groups);
-                res.put("totalWastedBytes", potentialSavings);
+                res.put("groups", duplicateGroupsToJsArray(snap.duplicateGroups));
+                res.put("totalWastedBytes", snap.duplicateWastedBytes);
                 call.resolve(res);
             } catch (Exception e) {
                 call.reject("Duplicate scan failed: " + e.getMessage(), e);
@@ -1164,27 +1600,35 @@ public class PhoneManagerPlugin extends Plugin {
         long minBytes = minMbObj != null ? Math.max(0L, Math.round(minMbObj)) : (10L * 1024L * 1024L);
         String filterCat = call.getString("category", "all");
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
-                List<FileScanRecord> all = collectAccessibleMediaRecords();
+                FileIndexSnapshot snap = getOrBuildFileIndex(false);
+                List<FileScanRecord> source;
+                if ("images".equals(filterCat)) source = snap.imagesList;
+                else if ("videos".equals(filterCat)) source = snap.videosList;
+                else if ("audio".equals(filterCat)) source = snap.audioList;
+                else if ("documents".equals(filterCat)) source = snap.documentsList;
+                else if ("downloads".equals(filterCat)) source = snap.downloadsList;
+                else source = snap.allRecords;
+
                 List<FileScanRecord> matched = new ArrayList<>();
-                for (FileScanRecord rec : all) {
-                    if (rec.size < minBytes) continue;
-                    if (!"all".equals(filterCat) && !filterCat.equals(rec.category)) continue;
-                    matched.add(rec);
+                for (FileScanRecord rec : source) {
+                    if (rec.size >= minBytes) {
+                        matched.add(rec);
+                    }
                 }
                 if (minBytes <= 0L) {
                     Collections.sort(matched, (a, b) -> Long.compare(b.dateModified, a.dateModified));
                 } else {
                     Collections.sort(matched, (a, b) -> Long.compare(b.size, a.size));
                 }
-                int maxItems = minBytes <= 0L ? 1000 : 300;
+                int maxItems = minBytes <= 0L ? 2000 : 300;
                 JSArray arr = new JSArray();
                 long totalBytes = 0L;
                 for (int i = 0; i < Math.min(maxItems, matched.size()); i++) {
                     FileScanRecord r = matched.get(i);
                     totalBytes += r.size;
-                    arr.put(buildMediaItemObj(r.id, r.name, r.uri, r.path, r.size, r.dateModified, r.mimeType, r.category));
+                    arr.put(buildMediaItemObj(r));
                 }
                 JSObject res = new JSObject();
                 res.put("files", arr);
@@ -1211,12 +1655,19 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
-                List<FileScanRecord> all = collectAccessibleMediaRecords();
+                FileIndexSnapshot snap = getOrBuildFileIndex(false);
+                List<FileScanRecord> source;
+                if ("images".equals(category)) source = snap.imagesList;
+                else if ("videos".equals(category)) source = snap.videosList;
+                else if ("audio".equals(category)) source = snap.audioList;
+                else if ("documents".equals(category)) source = snap.documentsList;
+                else if ("downloads".equals(category)) source = snap.downloadsList;
+                else source = snap.allRecords;
+
                 List<FileScanRecord> matched = new ArrayList<>();
-                for (FileScanRecord rec : all) {
-                    if (category != null && !"all".equals(category) && !category.equals(rec.category)) continue;
+                for (FileScanRecord rec : source) {
                     String nameLower = rec.name != null ? rec.name.toLowerCase(Locale.US) : "";
                     String pathLower = rec.path != null ? rec.path.toLowerCase(Locale.US) : "";
                     if (nameLower.contains(queryLower) || pathLower.contains(queryLower)) {
@@ -1237,8 +1688,7 @@ public class PhoneManagerPlugin extends Plugin {
 
                 JSArray arr = new JSArray();
                 for (int i = 0; i < Math.min(maxResults, matched.size()); i++) {
-                    FileScanRecord r = matched.get(i);
-                    arr.put(buildMediaItemObj(r.id, r.name, r.uri, r.path, r.size, r.dateModified, r.mimeType, r.category));
+                    arr.put(buildMediaItemObj(matched.get(i)));
                 }
                 JSObject res = new JSObject();
                 res.put("files", arr);
@@ -1252,44 +1702,18 @@ public class PhoneManagerPlugin extends Plugin {
 
     @PluginMethod
     public void scanWhatsAppMedia(PluginCall call) {
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
-                List<FileScanRecord> found = new ArrayList<>();
+                FileIndexSnapshot snap = getOrBuildFileIndex(false);
+                List<FileScanRecord> found = new ArrayList<>(snap.whatsappList);
                 Set<String> seenUris = new HashSet<>();
                 Set<String> seenPaths = new HashSet<>();
-
-                // 1) Accessible MediaStore / shared storage WhatsApp entries (excluding Databases/Backups)
-                List<FileScanRecord> all = collectAccessibleMediaRecords();
-                for (FileScanRecord rec : all) {
-                    String lowerPath = (rec.path + " " + rec.name).toLowerCase(Locale.US);
-                    if (isRestrictedScanPath(rec.path)) continue;
-                    if (lowerPath.contains("whatsapp")) {
-                        String canon = toCanonicalKey(rec.path);
-                        if (seenUris.contains(rec.uri) || (canon != null && seenPaths.contains(canon))) continue;
-                        seenUris.add(rec.uri);
-                        if (canon != null) seenPaths.add(canon);
-                        rec.category = classifyWhatsAppSubcategory(rec);
-                        found.add(rec);
-                    }
+                for (FileScanRecord rec : found) {
+                    if (rec.uri != null) seenUris.add(rec.uri);
+                    if (rec.path != null && !rec.path.isEmpty()) seenPaths.add(rec.path);
                 }
 
-                // 2) Direct WhatsApp Media paths across internal & SD card volumes when permitted
-                String[] relWaRoots = new String[] {
-                    "WhatsApp/Media",
-                    "WhatsApp Business/Media",
-                    "Android/media/com.whatsapp/WhatsApp/Media",
-                    "Android/media/com.whatsapp.w4b/WhatsApp Business/Media"
-                };
-                for (File volRoot : getAccessibleVolumeRoots(getContext())) {
-                    for (String relRoot : relWaRoots) {
-                        File dir = new File(volRoot, relRoot);
-                        if (dir.exists() && dir.isDirectory() && dir.canRead() && !shouldSkipScanDirectory(dir)) {
-                            scanDirFilesRecursive(dir, 0, 5, found, seenPaths, true);
-                        }
-                    }
-                }
-
-                // 3) User-granted SAF tree URIs that appear to be WhatsApp folders or Android/media fallback
+                // Include any additional WhatsApp SAF tree items not yet in snapshot
                 JSONArray safArr = getSavedSafTreeUris();
                 for (int i = 0; i < safArr.length(); i++) {
                     JSONObject obj = safArr.optJSONObject(i);
@@ -1309,7 +1733,7 @@ public class PhoneManagerPlugin extends Plugin {
                 JSArray arr = new JSArray();
                 for (FileScanRecord rec : found) {
                     totalBytes += rec.size;
-                    arr.put(buildMediaItemObj(rec.id, rec.name, rec.uri, rec.path, rec.size, rec.dateModified, rec.mimeType, rec.category));
+                    arr.put(buildMediaItemObj(rec));
                 }
 
                 JSObject res = new JSObject();
@@ -1334,53 +1758,14 @@ public class PhoneManagerPlugin extends Plugin {
 
     @PluginMethod
     public void scanDownloads(PluginCall call) {
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
-                List<FileScanRecord> all = collectAccessibleMediaRecords();
-                List<FileScanRecord> downloads = new ArrayList<>();
-                Set<String> seen = new HashSet<>();
-
-                for (FileScanRecord rec : all) {
-                    String pLower = rec.path != null ? rec.path.toLowerCase(Locale.US) : "";
-                    String uLower = rec.uri != null ? Uri.decode(rec.uri).toLowerCase(Locale.US) : "";
-                    if (pLower.contains("/download") || pLower.startsWith("download") || uLower.contains("download")) {
-                        String canon = toCanonicalKey(rec.path);
-                        if (canon != null) {
-                            if (seen.contains(canon)) continue;
-                            seen.add(canon);
-                        }
-                        if (seen.contains(rec.uri)) continue;
-                        seen.add(rec.uri);
-                        rec.category = classifyDownloadKind(rec.name, rec.mimeType, rec.dateModified);
-                        downloads.add(rec);
-                    }
-                }
-
-                int maxDepth = hasAllFilesAccess() ? 6 : 2;
-                Set<File> dlCandidates = new LinkedHashSet<>();
-                File primaryDl = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                if (primaryDl != null) dlCandidates.add(primaryDl);
-                for (File volRoot : getAccessibleVolumeRoots(getContext())) {
-                    dlCandidates.add(new File(volRoot, Environment.DIRECTORY_DOWNLOADS));
-                }
-                for (File dlDir : dlCandidates) {
-                    if (dlDir != null && dlDir.exists() && dlDir.isDirectory() && dlDir.canRead()) {
-                        List<FileScanRecord> rawDl = new ArrayList<>();
-                        scanDirFilesRecursive(dlDir, 0, maxDepth, rawDl, seen, false);
-                        for (FileScanRecord r : rawDl) {
-                            r.category = classifyDownloadKind(r.name, r.mimeType, r.dateModified);
-                            downloads.add(r);
-                        }
-                    }
-                }
-
-                Collections.sort(downloads, (a, b) -> Long.compare(b.dateModified, a.dateModified));
-
+                FileIndexSnapshot snap = getOrBuildFileIndex(false);
                 long totalBytes = 0L;
                 JSArray arr = new JSArray();
-                for (FileScanRecord r : downloads) {
+                for (FileScanRecord r : snap.downloadsList) {
                     totalBytes += r.size;
-                    arr.put(buildMediaItemObj(r.id, r.name, r.uri, r.path, r.size, r.dateModified, r.mimeType, r.category));
+                    arr.put(buildMediaItemObj(r));
                 }
                 JSObject res = new JSObject();
                 res.put("files", arr);
@@ -1414,7 +1799,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        heavyExecutor.execute(() -> {
             try {
                 Context ctx = getContext();
                 ContentResolver resolver = ctx.getContentResolver();
@@ -1491,6 +1876,7 @@ public class PhoneManagerPlugin extends Plugin {
                         displayPath = "Pictures/Mo Vibe Compressed/" + outFileName;
                     }
 
+                    invalidateFileIndex(true);
                     JSObject res = new JSObject();
                     res.put("saved", true);
                     res.put("uri", savedUri.toString());
@@ -1523,7 +1909,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        heavyExecutor.execute(() -> {
             File tempOut = null;
             try {
                 Context ctx = getContext();
@@ -1549,6 +1935,7 @@ public class PhoneManagerPlugin extends Plugin {
                 );
 
                 Uri savedUri = saveFileToMediaStoreVideos(ctx, tempOut, outName);
+                invalidateFileIndex(true);
                 JSObject res = new JSObject();
                 res.put("saved", true);
                 res.put("uri", savedUri.toString());
@@ -1668,7 +2055,7 @@ public class PhoneManagerPlugin extends Plugin {
         String treeUriStr = call.getString("treeUri", "");
         String docUriStr = call.getString("documentUri", "");
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
                 JSArray items = new JSArray();
                 String currentLabel = "";
@@ -2020,7 +2407,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
                 if (treeUriStr != null && !treeUriStr.isEmpty()) {
                     Uri treeUri = Uri.parse(treeUriStr);
@@ -2034,6 +2421,7 @@ public class PhoneManagerPlugin extends Plugin {
                         name
                     );
                     if (created == null) throw new IllegalStateException("Could not create folder via SAF.");
+                    invalidateFileIndex(true);
                     JSObject res = new JSObject();
                     res.put("created", true);
                     res.put("path", created.toString());
@@ -2055,6 +2443,7 @@ public class PhoneManagerPlugin extends Plugin {
                         throw new IllegalStateException("Directory creation denied here. Allow All Files Access or open the folder via SAF.");
                     }
                     MediaScannerConnection.scanFile(getContext(), new String[] { newDir.getAbsolutePath() }, null, null);
+                    invalidateFileIndex(true);
                     JSObject res = new JSObject();
                     res.put("created", true);
                     res.put("path", newDir.getAbsolutePath());
@@ -2077,7 +2466,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
                 ContentResolver resolver = getContext().getContentResolver();
                 File directSrc = resolveDirectFileFromParams(uriStr, pathStr);
@@ -2099,6 +2488,7 @@ public class PhoneManagerPlugin extends Plugin {
                     String oldAbs = directSrc.getAbsolutePath();
                     if (directSrc.renameTo(dst)) {
                         MediaScannerConnection.scanFile(getContext(), new String[] { oldAbs, dst.getAbsolutePath() }, null, null);
+                        invalidateFileIndex(true);
                         JSObject res = new JSObject();
                         res.put("renamed", true);
                         res.put("newPath", dst.getAbsolutePath());
@@ -2112,6 +2502,7 @@ public class PhoneManagerPlugin extends Plugin {
                     if (DocumentsContract.isDocumentUri(getContext(), u)) {
                         Uri renamed = DocumentsContract.renameDocument(resolver, u, newName);
                         if (renamed != null) {
+                            invalidateFileIndex(true);
                             JSObject res = new JSObject();
                             res.put("renamed", true);
                             res.put("newUri", renamed.toString());
@@ -2124,6 +2515,7 @@ public class PhoneManagerPlugin extends Plugin {
                     cv.put(MediaStore.MediaColumns.DISPLAY_NAME, newName);
                     int updated = resolver.update(u, cv, null, null);
                     if (updated > 0) {
+                        invalidateFileIndex(true);
                         JSObject res = new JSObject();
                         res.put("renamed", true);
                         res.put("newUri", uriStr);
@@ -2152,7 +2544,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        opExecutor.execute(() -> {
             try {
                 Context ctx = getContext();
                 ContentResolver resolver = ctx.getContentResolver();
@@ -2283,6 +2675,9 @@ public class PhoneManagerPlugin extends Plugin {
                         }
                     }
                 }
+                if (count > 0) {
+                    invalidateFileIndex(true);
+                }
                 JSObject res = new JSObject();
                 res.put("processedCount", count);
                 call.resolve(res);
@@ -2299,7 +2694,7 @@ public class PhoneManagerPlugin extends Plugin {
             call.reject("No items selected for deletion.");
             return;
         }
-        executor.execute(() -> executeDeleteItems(call, items));
+        opExecutor.execute(() -> executeDeleteItems(call, items));
     }
 
     private void executeDeleteItems(PluginCall call, JSArray items) {
@@ -2323,11 +2718,16 @@ public class PhoneManagerPlugin extends Plugin {
             }
         }
 
+        if (deleted > 0) {
+            invalidateFileIndex(true);
+        }
+
         if (!consentUris.isEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && getActivity() != null) {
             bridge.saveCall(call);
             pendingConsentCallId = call.getCallbackId();
             int finalDeletedSoFar = deleted;
             pendingConsentRetry = () -> {
+                invalidateFileIndex(true);
                 JSObject done = new JSObject();
                 done.put("deletedCount", finalDeletedSoFar + consentUris.size());
                 call.resolve(done);
@@ -2456,7 +2856,7 @@ public class PhoneManagerPlugin extends Plugin {
         }
         final String finalZipName = archiveName.replaceAll("[\\\\/:*?\"<>|]", "_");
 
-        executor.execute(() -> {
+        heavyExecutor.execute(() -> {
             File tempZip = null;
             try {
                 Context ctx = getContext();
@@ -2480,6 +2880,7 @@ public class PhoneManagerPlugin extends Plugin {
                 }
 
                 Uri savedUri = saveFileToMediaStoreDownloads(ctx, tempZip, finalZipName, "application/zip", "Mo Vibe Archives");
+                invalidateFileIndex(true);
                 JSObject res = new JSObject();
                 res.put("saved", true);
                 res.put("uri", savedUri.toString());
@@ -2522,7 +2923,7 @@ public class PhoneManagerPlugin extends Plugin {
             return;
         }
 
-        executor.execute(() -> {
+        heavyExecutor.execute(() -> {
             try {
                 Context ctx = getContext();
                 ContentResolver resolver = ctx.getContentResolver();
@@ -2565,6 +2966,7 @@ public class PhoneManagerPlugin extends Plugin {
                 }
 
                 MediaScannerConnection.scanFile(ctx, new String[] { extractBase.getAbsolutePath() }, null, null);
+                invalidateFileIndex(true);
                 JSObject res = new JSObject();
                 res.put("extracted", true);
                 res.put("extractedCount", extractedCount);
@@ -2797,7 +3199,7 @@ public class PhoneManagerPlugin extends Plugin {
         int depth,
         int maxDepth,
         List<FileScanRecord> out,
-        Set<String> seenCanonicalPaths,
+        Set<String> seenPaths,
         Set<String> visitedDirs,
         int maxFiles,
         boolean whatsappClassify
@@ -2818,28 +3220,24 @@ public class PhoneManagerPlugin extends Plugin {
         for (File f : children) {
             if (out.size() >= maxFiles) return;
             if (f.isDirectory()) {
-                scanSharedVolumeRecursive(f, depth + 1, maxDepth, out, seenCanonicalPaths, visitedDirs, maxFiles, whatsappClassify);
-            } else if (f.isFile() && f.length() > 0L) {
-                String canonFile;
-                try {
-                    canonFile = f.getCanonicalPath();
-                } catch (Exception e) {
-                    canonFile = f.getAbsolutePath();
-                }
-                if (seenCanonicalPaths.contains(canonFile)) continue;
-                seenCanonicalPaths.add(canonFile);
+                scanSharedVolumeRecursive(f, depth + 1, maxDepth, out, seenPaths, visitedDirs, maxFiles, whatsappClassify);
+            } else if (f.isFile()) {
+                long sz = f.length();
+                if (sz <= 0L) continue;
                 String absPath = f.getAbsolutePath();
+                if (!seenPaths.add(absPath)) continue;
+                String name = f.getName();
                 FileScanRecord rec = new FileScanRecord();
-                rec.id = "fs-" + canonFile.hashCode();
-                rec.name = f.getName();
+                rec.id = "fs-" + absPath.hashCode();
+                rec.name = name;
                 rec.uri = Uri.fromFile(f).toString();
                 rec.path = absPath;
-                rec.size = f.length();
+                rec.size = sz;
                 rec.dateModified = f.lastModified();
-                rec.mimeType = guessMimeFromName(f.getName());
+                rec.mimeType = guessMimeFromName(name);
                 rec.category = whatsappClassify
                     ? classifyWhatsAppSubcategory(rec)
-                    : classifyFileCategory(f.getName(), rec.mimeType, absPath.toLowerCase(Locale.US));
+                    : classifyFileCategory(name, rec.mimeType, absPath.toLowerCase(Locale.US));
                 out.add(rec);
             }
         }
@@ -2852,21 +3250,21 @@ public class PhoneManagerPlugin extends Plugin {
         for (File f : children) {
             if (f.isDirectory()) {
                 scanDirFilesRecursive(f, depth + 1, maxDepth, out, seen, whatsappClassify);
-            } else if (f.isFile() && f.length() > 0L) {
+            } else if (f.isFile()) {
+                long sz = f.length();
+                if (sz <= 0L) continue;
                 String path = f.getAbsolutePath();
-                String canon = toCanonicalKey(path);
-                if (seen.contains(path) || (canon != null && seen.contains(canon))) continue;
-                seen.add(path);
-                if (canon != null) seen.add(canon);
+                if (!seen.add(path)) continue;
+                String name = f.getName();
                 FileScanRecord rec = new FileScanRecord();
                 rec.id = "fs-" + path.hashCode();
-                rec.name = f.getName();
+                rec.name = name;
                 rec.uri = Uri.fromFile(f).toString();
                 rec.path = path;
-                rec.size = f.length();
+                rec.size = sz;
                 rec.dateModified = f.lastModified();
-                rec.mimeType = guessMimeFromName(f.getName());
-                rec.category = whatsappClassify ? classifyWhatsAppSubcategory(rec) : classifyFileCategory(f.getName(), rec.mimeType, path.toLowerCase(Locale.US));
+                rec.mimeType = guessMimeFromName(name);
+                rec.category = whatsappClassify ? classifyWhatsAppSubcategory(rec) : classifyFileCategory(name, rec.mimeType, path.toLowerCase(Locale.US));
                 out.add(rec);
             }
         }
@@ -3068,7 +3466,9 @@ public class PhoneManagerPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         super.handleOnDestroy();
-        executor.shutdownNow();
+        scanExecutor.shutdownNow();
+        opExecutor.shutdownNow();
+        heavyExecutor.shutdownNow();
         pdfThumbExecutor.shutdownNow();
     }
 }

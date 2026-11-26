@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Check,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AudioLibrary,
@@ -44,6 +45,14 @@ import {
   formatShortDate,
   formatShortDateTime,
 } from '../../plugins/phoneManager';
+import {
+  CachedPhoneIndexState,
+  getCachedCategoryItems,
+  getCachedPhoneIndexState,
+  hasCachedPhoneIndex,
+  subscribePhoneIndexCache,
+  syncCachedPhoneIndex,
+} from '../../utils/fileIndexCache';
 import {
   createWebZipArchive,
   deleteWebItems,
@@ -104,6 +113,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [indexState, setIndexState] = useState<CachedPhoneIndexState>(() =>
+    getCachedPhoneIndexState()
+  );
 
   // Gallery Lightbox Preview
   const [previewItem, setPreviewItem] = useState<PhoneFileItem | null>(null);
@@ -128,7 +140,16 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
   const webZipExtractInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
+    return subscribePhoneIndexCache((next) => {
+      setIndexState(next);
+    });
+  }, []);
+
+  useEffect(() => {
     void loadRoots();
+    if (!hasCachedPhoneIndex()) {
+      void syncCachedPhoneIndex(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -138,6 +159,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     setGlobalSearchActive(false);
     if (browseMode === 'folder') {
       if (isNativeAndroid() && activeRoot) {
+        setItems([]);
         void loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
       } else if (!isNativeAndroid()) {
         setItems(getAllWebFileItems());
@@ -147,6 +169,15 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browseMode, activeRoot?.id]);
+
+  // Keep active category view synced instantaneously whenever the shared cache updates
+  useEffect(() => {
+    if (browseMode === 'folder' || globalSearchActive) return;
+    if (indexState.ready) {
+      setItems(getCachedCategoryItems(browseMode));
+      setIsLoading(false);
+    }
+  }, [browseMode, globalSearchActive, indexState.ready, indexState.indexedAt]);
 
   // Auto-refresh File Manager when All Files Access permission is granted on resume
   useEffect(() => {
@@ -288,67 +319,37 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
     }
   };
 
-  const loadCategoryFiles = async (cat: Exclude<FileBrowseMode, 'folder'>) => {
-    setIsLoading(true);
+  const loadCategoryFiles = async (
+    cat: Exclude<FileBrowseMode, 'folder'>,
+    forceRescan = false
+  ) => {
     setErrorMsg(null);
     setEmptyAndroidNote(false);
+
+    if (!isNativeAndroid()) {
+      setItems(getAllWebFileItems().filter((f) => f.category === cat));
+      setIsLoading(false);
+      return;
+    }
+
+    if (!forceRescan && hasCachedPhoneIndex()) {
+      setItems(getCachedCategoryItems(cat));
+      setIsLoading(false);
+      return;
+    }
+
+    // Clear previous category items immediately so stale counts never show on the new tab
+    setItems([]);
+    setIsLoading(true);
     try {
-      if (!isNativeAndroid()) {
-        setItems(getAllWebFileItems().filter((f) => f.category === cat));
-        return;
-      }
-      if (cat === 'images') {
-        const res = await AudioLibrary.getAllImageFiles();
-        setItems(
-          (res.images || []).map((i) => ({
-            id: i.id,
-            name: i.displayName || i.title,
-            uri: i.uri,
-            path: '',
-            size: i.size,
-            dateModified: i.dateModified || 0,
-            mimeType: i.mimeType,
-            category: 'images',
-            width: i.width,
-            height: i.height,
-          }))
-        );
-      } else if (cat === 'videos') {
-        const res = await AudioLibrary.getAllVideoFiles();
-        setItems(
-          (res.videos || []).map((v) => ({
-            id: v.id,
-            name: v.displayName || v.title,
-            uri: v.uri,
-            path: '',
-            size: v.size,
-            dateModified: v.dateModified || 0,
-            mimeType: v.mimeType,
-            category: 'videos',
-            durationMs: v.durationMs,
-            resolution: v.resolution,
-          }))
-        );
-      } else if (cat === 'audio') {
-        const res = await AudioLibrary.getAllAudioFiles();
-        setItems(
-          (res.songs || []).map((s) => ({
-            id: s.id,
-            name: s.displayName || s.title,
-            uri: s.uri,
-            path: '',
-            size: s.size,
-            dateModified: s.dateModified || 0,
-            mimeType: s.mimeType,
-            category: 'audio',
-            durationMs: s.durationMs,
-          }))
-        );
-      } else if (cat === 'downloads') {
-        const res = await PhoneManager.scanDownloads();
-        setItems(res.files || []);
+      const next = await syncCachedPhoneIndex(forceRescan);
+      if (next.ready) {
+        setItems(next.categoriesFiles[cat] || []);
       } else {
-        const res = await PhoneManager.findLargeFiles({ minSizeBytes: 0, category: 'documents' });
+        const res = await PhoneManager.getCategoryFiles({
+          category: cat,
+          limit: 2500,
+        });
         setItems(res.files || []);
       }
     } catch (err) {
@@ -383,14 +384,14 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
           (updatedRoots.roots || []).find((r) => r.treeUri === res.treeUri) ||
           (updatedRoots.roots || [])[0];
         if (browseMode === 'documents') {
-          setStatusMsg(`Folder access granted (${res.label || 'Documents'}). Scanning documents...`);
-          await loadCategoryFiles('documents');
+          setStatusMsg(`Folder access granted (${res.label || 'Documents'}). Updating file index...`);
           await onStorageMutated();
         } else if (safRoot) {
           setBrowseMode('folder');
           setActiveRoot(safRoot);
           setDocStack([]);
           await loadAndroidFolder(safRoot, safRoot.path, undefined);
+          void onStorageMutated();
         }
       }
     } catch (err) {
@@ -407,7 +408,6 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       const res = await PhoneManager.requestSafDocumentFiles({ preset });
       if (!res.cancelled && res.addedCount > 0) {
         setStatusMsg(`Added ${res.addedCount} file(s) to File Manager.`);
-        await loadCategoryFiles(browseMode === 'downloads' ? 'downloads' : 'documents');
         await onStorageMutated();
       }
     } catch (err) {
@@ -510,10 +510,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
         newName: nextName,
       });
       setStatusMsg(`Renamed "${target.name}" to "${nextName}".`);
+      await onStorageMutated();
       if (browseMode === 'folder' && activeRoot) {
         await loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
-      } else if (browseMode !== 'folder') {
-        await loadCategoryFiles(browseMode);
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || 'Rename failed.');
@@ -547,10 +546,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       setStatusMsg(
         `${req.mode === 'move' ? 'Moved' : 'Copied'} ${res.processedCount} item(s).`
       );
+      await onStorageMutated();
       if (browseMode === 'folder' && activeRoot) {
         await loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
-      } else if (browseMode !== 'folder') {
-        await loadCategoryFiles(browseMode);
       }
     } catch (err) {
       setErrorMsg((err as Error)?.message || `File ${req.mode} failed.`);
@@ -652,9 +650,7 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
       await onStorageMutated();
       if (browseMode === 'folder' && activeRoot) {
         await loadAndroidFolder(activeRoot, currentPath, docStack[docStack.length - 1]);
-      } else if (browseMode !== 'folder') {
-        await loadCategoryFiles(browseMode);
-      } else {
+      } else if (!isNativeAndroid() && browseMode === 'folder') {
         setItems(getAllWebFileItems());
       }
     } catch (err) {
@@ -801,35 +797,61 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void handleGrantSaf()}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <FolderOpen className="w-3.5 h-3.5" />
-              <span>
-                {isNativeAndroid()
-                  ? browseMode === 'documents'
-                    ? 'Grant Documents Folder (SAF)'
-                    : 'Open Folder (SAF)'
-                  : 'Pick Local Folder'}
-              </span>
-            </button>
-            {isNativeAndroid() && (browseMode === 'documents' || browseMode === 'downloads') && (
-              <button
-                type="button"
-                onClick={() =>
-                  void handlePickDocumentFiles(
-                    browseMode === 'downloads' ? 'downloads' : 'documents'
-                  )
-                }
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>
-                  {browseMode === 'downloads' ? 'Add Files from Downloads' : 'Add Document Files'}
-                </span>
-              </button>
+            {isNativeAndroid() && allFilesGranted ? (
+              <>
+                <button
+                  type="button"
+                  disabled={indexState.isIndexing}
+                  onClick={() => void onStorageMutated()}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${indexState.isIndexing ? 'animate-spin text-emerald-500' : ''}`} />
+                  <span>{indexState.isIndexing ? 'Indexing...' : 'Rescan Files'}</span>
+                </button>
+                {browseMode === 'folder' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleGrantSaf()}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>Open Folder (SAF)</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void handleGrantSaf()}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  <span>
+                    {isNativeAndroid()
+                      ? browseMode === 'documents'
+                        ? 'Grant Documents Folder (SAF)'
+                        : 'Open Folder (SAF)'
+                      : 'Pick Local Folder'}
+                  </span>
+                </button>
+                {isNativeAndroid() && (browseMode === 'documents' || browseMode === 'downloads') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void handlePickDocumentFiles(
+                        browseMode === 'downloads' ? 'downloads' : 'documents'
+                      )
+                    }
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>
+                      {browseMode === 'downloads' ? 'Add Files from Downloads' : 'Add Document Files'}
+                    </span>
+                  </button>
+                )}
+              </>
             )}
             {!isNativeAndroid() && (
               <button
@@ -1103,7 +1125,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
             )}
           </div>
           <span className="text-xs font-semibold tabular-nums text-slate-500 dark:text-slate-400 shrink-0">
-            {visibleItems.length} items · {formatBytes(totalVisibleBytes)}
+            {isLoading
+              ? 'Scanning...'
+              : `${visibleItems.length} item${visibleItems.length === 1 ? '' : 's'} · ${formatBytes(totalVisibleBytes)}`}
           </span>
         </div>
 
@@ -1147,7 +1171,9 @@ export const FileManagerView: React.FC<FileManagerViewProps> = ({
         {isLoading ? (
           <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-            <span>Loading files...</span>
+            <span>
+              {indexState.isIndexing ? 'Indexing accessible files once...' : 'Loading files...'}
+            </span>
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="p-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-3">

@@ -50,9 +50,31 @@ export interface StorageSummaryResult {
   hasStoragePermission: boolean;
   hasAllFilesAccess?: boolean;
   sdkInt?: number;
+  indexedAt?: number;
+  totalIndexedFiles?: number;
+  fromCache?: boolean;
   categories: Record<StorageCategoryKey, StorageCategoryStat>;
   recentFiles: PhoneFileItem[];
   safTrees: SafTreeRef[];
+}
+
+export type IndexedFilesCategoryKey = StorageCategoryKey | 'whatsapp';
+
+export type IndexedFilesMap = Record<IndexedFilesCategoryKey, PhoneFileItem[]>;
+
+export interface IndexedCatalogResult {
+  indexedAt: number;
+  fromCache: boolean;
+  scanDurationMs: number;
+  totalIndexedFiles: number;
+  hasAllFilesAccess: boolean;
+  hasStoragePermission: boolean;
+  summary: StorageSummaryResult;
+  categoriesFiles: IndexedFilesMap;
+  largeFiles?: PhoneFileItem[];
+  duplicateGroups?: DuplicateGroup[];
+  duplicateWastedBytes?: number;
+  duplicatesReady?: boolean;
 }
 
 export interface DuplicateGroup {
@@ -95,8 +117,27 @@ export interface PrivacyOverviewResult {
 interface PhoneManagerPluginInterface {
   getAllFilesAccessStatus(): Promise<AllFilesAccessStatus>;
   requestAllFilesAccess(): Promise<AllFilesAccessStatus>;
-  getStorageSummary(): Promise<StorageSummaryResult>;
-  findDuplicates(): Promise<{
+  syncAllFilesIndex(options?: {
+    forceRefresh?: boolean;
+    categoryLimit?: number;
+  }): Promise<IndexedCatalogResult>;
+  getCategoryFiles(options: {
+    category: IndexedFilesCategoryKey | 'all';
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    files: PhoneFileItem[];
+    totalCount: number;
+    totalBytes: number;
+    indexedAt?: number;
+    fromCache?: boolean;
+  }>;
+  getStorageSummary(options?: {
+    forceRefresh?: boolean;
+  }): Promise<StorageSummaryResult>;
+  findDuplicates(options?: {
+    forceRefresh?: boolean;
+  }): Promise<{
     groups: DuplicateGroup[];
     totalWastedBytes: number;
   }>;
@@ -264,6 +305,10 @@ interface PhoneManagerPluginInterface {
   addListener(
     eventName: 'allFilesAccessChanged',
     listenerFunc: (payload: { granted: boolean; hasMediaRead: boolean; sdkInt: number }) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: 'fileIndexUpdated',
+    listenerFunc: (payload: StorageSummaryResult) => void
   ): Promise<PluginListenerHandle>;
 }
 
